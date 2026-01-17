@@ -1,3 +1,8 @@
 .ralph
 .ruff_cache
 agents
+node_modules
+dist
+bun.lockb
+*.log
+.DS_Store
