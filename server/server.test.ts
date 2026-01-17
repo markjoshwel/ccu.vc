@@ -2317,7 +2317,13 @@ describe('Draw Two card effect', () => {
     room.addPlayer(socketId2, player2);
     room.addPlayer(socketId3, player3);
 
-    room.startGame();
+    let seed = 42;
+    const seededRng = () => {
+      seed = (seed * 1103515245 + 12345) % 0x80000000;
+      return seed / 0x80000000;
+    };
+
+    room.startGame(seededRng);
 
     const topCard = room.discardPile[0];
     const draw2Card: Card = { color: topCard.color, value: 'draw2' };
@@ -2824,5 +2830,137 @@ describe('Wild Draw Four card effect', () => {
     room.playCard(playerId1, wildDraw4Card, 'red');
 
     expect(room.deck!.size).toBe(initialDeckSize - 4);
+  });
+});
+
+describe('Win condition', () => {
+  it('should end game when player plays their last card', () => {
+    const manager = new RoomManager();
+    const room = manager.createRoom();
+
+    const socketId1 = 'socket1';
+    const playerId1 = 'player1';
+    const player1 = { id: playerId1, name: 'Player 1', isReady: false, secret: 'secret1', connected: true, hand: [], handCount: 0 };
+
+    const socketId2 = 'socket2';
+    const playerId2 = 'player2';
+    const player2 = { id: playerId2, name: 'Player 2', isReady: false, secret: 'secret2', connected: true, hand: [], handCount: 0 };
+
+    room.addPlayer(socketId1, player1);
+    room.addPlayer(socketId2, player2);
+
+    room.startGame();
+
+    const topCard = room.discardPile[0];
+    const matchingCard: Card = { color: topCard.color, value: topCard.value };
+
+    room.players.get(playerId1)!.hand = [matchingCard];
+
+    room.playCard(playerId1, matchingCard);
+
+    expect(room.state.gameStatus).toBe('finished');
+    expect(room.state.gameEndedReason).toBe('Player 1 won');
+    expect(room.players.get(playerId1)!.hand).toHaveLength(0);
+  });
+
+  it('should announce winner in gameEndedReason', () => {
+    const manager = new RoomManager();
+    const room = manager.createRoom();
+
+    const socketId1 = 'socket1';
+    const playerId1 = 'player1';
+    const player1 = { id: playerId1, name: 'Alice', isReady: false, secret: 'secret1', connected: true, hand: [], handCount: 0 };
+
+    const socketId2 = 'socket2';
+    const playerId2 = 'player2';
+    const player2 = { id: playerId2, name: 'Bob', isReady: false, secret: 'secret2', connected: true, hand: [], handCount: 0 };
+
+    room.addPlayer(socketId1, player1);
+    room.addPlayer(socketId2, player2);
+
+    let seed = 42;
+    const seededRng = () => {
+      seed = (seed * 1103515245 + 12345) % 0x80000000;
+      return seed / 0x80000000;
+    };
+
+    room.startGame(seededRng);
+
+    room.currentPlayerIndex = 1;
+
+    const topCard = room.discardPile[0];
+    const matchingCard: Card = { color: topCard.color, value: topCard.value };
+
+    room.players.get(playerId2)!.hand = [matchingCard];
+
+    room.playCard(playerId2, matchingCard);
+
+    expect(room.state.gameEndedReason).toBe('Bob won');
+  });
+
+  it('should reject playCard after game has finished', () => {
+    const manager = new RoomManager();
+    const room = manager.createRoom();
+
+    const socketId1 = 'socket1';
+    const playerId1 = 'player1';
+    const player1 = { id: playerId1, name: 'Player 1', isReady: false, secret: 'secret1', connected: true, hand: [], handCount: 0 };
+
+    const socketId2 = 'socket2';
+    const playerId2 = 'player2';
+    const player2 = { id: playerId2, name: 'Player 2', isReady: false, secret: 'secret2', connected: true, hand: [], handCount: 0 };
+
+    room.addPlayer(socketId1, player1);
+    room.addPlayer(socketId2, player2);
+
+    room.startGame();
+
+    const topCard = room.discardPile[0];
+    const matchingCard: Card = { color: topCard.color, value: topCard.value };
+
+    room.players.get(playerId1)!.hand = [matchingCard];
+
+    room.playCard(playerId1, matchingCard);
+
+    expect(room.state.gameStatus).toBe('finished');
+
+    const anotherCard: Card = { color: 'red', value: '5' };
+
+    expect(() => room.playCard(playerId2, anotherCard)).toThrow('Game is not in playing state');
+  });
+
+  it('should reject drawCard after game has finished', () => {
+    const manager = new RoomManager();
+    const room = manager.createRoom();
+
+    const socketId1 = 'socket1';
+    const playerId1 = 'player1';
+    const player1 = { id: playerId1, name: 'Player 1', isReady: false, secret: 'secret1', connected: true, hand: [], handCount: 0 };
+
+    const socketId2 = 'socket2';
+    const playerId2 = 'player2';
+    const player2 = { id: playerId2, name: 'Player 2', isReady: false, secret: 'secret2', connected: true, hand: [], handCount: 0 };
+
+    room.addPlayer(socketId1, player1);
+    room.addPlayer(socketId2, player2);
+
+    let seed = 42;
+    const seededRng = () => {
+      seed = (seed * 1103515245 + 12345) % 0x80000000;
+      return seed / 0x80000000;
+    };
+
+    room.startGame(seededRng);
+
+    const topCard = room.discardPile[0];
+    const matchingCard: Card = { color: topCard.color, value: topCard.value };
+
+    room.players.get(playerId1)!.hand = [matchingCard];
+
+    room.playCard(playerId1, matchingCard);
+
+    expect(room.state.gameStatus).toBe('finished');
+
+    expect(() => room.drawCard(playerId2)).toThrow('Game is not in playing state');
   });
 });

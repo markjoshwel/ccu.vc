@@ -264,6 +264,13 @@ export class Room {
     player.hand.splice(cardIndex, 1);
     this.discardPile.push(card);
 
+    if (player.hand.length === 0) {
+      this.state.gameStatus = 'finished';
+      this.state.gameEndedReason = `${player.name} won`;
+      this.updateState();
+      return;
+    }
+
     if (card.color === 'wild') {
       this.activeColor = chosenColor;
     } else {
