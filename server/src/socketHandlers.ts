@@ -8,11 +8,8 @@ import type {
   JoinRoomResponse,
   PlayerPrivate
 } from '@ccu/shared';
-import { roomManager, generatePlayerId, generatePlayerSecret } from './RoomManager';
+import { RoomManager, roomManager as defaultRoomManager, generatePlayerId, generatePlayerSecret } from './RoomManager';
 import { toGameView } from './gameView';
-
-// Track which room each socket is in
-const socketRoomMap = new Map<string, { roomCode: string; playerId: string }>();
 
 // Validate display name: 1-24 chars after trimming, no control characters
 function validateDisplayName(name: string): { valid: boolean; error?: string } {
@@ -30,7 +27,13 @@ function validateDisplayName(name: string): { valid: boolean; error?: string } {
   return { valid: true };
 }
 
-export function setupSocketHandlers(io: SocketIOServer<ClientToServerEvents, ServerToClientEvents>) {
+export function setupSocketHandlers(
+  io: SocketIOServer<ClientToServerEvents, ServerToClientEvents>,
+  roomManagerInstance: RoomManager = defaultRoomManager
+) {
+  // Track which room each socket is in (scoped to this setup)
+  const socketRoomMap = new Map<string, { roomCode: string; playerId: string }>();
+  
   io.on('connection', (socket: Socket<ClientToServerEvents, ServerToClientEvents>) => {
     console.log(`Client connected: ${socket.id}`);
 
@@ -48,7 +51,7 @@ export function setupSocketHandlers(io: SocketIOServer<ClientToServerEvents, Ser
       const playerSecret = generatePlayerSecret();
 
       // Create room with this player as host
-      const room = roomManager.createRoom(playerId);
+      const room = roomManagerInstance.createRoom(playerId);
 
       // Create player object
       const player: PlayerPrivate = {
@@ -63,7 +66,7 @@ export function setupSocketHandlers(io: SocketIOServer<ClientToServerEvents, Ser
       };
 
       // Add player to room
-      roomManager.addPlayer(room.roomCode, player);
+      roomManagerInstance.addPlayer(room.roomCode, player);
 
       // Join socket.io room
       socket.join(room.roomCode);
@@ -94,7 +97,7 @@ export function setupSocketHandlers(io: SocketIOServer<ClientToServerEvents, Ser
       }
 
       // Check if room exists
-      const room = roomManager.getRoom(payload.roomCode);
+      const room = roomManagerInstance.getRoom(payload.roomCode);
       if (!room) {
         callback({ error: 'Room not found' });
         return;
@@ -102,10 +105,10 @@ export function setupSocketHandlers(io: SocketIOServer<ClientToServerEvents, Ser
 
       // Check if reconnecting with playerSecret
       if (payload.playerSecret) {
-        const existingPlayer = roomManager.findPlayerBySecret(payload.roomCode, payload.playerSecret);
+        const existingPlayer = roomManagerInstance.findPlayerBySecret(payload.roomCode, payload.playerSecret);
         if (existingPlayer) {
           // Reconnect: mark player as connected
-          roomManager.markPlayerConnected(payload.roomCode, existingPlayer.playerId);
+          roomManagerInstance.markPlayerConnected(payload.roomCode, existingPlayer.playerId);
           
           // Join socket.io room
           socket.join(payload.roomCode);
@@ -159,7 +162,7 @@ export function setupSocketHandlers(io: SocketIOServer<ClientToServerEvents, Ser
       };
 
       // Add player to room
-      roomManager.addPlayer(payload.roomCode, player);
+      roomManagerInstance.addPlayer(payload.roomCode, player);
 
       // Join socket.io room
       socket.join(payload.roomCode);
@@ -193,17 +196,17 @@ export function setupSocketHandlers(io: SocketIOServer<ClientToServerEvents, Ser
       const info = socketRoomMap.get(socket.id);
       if (info) {
         const { roomCode, playerId } = info;
-        const room = roomManager.getRoom(roomCode);
+        const room = roomManagerInstance.getRoom(roomCode);
         
         if (room) {
           // Mark player as disconnected
-          roomManager.markPlayerDisconnected(roomCode, playerId);
+          roomManagerInstance.markPlayerDisconnected(roomCode, playerId);
           
           // Notify others
           socket.to(roomCode).emit('playerLeft', playerId);
 
           // Check if room should be deleted
-          if (roomManager.checkAndCleanupRoom(roomCode)) {
+          if (roomManagerInstance.checkAndCleanupRoom(roomCode)) {
             console.log(`Room ${roomCode} deleted (no connected players)`);
           } else {
             // Broadcast updated game state
@@ -226,5 +229,3 @@ function broadcastGameState(io: SocketIOServer<ClientToServerEvents, ServerToCli
     io.to(room.roomCode).emit('gameStateUpdate', view);
   }
 }
-
-export { socketRoomMap };

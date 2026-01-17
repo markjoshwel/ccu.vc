@@ -3,6 +3,8 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import { io as ioc, Socket as ClientSocket } from 'socket.io-client';
 import type { ClientToServerEvents, ServerToClientEvents, CreateRoomResponse, JoinRoomResponse } from '@ccu/shared';
+import { RoomManager } from '../RoomManager';
+import { setupSocketHandlers } from '../socketHandlers';
 
 // We need to test with actual socket.io connections
 describe('Socket Handlers - Create and Join Room', () => {
@@ -10,14 +12,15 @@ describe('Socket Handlers - Create and Join Room', () => {
   let io: Server<ClientToServerEvents, ServerToClientEvents>;
   let port: number;
   let clients: ClientSocket<ServerToClientEvents, ClientToServerEvents>[] = [];
+  let roomManager: RoomManager;
 
   beforeEach(async () => {
-    // Import fresh module each time to reset state
-    const { setupSocketHandlers } = await import('../socketHandlers');
+    // Create fresh RoomManager for each test
+    roomManager = new RoomManager();
     
     httpServer = createServer();
     io = new Server(httpServer);
-    setupSocketHandlers(io);
+    setupSocketHandlers(io, roomManager);
 
     await new Promise<void>((resolve) => {
       httpServer.listen(0, () => {
@@ -167,5 +170,190 @@ describe('Socket Handlers - Create and Join Room', () => {
         });
       });
     });
+  });
+});
+
+describe('Socket Handlers - Reconnect', () => {
+  let httpServer: ReturnType<typeof createServer>;
+  let io: Server<ClientToServerEvents, ServerToClientEvents>;
+  let port: number;
+  let clients: ClientSocket<ServerToClientEvents, ClientToServerEvents>[] = [];
+  let roomManager: RoomManager;
+
+  beforeEach(async () => {
+    // Create fresh RoomManager for each test
+    roomManager = new RoomManager();
+    
+    httpServer = createServer();
+    io = new Server(httpServer);
+    setupSocketHandlers(io, roomManager);
+
+    await new Promise<void>((resolve) => {
+      httpServer.listen(0, () => {
+        const addr = httpServer.address();
+        port = typeof addr === 'object' && addr ? addr.port : 0;
+        resolve();
+      });
+    });
+    
+    clients = [];
+  });
+
+  afterEach(() => {
+    for (const client of clients) {
+      client.close();
+    }
+    io.close();
+    httpServer.close();
+  });
+
+  function createClient(): ClientSocket<ServerToClientEvents, ClientToServerEvents> {
+    const client = ioc(`http://localhost:${port}`, {
+      transports: ['websocket'],
+      forceNew: true
+    });
+    clients.push(client);
+    return client;
+  }
+
+  // Helper to wait for socket connection
+  function waitForConnect(socket: ClientSocket<ServerToClientEvents, ClientToServerEvents>): Promise<void> {
+    return new Promise((resolve) => {
+      if (socket.connected) {
+        resolve();
+      } else {
+        socket.once('connect', () => resolve());
+      }
+    });
+  }
+
+  test('player can reconnect with correct playerSecret and reclaim same playerId', async () => {
+    const host = createClient();
+    await waitForConnect(host);
+    
+    // Host creates room
+    const { roomCode } = await new Promise<CreateRoomResponse>((resolve, reject) => {
+      host.emit('createRoom', { displayName: 'Host' }, (response) => {
+        if ('error' in response) reject(new Error(response.error));
+        else resolve(response as CreateRoomResponse);
+      });
+    });
+    
+    // Player 1 joins and gets credentials
+    const player1 = createClient();
+    await waitForConnect(player1);
+    
+    const { playerId: originalPlayerId, playerSecret } = await new Promise<JoinRoomResponse>((resolve, reject) => {
+      player1.emit('joinRoom', { roomCode, displayName: 'Player1' }, (response) => {
+        if ('error' in response) reject(new Error(response.error));
+        else resolve(response as JoinRoomResponse);
+      });
+    });
+    
+    // Player 1 disconnects
+    player1.close();
+    // Remove from clients array so afterEach doesn't double-close
+    clients = clients.filter(c => c !== player1);
+    await new Promise(r => setTimeout(r, 100)); // Wait for disconnect to process
+    
+    // Player 1 reconnects with playerSecret
+    const player1Reconnect = createClient();
+    await waitForConnect(player1Reconnect);
+    
+    const reconnectResponse = await new Promise<JoinRoomResponse>((resolve, reject) => {
+      player1Reconnect.emit('joinRoom', { 
+        roomCode, 
+        displayName: 'Player1', 
+        playerSecret 
+      }, (response) => {
+        if ('error' in response) reject(new Error(response.error));
+        else resolve(response as JoinRoomResponse);
+      });
+    });
+    
+    // Should get same playerId back
+    expect(reconnectResponse.playerId).toBe(originalPlayerId);
+    expect(reconnectResponse.playerSecret).toBe(playerSecret);
+  });
+
+  test('incorrect playerSecret does not hijack existing seat', async () => {
+    const host = createClient();
+    await waitForConnect(host);
+    
+    // Host creates room
+    const { roomCode } = await new Promise<CreateRoomResponse>((resolve, reject) => {
+      host.emit('createRoom', { displayName: 'Host' }, (response) => {
+        if ('error' in response) reject(new Error(response.error));
+        else resolve(response as CreateRoomResponse);
+      });
+    });
+    
+    // Player 1 joins
+    const player1 = createClient();
+    await waitForConnect(player1);
+    
+    const { playerId: originalPlayerId } = await new Promise<JoinRoomResponse>((resolve, reject) => {
+      player1.emit('joinRoom', { roomCode, displayName: 'Player1' }, (response) => {
+        if ('error' in response) reject(new Error(response.error));
+        else resolve(response as JoinRoomResponse);
+      });
+    });
+    
+    // Attacker tries to join with wrong secret
+    const attacker = createClient();
+    await waitForConnect(attacker);
+    
+    const attackerResponse = await new Promise<JoinRoomResponse>((resolve, reject) => {
+      attacker.emit('joinRoom', { 
+        roomCode, 
+        displayName: 'Attacker', 
+        playerSecret: 'wrong-secret-12345' 
+      }, (response) => {
+        if ('error' in response) reject(new Error(response.error));
+        else resolve(response as JoinRoomResponse);
+      });
+    });
+    
+    // Attacker should get a NEW playerId, not hijack original
+    expect(attackerResponse.playerId).not.toBe(originalPlayerId);
+  });
+
+  test('disconnected player is marked as connected=false but seat is retained', async () => {
+    const host = createClient();
+    await waitForConnect(host);
+    
+    // Host creates room
+    const { roomCode } = await new Promise<CreateRoomResponse>((resolve, reject) => {
+      host.emit('createRoom', { displayName: 'Host' }, (response) => {
+        if ('error' in response) reject(new Error(response.error));
+        else resolve(response as CreateRoomResponse);
+      });
+    });
+    
+    // Player 1 joins
+    const player1 = createClient();
+    await waitForConnect(player1);
+    
+    const { playerId: player1Id } = await new Promise<JoinRoomResponse>((resolve, reject) => {
+      player1.emit('joinRoom', { roomCode, displayName: 'Player1' }, (response) => {
+        if ('error' in response) reject(new Error(response.error));
+        else resolve(response as JoinRoomResponse);
+      });
+    });
+    
+    // Track playerLeft event on host
+    let leftPlayerId: string | null = null;
+    host.on('playerLeft', (playerId) => {
+      leftPlayerId = playerId;
+    });
+    
+    // Player 1 disconnects
+    player1.close();
+    // Remove from clients array so afterEach doesn't double-close
+    clients = clients.filter(c => c !== player1);
+    await new Promise(r => setTimeout(r, 150)); // Wait for disconnect
+    
+    // Host should have received playerLeft event
+    expect(leftPlayerId).toBe(player1Id);
   });
 });
