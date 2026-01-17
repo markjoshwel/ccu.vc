@@ -178,14 +178,199 @@ h1 {
 
 .discard-pile {
   text-align: center;
+  margin: 1rem 0;
 }
 
-.discard-pile .card {
-  display: inline-block;
-  padding: 2rem;
+.discard-pile h3 {
+  margin-bottom: 0.5rem;
+}
+
+.card {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 60px;
+  height: 90px;
+  border: 2px solid #fff;
+  border-radius: 8px;
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: white;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+  margin: 4px;
+  transition: transform 0.15s ease;
+}
+
+.card:not(:disabled):hover {
+  transform: translateY(-4px);
+}
+
+/* Game area */
+.game-area {
+  margin: 1rem 0;
+}
+
+.turn-indicator {
+  text-align: center;
+  padding: 0.75rem;
   background-color: #f8f9fa;
+  border-radius: 4px;
+  margin-bottom: 1rem;
+}
+
+.turn-indicator .your-turn {
+  color: #28a745;
+  font-weight: bold;
+  font-size: 1.2rem;
+}
+
+.active-color {
+  text-align: center;
+  margin: 0.5rem 0;
+}
+
+.color-badge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  margin-left: 0.5rem;
+  border-radius: 4px;
+  color: white;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.draw-area {
+  text-align: center;
+  margin: 1rem 0;
+}
+
+.draw-btn {
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  background-color: #28a745;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.draw-btn:hover:not(:disabled) {
+  background-color: #218838;
+}
+
+.draw-btn:disabled {
+  background-color: #6c757d;
+  cursor: not-allowed;
+}
+
+.hand {
+  margin-top: 1rem;
+}
+
+.hand h3 {
+  margin-bottom: 0.5rem;
+}
+
+.hand-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  justify-content: center;
+  padding: 0.5rem;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  min-height: 100px;
+}
+
+/* Start game button */
+.start-btn {
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  background-color: #28a745;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-top: 1rem;
+}
+
+.start-btn:hover:not(:disabled) {
+  background-color: #218838;
+}
+
+.start-btn:disabled {
+  background-color: #6c757d;
+  cursor: not-allowed;
+}
+
+/* Game finished */
+.game-finished {
+  text-align: center;
+  padding: 2rem;
+  background-color: #d4edda;
+  border-radius: 8px;
+  margin: 1rem 0;
+}
+
+.game-finished h2 {
+  margin: 0 0 1rem 0;
+}
+
+/* Color picker */
+.color-picker-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.color-picker {
+  background-color: white;
+  padding: 2rem;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.color-picker h3 {
+  margin: 0 0 1rem 0;
+}
+
+.color-options {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.color-option {
+  width: 60px;
+  height: 60px;
   border: 2px solid #333;
   border-radius: 8px;
-  font-size: 1.25rem;
+  color: white;
   font-weight: bold;
+  cursor: pointer;
+  text-transform: uppercase;
+}
+
+.color-option:hover {
+  transform: scale(1.1);
+}
+
+.cancel-btn {
+  padding: 0.5rem 1rem;
+  background-color: #6c757d;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.cancel-btn:hover {
+  background-color: #5a6268;
 }
