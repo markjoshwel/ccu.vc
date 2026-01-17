@@ -429,15 +429,23 @@ export default function Room({ session, gameView, onGameViewUpdate, onLeaveRoom 
         </div>
       )}
 
-      {/* Players list */}
-      <div className="players-list">
+      {/* Player rail */}
+      <div className="player-rail">
         <h3>Players</h3>
-        <ul>
-          <li className={gameView.currentPlayerId === gameView.myPlayerId ? 'active' : ''}>
-            <span className="player-info">
-              You ({gameView.myHand.length} cards)
-              {gameView.hostPlayerId === gameView.myPlayerId && ' 👑'}
-            </span>
+        <div className="player-cards">
+          <div className={`player-card ${gameView.currentPlayerId === gameView.myPlayerId ? 'active' : ''}`}>
+            <div className="player-avatar">
+              <img 
+                src={`${import.meta.env.VITE_SERVER_URL || 'http://localhost:3000'}/avatars/${gameView.myPlayerId}`}
+                alt="Your avatar"
+              />
+            </div>
+            <div className="player-details">
+              <span className="player-name">
+                You {gameView.hostPlayerId === gameView.myPlayerId && '👑'}
+              </span>
+              <span className="player-cards-count">{gameView.myHand.length} cards</span>
+            </div>
             {gameView.phase === 'playing' && (
               <ClockDisplay 
                 timeRemainingMs={getPlayerTime(gameView.myPlayerId)}
@@ -445,17 +453,25 @@ export default function Room({ session, gameView, onGameViewUpdate, onLeaveRoom 
                 serverTimestamp={clockSync?.serverTimestamp || null}
               />
             )}
-          </li>
+          </div>
           {gameView.opponents.map(opponent => (
-            <li 
+            <div 
               key={opponent.playerId}
-              className={`${gameView.currentPlayerId === opponent.playerId ? 'active' : ''} ${!opponent.connected ? 'disconnected' : ''}`}
+              className={`player-card ${gameView.currentPlayerId === opponent.playerId ? 'active' : ''} ${!opponent.connected ? 'disconnected' : ''}`}
             >
-              <span className="player-info">
-                {opponent.displayName} ({opponent.handCount} cards)
-                {!opponent.connected && ' [Disconnected]'}
-                {gameView.hostPlayerId === opponent.playerId && ' 👑'}
-              </span>
+              <div className="player-avatar">
+                <img 
+                  src={`${import.meta.env.VITE_SERVER_URL || 'http://localhost:3000'}/avatars/${opponent.avatarId || opponent.playerId}`}
+                  alt={`${opponent.displayName}'s avatar`}
+                />
+              </div>
+              <div className="player-details">
+                <span className="player-name">
+                  {opponent.displayName} {gameView.hostPlayerId === opponent.playerId && '👑'}
+                  {!opponent.connected && ' ⚠️'}
+                </span>
+                <span className="player-cards-count">{opponent.handCount} cards</span>
+              </div>
               {gameView.phase === 'playing' && (
                 <ClockDisplay 
                   timeRemainingMs={getPlayerTime(opponent.playerId)}
@@ -463,9 +479,9 @@ export default function Room({ session, gameView, onGameViewUpdate, onLeaveRoom 
                   serverTimestamp={clockSync?.serverTimestamp || null}
                 />
               )}
-            </li>
+            </div>
           ))}
-        </ul>
+        </div>
       </div>
 
       {/* Color picker modal */}

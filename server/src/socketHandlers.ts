@@ -18,6 +18,7 @@ import { RoomManager, roomManager as defaultRoomManager, generatePlayerId, gener
 import { toGameView } from './gameView';
 import { startGame, playCard, drawCard, callUno, catchUno } from './gameEngine';
 import { startClockSync, stopClockSync, handleTimeout, applyIncrement } from './clock';
+import { createAvatar } from './avatars';
 
 // Chat rate limiting: max messages per interval
 const CHAT_RATE_LIMIT = 10; // messages
@@ -113,7 +114,7 @@ export function setupSocketHandlers(
         handCount: 0,
         hand: [],
         timeRemainingMs: room.settings.initialTimeMs,
-        avatarId: payload.avatarId
+        avatarId: payload.avatarId || createAvatar(displayName)
       };
 
       // Add player to room
@@ -209,7 +210,7 @@ export function setupSocketHandlers(
         handCount: 0,
         hand: [],
         timeRemainingMs: room.settings.initialTimeMs,
-        avatarId: payload.avatarId
+        avatarId: payload.avatarId || createAvatar(payload.displayName.trim())
       };
 
       // Add player to room

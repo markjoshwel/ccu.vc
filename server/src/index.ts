@@ -2,6 +2,7 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import type { ClientToServerEvents, ServerToClientEvents } from '@ccu/shared';
 import { setupSocketHandlers } from './socketHandlers';
+import { generateAvatarSvg } from './avatars';
 
 const PORT = parseInt(process.env.PORT || '3000', 10);
 
@@ -11,6 +12,18 @@ const httpServer = createServer((req, res) => {
   if (req.method === 'GET' && req.url === '/health') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ status: 'ok' }));
+    return;
+  }
+  
+  // Avatar endpoint: GET /avatars/:avatarId
+  if (req.method === 'GET' && req.url?.startsWith('/avatars/')) {
+    const avatarId = req.url.slice('/avatars/'.length);
+    const svg = generateAvatarSvg(avatarId);
+    res.writeHead(200, { 
+      'Content-Type': 'image/svg+xml',
+      'Cache-Control': 'public, max-age=3600'
+    });
+    res.end(svg);
     return;
   }
   
