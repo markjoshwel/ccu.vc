@@ -10,12 +10,57 @@ import type {
   PlayCardPayload,
   DrawCardPayload,
   ActionPayload,
-  ClockSync
+  ClockSync,
+  SendChatPayload,
+  ChatMessage
 } from '@ccu/shared';
 import { RoomManager, roomManager as defaultRoomManager, generatePlayerId, generatePlayerSecret } from './RoomManager';
 import { toGameView } from './gameView';
 import { startGame, playCard, drawCard, callUno, catchUno } from './gameEngine';
 import { startClockSync, stopClockSync, handleTimeout, applyIncrement } from './clock';
+
+// Chat rate limiting: max messages per interval
+const CHAT_RATE_LIMIT = 10; // messages
+const CHAT_RATE_INTERVAL = 10000; // 10 seconds
+const MAX_MESSAGE_LENGTH = 200;
+const chatRateLimits = new Map<string, { count: number; resetTime: number }>();
+
+function checkChatRateLimit(socketId: string): boolean {
+  const now = Date.now();
+  const limit = chatRateLimits.get(socketId);
+  
+  if (!limit || now > limit.resetTime) {
+    chatRateLimits.set(socketId, { count: 1, resetTime: now + CHAT_RATE_INTERVAL });
+    return true;
+  }
+  
+  if (limit.count >= CHAT_RATE_LIMIT) {
+    return false;
+  }
+  
+  limit.count++;
+  return true;
+}
+
+// Store chat history per room (limited to last 50 messages)
+const roomChatHistory = new Map<string, ChatMessage[]>();
+
+function addChatMessage(roomCode: string, message: ChatMessage): void {
+  let history = roomChatHistory.get(roomCode);
+  if (!history) {
+    history = [];
+    roomChatHistory.set(roomCode, history);
+  }
+  history.push(message);
+  // Keep only last 50 messages
+  if (history.length > 50) {
+    history.shift();
+  }
+}
+
+function getChatHistory(roomCode: string): ChatMessage[] {
+  return roomChatHistory.get(roomCode) || [];
+}
 
 // Validate display name: 1-24 chars after trimming, no control characters
 function validateDisplayName(name: string): { valid: boolean; error?: string } {
@@ -180,6 +225,12 @@ export function setupSocketHandlers(
         playerSecret
       };
       callback(response);
+
+      // Send chat history to the joining player
+      const history = getChatHistory(payload.roomCode);
+      if (history.length > 0) {
+        socket.emit('chatHistory', history);
+      }
 
       // Notify others
       socket.to(payload.roomCode).emit('playerJoined', {
@@ -346,6 +397,44 @@ export function setupSocketHandlers(
         });
         broadcastGameState(io, room);
       }
+    });
+
+    // Send chat message handler
+    socket.on('sendChat', (payload: SendChatPayload) => {
+      const info = socketRoomMap.get(socket.id);
+      if (!info) return;
+
+      const room = roomManagerInstance.getRoom(info.roomCode);
+      if (!room) return;
+
+      // Rate limiting
+      if (!checkChatRateLimit(socket.id)) {
+        socket.emit('error', 'Too many messages. Please slow down.');
+        return;
+      }
+
+      // Validate message
+      const message = payload.message.trim();
+      if (message.length === 0 || message.length > MAX_MESSAGE_LENGTH) {
+        return;
+      }
+
+      // Find player display name
+      const player = room.players.find(p => p.playerId === info.playerId);
+      if (!player) return;
+
+      const chatMessage: ChatMessage = {
+        playerId: info.playerId,
+        displayName: player.displayName,
+        message,
+        timestamp: Date.now()
+      };
+
+      // Store in history
+      addChatMessage(info.roomCode, chatMessage);
+
+      // Broadcast to room
+      io.to(info.roomCode).emit('chatMessage', chatMessage);
     });
 
     // Handle disconnect

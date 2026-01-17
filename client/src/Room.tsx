@@ -2,6 +2,7 @@ import { useEffect, useCallback, useState, useRef, useMemo } from 'react';
 import type { GameView, CardWithId, CardColor, ClockSync } from '@ccu/shared';
 import { getSocket } from './socket';
 import { StoredSession, clearSession } from './storage';
+import ChatDrawer from './ChatDrawer';
 
 interface RoomProps {
   session: StoredSession;
@@ -474,6 +475,9 @@ export default function Room({ session, gameView, onGameViewUpdate, onLeaveRoom 
           onCancel={() => setColorPickerCard(null)}
         />
       )}
+
+      {/* Chat drawer */}
+      <ChatDrawer myPlayerId={gameView.myPlayerId} />
     </div>
   );
 }
