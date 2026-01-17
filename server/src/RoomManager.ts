@@ -209,6 +209,48 @@ export class Room {
     this.direction = this.direction === 1 ? -1 : 1;
     this.updateState();
   }
+
+  playCard(playerId: string, card: Card): void {
+    if (this.state.gameStatus !== 'playing') {
+      throw new Error('Game is not in playing state');
+    }
+
+    const currentPlayerId = this.playerOrder[this.currentPlayerIndex];
+    if (playerId !== currentPlayerId) {
+      throw new Error('Not your turn');
+    }
+
+    const player = this.players.get(playerId);
+    if (!player) {
+      throw new Error('Player not found');
+    }
+
+    const cardIndex = player.hand.findIndex(
+      (c) => c.color === card.color && c.value === card.value
+    );
+
+    if (cardIndex === -1) {
+      throw new Error('Card not in hand');
+    }
+
+    const topCard = this.discardPile[this.discardPile.length - 1];
+    if (!topCard) {
+      throw new Error('No top card in discard pile');
+    }
+
+    const isMatch =
+      card.color === 'wild' ||
+      card.color === topCard.color ||
+      card.value === topCard.value;
+
+    if (!isMatch) {
+      throw new Error('Card does not match top discard');
+    }
+
+    player.hand.splice(cardIndex, 1);
+    this.discardPile.push(card);
+    this.updateState();
+  }
 }
 
 export class RoomManager {

@@ -1820,3 +1820,206 @@ describe('Room turn order', () => {
     expect(room.state.gameEndedReason).toBeUndefined();
   });
 });
+
+describe('playCard validation', () => {
+  it('should allow play when card matches by color', () => {
+    const manager = new RoomManager();
+    const room = manager.createRoom();
+
+    const socketId1 = 'socket1';
+    const playerId1 = 'player1';
+    const player1 = { id: playerId1, name: 'Player 1', isReady: false, secret: 'secret1', connected: true, hand: [], handCount: 0 };
+
+    const socketId2 = 'socket2';
+    const playerId2 = 'player2';
+    const player2 = { id: playerId2, name: 'Player 2', isReady: false, secret: 'secret2', connected: true, hand: [], handCount: 0 };
+
+    room.addPlayer(socketId1, player1);
+    room.addPlayer(socketId2, player2);
+
+    let seed = 1;
+    const seededRng = () => {
+      seed = (seed * 1103515245 + 12345) % 0x80000000;
+      return seed / 0x80000000;
+    };
+
+    room.startGame(seededRng);
+
+    const topCard = room.discardPile[0];
+    const matchingCard = { color: topCard.color, value: '5' };
+
+    room.players.get(playerId1)!.hand.push(matchingCard);
+
+    room.playCard(playerId1, matchingCard);
+
+    expect(room.discardPile).toHaveLength(2);
+    expect(room.discardPile[1]).toEqual(matchingCard);
+    expect(room.players.get(playerId1)!.hand.length).toBe(7);
+  });
+
+  it('should allow play when card matches by number', () => {
+    const manager = new RoomManager();
+    const room = manager.createRoom();
+
+    const socketId1 = 'socket1';
+    const playerId1 = 'player1';
+    const player1 = { id: playerId1, name: 'Player 1', isReady: false, secret: 'secret1', connected: true, hand: [], handCount: 0 };
+
+    const socketId2 = 'socket2';
+    const playerId2 = 'player2';
+    const player2 = { id: playerId2, name: 'Player 2', isReady: false, secret: 'secret2', connected: true, hand: [], handCount: 0 };
+
+    room.addPlayer(socketId1, player1);
+    room.addPlayer(socketId2, player2);
+
+    let seed = 1;
+    const seededRng = () => {
+      seed = (seed * 1103515245 + 12345) % 0x80000000;
+      return seed / 0x80000000;
+    };
+
+    room.startGame(seededRng);
+
+    const topCard = room.discardPile[0];
+    const matchingCard: Card = { color: topCard.color === 'red' ? 'blue' : 'red', value: topCard.value };
+
+    room.players.get(playerId1)!.hand.push(matchingCard);
+
+    room.playCard(playerId1, matchingCard);
+
+    expect(room.discardPile).toHaveLength(2);
+    expect(room.discardPile[1]).toEqual(matchingCard);
+    expect(room.players.get(playerId1)!.hand.length).toBe(7);
+  });
+
+  it('should allow play with wild card', () => {
+    const manager = new RoomManager();
+    const room = manager.createRoom();
+
+    const socketId1 = 'socket1';
+    const playerId1 = 'player1';
+    const player1 = { id: playerId1, name: 'Player 1', isReady: false, secret: 'secret1', connected: true, hand: [], handCount: 0 };
+
+    const socketId2 = 'socket2';
+    const playerId2 = 'player2';
+    const player2 = { id: playerId2, name: 'Player 2', isReady: false, secret: 'secret2', connected: true, hand: [], handCount: 0 };
+
+    room.addPlayer(socketId1, player1);
+    room.addPlayer(socketId2, player2);
+
+    let seed = 1;
+    const seededRng = () => {
+      seed = (seed * 1103515245 + 12345) % 0x80000000;
+      return seed / 0x80000000;
+    };
+
+    room.startGame(seededRng);
+
+    const wildCard = { color: 'wild' as const, value: 'wild' };
+
+    room.players.get(playerId1)!.hand.push(wildCard);
+
+    room.playCard(playerId1, wildCard);
+
+    expect(room.discardPile).toHaveLength(2);
+    expect(room.discardPile[1]).toEqual(wildCard);
+    expect(room.players.get(playerId1)!.hand.length).toBe(7);
+  });
+
+  it('should reject play when not player\'s turn', () => {
+    const manager = new RoomManager();
+    const room = manager.createRoom();
+
+    const socketId1 = 'socket1';
+    const playerId1 = 'player1';
+    const player1 = { id: playerId1, name: 'Player 1', isReady: false, secret: 'secret1', connected: true, hand: [], handCount: 0 };
+
+    const socketId2 = 'socket2';
+    const playerId2 = 'player2';
+    const player2 = { id: playerId2, name: 'Player 2', isReady: false, secret: 'secret2', connected: true, hand: [], handCount: 0 };
+
+    room.addPlayer(socketId1, player1);
+    room.addPlayer(socketId2, player2);
+
+    room.startGame();
+
+    const topCard = room.discardPile[0];
+    const matchingCard = { color: topCard.color, value: '5' };
+
+    room.players.get(playerId2)!.hand.push(matchingCard);
+
+    expect(() => room.playCard(playerId2, matchingCard)).toThrow('Not your turn');
+  });
+
+  it('should reject play when card does not match', () => {
+    const manager = new RoomManager();
+    const room = manager.createRoom();
+
+    const socketId1 = 'socket1';
+    const playerId1 = 'player1';
+    const player1 = { id: playerId1, name: 'Player 1', isReady: false, secret: 'secret1', connected: true, hand: [], handCount: 0 };
+
+    const socketId2 = 'socket2';
+    const playerId2 = 'player2';
+    const player2 = { id: playerId2, name: 'Player 2', isReady: false, secret: 'secret2', connected: true, hand: [], handCount: 0 };
+
+    room.addPlayer(socketId1, player1);
+    room.addPlayer(socketId2, player2);
+
+    let seed = 1;
+    const seededRng = () => {
+      seed = (seed * 1103515245 + 12345) % 0x80000000;
+      return seed / 0x80000000;
+    };
+
+    room.startGame(seededRng);
+
+    const topCard = room.discardPile[0];
+    let nonMatchingCard: Card = { color: 'red', value: '9' };
+
+    if (topCard.color === 'red' || topCard.value === '9') {
+      nonMatchingCard = { color: 'blue', value: topCard.color === 'blue' ? '8' : '9' };
+    }
+
+    room.players.get(playerId1)!.hand.push(nonMatchingCard);
+
+    expect(() => room.playCard(playerId1, nonMatchingCard)).toThrow('Card does not match top discard');
+  });
+
+  it('should reject play when card not in hand', () => {
+    const manager = new RoomManager();
+    const room = manager.createRoom();
+
+    const socketId1 = 'socket1';
+    const playerId1 = 'player1';
+    const player1 = { id: playerId1, name: 'Player 1', isReady: false, secret: 'secret1', connected: true, hand: [], handCount: 0 };
+
+    const socketId2 = 'socket2';
+    const playerId2 = 'player2';
+    const player2 = { id: playerId2, name: 'Player 2', isReady: false, secret: 'secret2', connected: true, hand: [], handCount: 0 };
+
+    room.addPlayer(socketId1, player1);
+    room.addPlayer(socketId2, player2);
+
+    room.startGame();
+
+    const cardNotInHand: Card = { color: 'wild', value: 'wild_draw4' };
+
+    expect(() => room.playCard(playerId1, cardNotInHand)).toThrow('Card not in hand');
+  });
+
+  it('should reject play when game is not in playing state', () => {
+    const manager = new RoomManager();
+    const room = manager.createRoom();
+
+    const socketId1 = 'socket1';
+    const playerId1 = 'player1';
+    const player1 = { id: playerId1, name: 'Player 1', isReady: false, secret: 'secret1', connected: true, hand: [], handCount: 0 };
+
+    room.addPlayer(socketId1, player1);
+
+    const card: Card = { color: 'red', value: '5' };
+
+    expect(() => room.playCard(playerId1, card)).toThrow('Game is not in playing state');
+  });
+});
