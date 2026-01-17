@@ -70,15 +70,17 @@ function generatePlayerSecret(): string {
 io.on('connection', (socket) => {
   console.log(`Client connected: ${socket.id}`);
   
-  (socket as any).on('create_room', (callback: (response: { roomCode: string }) => void) => {
+  socket.on('create_room', (actionId: string, callback: (response: { roomCode: string }) => void) => {
     const room = roomManager.createRoom();
+    socket.emit('actionAck', { actionId, ok: true });
     callback({ roomCode: room.code });
   });
   
-  (socket as any).on('join_room', (roomCode: string, displayName: string, callback: (response: { playerId: string; playerSecret: string } | { error: string }) => void) => {
+  socket.on('join_room', (actionId: string, roomCode: string, displayName: string, callback: (response: { playerId: string; playerSecret: string } | { error: string }) => void) => {
     const validation = validateDisplayName(displayName);
     
     if (!validation.valid) {
+      socket.emit('actionAck', { actionId, ok: false });
       callback({ error: validation.error || 'Invalid display name' });
       return;
     }
@@ -86,6 +88,7 @@ io.on('connection', (socket) => {
     const room = roomManager.getRoom(roomCode);
     
     if (!room) {
+      socket.emit('actionAck', { actionId, ok: false });
       callback({ error: 'Room not found' });
       return;
     }
@@ -112,13 +115,15 @@ io.on('connection', (socket) => {
     socket.join(roomCode);
     broadcastGameStateUpdate(roomCode);
     
+    socket.emit('actionAck', { actionId, ok: true });
     callback({ playerId, playerSecret });
   });
   
-  (socket as any).on('reconnect_room', (roomCode: string, playerId: string, playerSecret: string, callback: (response: { success: boolean; error?: string }) => void) => {
+  socket.on('reconnect_room', (actionId: string, roomCode: string, playerId: string, playerSecret: string, callback: (response: { success: boolean; error?: string }) => void) => {
     const room = roomManager.handlePlayerReconnection(roomCode, socket.id, playerId, playerSecret);
     
     if (!room) {
+      socket.emit('actionAck', { actionId, ok: false });
       callback({ success: false, error: 'Reconnection failed' });
       return;
     }
@@ -129,13 +134,15 @@ io.on('connection', (socket) => {
     socket.join(roomCode);
     broadcastGameStateUpdate(roomCode);
     
+    socket.emit('actionAck', { actionId, ok: true });
     callback({ success: true });
   });
   
-  (socket as any).on('start_game', (callback: (response: { success: boolean; error?: string }) => void) => {
+  socket.on('start_game', (actionId: string, callback: (response: { success: boolean; error?: string }) => void) => {
     const roomCode = socketRoomMap.get(socket.id);
     
     if (!roomCode) {
+      socket.emit('actionAck', { actionId, ok: false });
       callback({ success: false, error: 'Not in a room' });
       return;
     }
@@ -143,18 +150,21 @@ io.on('connection', (socket) => {
     const room = roomManager.getRoom(roomCode);
     
     if (!room) {
+      socket.emit('actionAck', { actionId, ok: false });
       callback({ success: false, error: 'Room not found' });
       return;
     }
     
     const playerData = socketPlayerMap.get(socket.id);
     if (!playerData) {
+      socket.emit('actionAck', { actionId, ok: false });
       callback({ success: false, error: 'Player not found' });
       return;
     }
     
     const firstPlayerId = Array.from(room.players.keys())[0];
     if (playerData.playerId !== firstPlayerId) {
+      socket.emit('actionAck', { actionId, ok: false });
       callback({ success: false, error: 'Only the host can start the game' });
       return;
     }
@@ -164,8 +174,10 @@ io.on('connection', (socket) => {
       io.to(roomCode).emit('roomUpdated', room.state);
       io.to(roomCode).emit('gameStarted');
       broadcastGameStateUpdate(roomCode);
+      socket.emit('actionAck', { actionId, ok: true });
       callback({ success: true });
     } catch (error) {
+      socket.emit('actionAck', { actionId, ok: false });
       callback({ success: false, error: (error as Error).message });
     }
   });

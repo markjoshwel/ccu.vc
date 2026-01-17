@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
 import type { RoomState, PlayerPublic, ServerToClientEvents, ClientToServerEvents } from 'shared';
 
@@ -11,6 +11,10 @@ const STORAGE_KEYS = {
 
 type AppView = 'lobby' | 'room';
 
+function generateActionId(): string {
+  return `action_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+}
+
 function App() {
   const [view, setView] = useState<AppView>('lobby');
   const [displayName, setDisplayName] = useState('');
@@ -21,6 +25,7 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [socket, setSocket] = useState<Socket<ServerToClientEvents, ClientToServerEvents> | null>(null);
+  const [pendingActions, setPendingActions] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const storedSecret = localStorage.getItem(STORAGE_KEYS.PLAYER_SECRET);
@@ -34,8 +39,18 @@ function App() {
 
       const newSocket = io('http://localhost:3000');
 
+      newSocket.on('actionAck', ({ actionId, ok }: { actionId: string; ok: boolean }) => {
+        setPendingActions((prev) => {
+          const next = new Set(prev);
+          next.delete(actionId);
+          return next;
+        });
+      });
+
       newSocket.on('connect', () => {
-        newSocket.emit('reconnect_room', storedRoomCode, storedPlayerId, storedSecret, (response: { success: boolean; error?: string }) => {
+        const reconnectActionId = generateActionId();
+        setPendingActions((prev) => new Set(prev).add(reconnectActionId));
+        newSocket.emit('reconnect_room', reconnectActionId, storedRoomCode, storedPlayerId, storedSecret, (response: { success: boolean; error?: string }) => {
           if (response.success) {
             setJoinRoomCode(storedRoomCode);
           } else {
@@ -75,13 +90,23 @@ function App() {
 
     const newSocket = io('http://localhost:3000');
 
+    newSocket.on('actionAck', ({ actionId, ok }: { actionId: string; ok: boolean }) => {
+      setPendingActions((prev) => {
+        const next = new Set(prev);
+        next.delete(actionId);
+        return next;
+      });
+    });
+
     newSocket.emit('create_room', (response: { roomCode: string }) => {
       localStorage.setItem(STORAGE_KEYS.DISPLAY_NAME, displayName);
       setJoinRoomCode(response.roomCode);
     });
 
     newSocket.on('connect', () => {
-      newSocket.emit('join_room', joinRoomCode || roomCode, displayName, (response: { error: string } | { playerId: string; playerSecret: string }) => {
+      const joinActionId = generateActionId();
+      setPendingActions((prev) => new Set(prev).add(joinActionId));
+      newSocket.emit('join_room', joinActionId, joinRoomCode || roomCode, displayName, (response: { error: string } | { playerId: string; playerSecret: string }) => {
         if ('error' in response) {
           setError(response.error);
           setLoading(false);
@@ -124,8 +149,18 @@ function App() {
 
     const newSocket = io('http://localhost:3000');
 
+    newSocket.on('actionAck', ({ actionId, ok }: { actionId: string; ok: boolean }) => {
+      setPendingActions((prev) => {
+        const next = new Set(prev);
+        next.delete(actionId);
+        return next;
+      });
+    });
+
     newSocket.on('connect', () => {
-      newSocket.emit('join_room', joinRoomCode, displayName, (response: { error: string } | { playerId: string; playerSecret: string }) => {
+      const joinActionId = generateActionId();
+      setPendingActions((prev) => new Set(prev).add(joinActionId));
+      newSocket.emit('join_room', joinActionId, joinRoomCode, displayName, (response: { error: string } | { playerId: string; playerSecret: string }) => {
         if ('error' in response) {
           setError(response.error);
           setLoading(false);
@@ -166,6 +201,9 @@ function App() {
     setLoading(false);
     setError('');
   };
+
+  const isCreatePending = pendingActions.size > 0;
+  const isJoinPending = pendingActions.size > 0;
 
   if (loading) {
     return (
@@ -214,8 +252,8 @@ function App() {
             placeholder="Enter your name"
           />
         </div>
-        <button onClick={handleCreateRoom} disabled={loading}>
-          Create Room
+        <button onClick={handleCreateRoom} disabled={loading || isCreatePending} data-pending={isCreatePending}>
+          {isCreatePending ? 'Creating...' : 'Create Room'}
         </button>
         <div className="divider">
           <span>or</span>
@@ -229,8 +267,8 @@ function App() {
             placeholder="Enter room code"
           />
         </div>
-        <button onClick={handleJoinRoom} disabled={loading}>
-          Join Room
+        <button onClick={handleJoinRoom} disabled={loading || isJoinPending} data-pending={isJoinPending}>
+          {isJoinPending ? 'Joining...' : 'Join Room'}
         </button>
       </div>
     </div>

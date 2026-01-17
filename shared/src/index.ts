@@ -42,14 +42,14 @@ export type GameView = {
 };
 
 export type ClientToServerEvents = {
-  create_room: (callback: (response: { roomCode: string }) => void) => void;
-  join_room: (roomCode: string, displayName: string, callback: (response: { playerId: string; playerSecret: string } | { error: string }) => void) => void;
-  reconnect_room: (roomCode: string, playerId: string, playerSecret: string, callback: (response: { success: boolean; error?: string }) => void) => void;
+  create_room: (actionId: string, callback: (response: { roomCode: string }) => void) => void;
+  join_room: (actionId: string, roomCode: string, displayName: string, callback: (response: { playerId: string; playerSecret: string } | { error: string }) => void) => void;
+  reconnect_room: (actionId: string, roomCode: string, playerId: string, playerSecret: string, callback: (response: { success: boolean; error?: string }) => void) => void;
   joinRoom: (roomId: string) => void;
   leaveRoom: () => void;
   updatePlayer: (data: Partial<PlayerPrivate>) => void;
   playerReady: () => void;
-  start_game: (callback: (response: { success: boolean; error?: string }) => void) => void;
+  start_game: (actionId: string, callback: (response: { success: boolean; error?: string }) => void) => void;
 };
 
 export type ServerToClientEvents = {
@@ -59,4 +59,5 @@ export type ServerToClientEvents = {
   gameStarted: () => void;
   gameStateUpdate: (view: GameView) => void;
   error: (message: string) => void;
+  actionAck: (data: { actionId: string; ok: boolean }) => void;
 };
