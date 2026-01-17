@@ -4,6 +4,7 @@ import { Server as SocketIOServer } from 'socket.io';
 import { io as ioClient } from 'socket.io-client';
 import type { ClientToServerEvents, ServerToClientEvents, Card } from 'shared';
 import { RoomManager } from './src/RoomManager';
+import { Deck } from './src/Deck';
 
 describe('server', () => {
   let server: ReturnType<typeof createServer>;
@@ -767,5 +768,165 @@ describe('toGameView', () => {
     expect(serialized).not.toContain('"value":"9"');
     expect(serialized).not.toContain('"color":"yellow"');
     expect(serialized).not.toContain('"value":"3"');
+  });
+});
+
+describe('Deck', () => {
+  describe('standard deck generation', () => {
+    it('should create a deck with 108 cards', () => {
+      const deck = Deck.createStandardDeck();
+      
+      expect(deck.size).toBe(108);
+    });
+
+    it('should have correct count of number cards', () => {
+      const deck = Deck.createStandardDeck();
+      const colors: Array<'red' | 'yellow' | 'green' | 'blue'> = ['red', 'yellow', 'green', 'blue'];
+      
+      colors.forEach(color => {
+        let zeroCount = 0;
+        for (let i = 1; i <= 9; i++) {
+          zeroCount += deck.cards.filter(c => c.color === color && c.value === i.toString()).length;
+        }
+        expect(zeroCount).toBe(18);
+      });
+      
+      colors.forEach(color => {
+        const zeroCount = deck.cards.filter(c => c.color === color && c.value === '0').length;
+        expect(zeroCount).toBe(1);
+      });
+    });
+
+    it('should have correct count of action cards per color', () => {
+      const deck = Deck.createStandardDeck();
+      const colors: Array<'red' | 'yellow' | 'green' | 'blue'> = ['red', 'yellow', 'green', 'blue'];
+      
+      colors.forEach(color => {
+        const skipCount = deck.cards.filter(c => c.color === color && c.value === 'skip').length;
+        expect(skipCount).toBe(2);
+        
+        const reverseCount = deck.cards.filter(c => c.color === color && c.value === 'reverse').length;
+        expect(reverseCount).toBe(2);
+        
+        const draw2Count = deck.cards.filter(c => c.color === color && c.value === 'draw2').length;
+        expect(draw2Count).toBe(2);
+      });
+    });
+
+    it('should have 4 wild cards', () => {
+      const deck = Deck.createStandardDeck();
+      
+      const wildCount = deck.cards.filter(c => c.color === 'wild' && c.value === 'wild').length;
+      expect(wildCount).toBe(4);
+    });
+
+    it('should have 4 wild draw four cards', () => {
+      const deck = Deck.createStandardDeck();
+      
+      const wildDraw4Count = deck.cards.filter(c => c.color === 'wild' && c.value === 'wild_draw4').length;
+      expect(wildDraw4Count).toBe(4);
+    });
+
+    it('should have 25 cards per color (number + action)', () => {
+      const deck = Deck.createStandardDeck();
+      const colors: Array<'red' | 'yellow' | 'green' | 'blue'> = ['red', 'yellow', 'green', 'blue'];
+      
+      colors.forEach(color => {
+        const colorCount = deck.cards.filter(c => c.color === color).length;
+        expect(colorCount).toBe(25);
+      });
+    });
+  });
+
+  describe('shuffle', () => {
+    it('should produce a permutation of the full deck length', () => {
+      const deck = Deck.createStandardDeck();
+      const originalCards = [...deck.cards];
+      
+      deck.shuffle();
+      
+      expect(deck.size).toBe(108);
+      expect(deck.cards).toHaveLength(108);
+      
+      const hasSameCards = originalCards.every(card => 
+        deck.cards.some(c => c.color === card.color && c.value === card.value)
+      );
+      expect(hasSameCards).toBe(true);
+    });
+
+    it('should produce a different order than original (statistically)', () => {
+      const deck = Deck.createStandardDeck();
+      const originalCards = [...deck.cards];
+      
+      deck.shuffle();
+      
+      const isSameOrder = deck.cards.every((card, index) => 
+        card.color === originalCards[index].color && card.value === originalCards[index].value
+      );
+      expect(isSameOrder).toBe(false);
+    });
+
+    it('should maintain all cards after shuffle', () => {
+      const deck = Deck.createStandardDeck();
+      
+      const cardCounts = new Map<string, number>();
+      deck.cards.forEach(card => {
+        const key = `${card.color}-${card.value}`;
+        cardCounts.set(key, (cardCounts.get(key) || 0) + 1);
+      });
+      
+      deck.shuffle();
+      
+      const shuffledCardCounts = new Map<string, number>();
+      deck.cards.forEach(card => {
+        const key = `${card.color}-${card.value}`;
+        shuffledCardCounts.set(key, (shuffledCardCounts.get(key) || 0) + 1);
+      });
+      
+      cardCounts.forEach((count, key) => {
+        expect(shuffledCardCounts.get(key)).toBe(count);
+      });
+    });
+  });
+
+  describe('draw', () => {
+    it('should remove and return the top card', () => {
+      const deck = Deck.createStandardDeck();
+      const originalSize = deck.size;
+      const topCard = deck.cards[deck.cards.length - 1];
+      
+      const drawnCard = deck.draw();
+      
+      expect(drawnCard).toEqual(topCard);
+      expect(deck.size).toBe(originalSize - 1);
+    });
+
+    it('should return undefined when deck is empty', () => {
+      const deck = Deck.createStandardDeck();
+      
+      while (!deck.isEmpty()) {
+        deck.draw();
+      }
+      
+      const drawnCard = deck.draw();
+      expect(drawnCard).toBeUndefined();
+    });
+  });
+
+  describe('isEmpty', () => {
+    it('should return false for a new deck', () => {
+      const deck = Deck.createStandardDeck();
+      expect(deck.isEmpty()).toBe(false);
+    });
+
+    it('should return true after drawing all cards', () => {
+      const deck = Deck.createStandardDeck();
+      
+      while (!deck.isEmpty()) {
+        deck.draw();
+      }
+      
+      expect(deck.isEmpty()).toBe(true);
+    });
   });
 });
