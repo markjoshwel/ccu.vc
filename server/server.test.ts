@@ -2023,3 +2023,145 @@ describe('playCard validation', () => {
     expect(() => room.playCard(playerId1, card)).toThrow('Game is not in playing state');
   });
 });
+
+describe('drawCard', () => {
+  it('should transfer one card from deck to player hand', () => {
+    const manager = new RoomManager();
+    const room = manager.createRoom();
+
+    const socketId1 = 'socket1';
+    const playerId1 = 'player1';
+    const player1 = { id: playerId1, name: 'Player 1', isReady: false, secret: 'secret1', connected: true, hand: [], handCount: 0 };
+
+    const socketId2 = 'socket2';
+    const playerId2 = 'player2';
+    const player2 = { id: playerId2, name: 'Player 2', isReady: false, secret: 'secret2', connected: true, hand: [], handCount: 0 };
+
+    room.addPlayer(socketId1, player1);
+    room.addPlayer(socketId2, player2);
+
+    room.startGame();
+
+    const initialDeckSize = room.deck!.size;
+    const initialHandSize = room.players.get(playerId1)!.hand.length;
+
+    room.drawCard(playerId1);
+
+    expect(room.deck!.size).toBe(initialDeckSize - 1);
+    expect(room.players.get(playerId1)!.hand.length).toBe(initialHandSize + 1);
+  });
+
+  it('should advance turn after drawing', () => {
+    const manager = new RoomManager();
+    const room = manager.createRoom();
+
+    const socketId1 = 'socket1';
+    const playerId1 = 'player1';
+    const player1 = { id: playerId1, name: 'Player 1', isReady: false, secret: 'secret1', connected: true, hand: [], handCount: 0 };
+
+    const socketId2 = 'socket2';
+    const playerId2 = 'player2';
+    const player2 = { id: playerId2, name: 'Player 2', isReady: false, secret: 'secret2', connected: true, hand: [], handCount: 0 };
+
+    const socketId3 = 'socket3';
+    const playerId3 = 'player3';
+    const player3 = { id: playerId3, name: 'Player 3', isReady: false, secret: 'secret3', connected: true, hand: [], handCount: 0 };
+
+    room.addPlayer(socketId1, player1);
+    room.addPlayer(socketId2, player2);
+    room.addPlayer(socketId3, player3);
+
+    room.startGame();
+
+    const currentPlayerIndexBeforeDraw = room.currentPlayerIndex;
+
+    room.drawCard(playerId1);
+
+    expect(room.currentPlayerIndex).not.toBe(currentPlayerIndexBeforeDraw);
+    expect(room.playerOrder[room.currentPlayerIndex]).toBe(playerId2);
+  });
+
+  it('should reject draw when not player\'s turn', () => {
+    const manager = new RoomManager();
+    const room = manager.createRoom();
+
+    const socketId1 = 'socket1';
+    const playerId1 = 'player1';
+    const player1 = { id: playerId1, name: 'Player 1', isReady: false, secret: 'secret1', connected: true, hand: [], handCount: 0 };
+
+    const socketId2 = 'socket2';
+    const playerId2 = 'player2';
+    const player2 = { id: playerId2, name: 'Player 2', isReady: false, secret: 'secret2', connected: true, hand: [], handCount: 0 };
+
+    room.addPlayer(socketId1, player1);
+    room.addPlayer(socketId2, player2);
+
+    room.startGame();
+
+    expect(() => room.drawCard(playerId2)).toThrow('Not your turn');
+  });
+
+  it('should reject draw when game is not in playing state', () => {
+    const manager = new RoomManager();
+    const room = manager.createRoom();
+
+    const socketId1 = 'socket1';
+    const playerId1 = 'player1';
+    const player1 = { id: playerId1, name: 'Player 1', isReady: false, secret: 'secret1', connected: true, hand: [], handCount: 0 };
+
+    const socketId2 = 'socket2';
+    const playerId2 = 'player2';
+    const player2 = { id: playerId2, name: 'Player 2', isReady: false, secret: 'secret2', connected: true, hand: [], handCount: 0 };
+
+    room.addPlayer(socketId1, player1);
+    room.addPlayer(socketId2, player2);
+
+    expect(() => room.drawCard(playerId1)).toThrow('Game is not in playing state');
+  });
+
+  it('should reject draw when player not found', () => {
+    const manager = new RoomManager();
+    const room = manager.createRoom();
+
+    const socketId1 = 'socket1';
+    const playerId1 = 'player1';
+    const player1 = { id: playerId1, name: 'Player 1', isReady: false, secret: 'secret1', connected: true, hand: [], handCount: 0 };
+
+    const socketId2 = 'socket2';
+    const playerId2 = 'player2';
+    const player2 = { id: playerId2, name: 'Player 2', isReady: false, secret: 'secret2', connected: true, hand: [], handCount: 0 };
+
+    room.addPlayer(socketId1, player1);
+    room.addPlayer(socketId2, player2);
+
+    room.startGame();
+
+    const nonexistentPlayerId = 'nonexistent_player';
+
+    expect(() => room.drawCard(nonexistentPlayerId)).toThrow('Not your turn');
+  });
+
+  it('should reject draw when deck is empty', () => {
+    const manager = new RoomManager();
+    const room = manager.createRoom();
+
+    const socketId1 = 'socket1';
+    const playerId1 = 'player1';
+    const player1 = { id: playerId1, name: 'Player 1', isReady: false, secret: 'secret1', connected: true, hand: [], handCount: 0 };
+
+    const socketId2 = 'socket2';
+    const playerId2 = 'player2';
+    const player2 = { id: playerId2, name: 'Player 2', isReady: false, secret: 'secret2', connected: true, hand: [], handCount: 0 };
+
+    room.addPlayer(socketId1, player1);
+    room.addPlayer(socketId2, player2);
+
+    room.startGame();
+
+    while (!room.deck!.isEmpty()) {
+      room.deck!.draw();
+    }
+
+    expect(() => room.drawCard(playerId1)).toThrow('Deck is empty');
+  });
+});

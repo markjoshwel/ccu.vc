@@ -251,6 +251,34 @@ export class Room {
     this.discardPile.push(card);
     this.updateState();
   }
+
+  drawCard(playerId: string): void {
+    if (this.state.gameStatus !== 'playing') {
+      throw new Error('Game is not in playing state');
+    }
+
+    const currentPlayerId = this.playerOrder[this.currentPlayerIndex];
+    if (playerId !== currentPlayerId) {
+      throw new Error('Not your turn');
+    }
+
+    const player = this.players.get(playerId);
+    if (!player) {
+      throw new Error('Player not found');
+    }
+
+    if (!this.deck || this.deck.isEmpty()) {
+      throw new Error('Deck is empty');
+    }
+
+    const drawnCard = this.deck.draw();
+    if (drawnCard) {
+      player.hand.push(drawnCard);
+    }
+
+    this.updateState();
+    this.advanceTurn();
+  }
 }
 
 export class RoomManager {
