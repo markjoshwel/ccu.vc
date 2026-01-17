@@ -6,3 +6,6 @@ dist
 bun.lockb
 *.log
 .DS_Store
+dist/
+*.tsbuildinfo
+node_modules/
