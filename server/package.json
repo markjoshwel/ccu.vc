@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@ccu/shared": "*",
+    "nanoid": "^5.1.6",
     "socket.io": "^4.7.0"
   },
   "devDependencies": {
