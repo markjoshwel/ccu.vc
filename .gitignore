@@ -1,3 +1,6 @@
 .ralph
 .ruff_cache
 agents
+dist/
+*.tsbuildinfo
+node_modules/
