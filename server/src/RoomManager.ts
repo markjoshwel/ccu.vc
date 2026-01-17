@@ -262,6 +262,25 @@ export class Room {
         this.advanceTurn();
         this.advanceTurn();
       }
+    } else if (card.value === 'draw2') {
+      const nextPlayerIndex = this.nextConnectedPlayerIndex();
+      const nextPlayerId = this.playerOrder[nextPlayerIndex];
+      const nextPlayer = this.players.get(nextPlayerId);
+      
+      if (nextPlayer) {
+        for (let i = 0; i < 2; i++) {
+          if (this.deck && !this.deck.isEmpty()) {
+            const drawnCard = this.deck.draw();
+            if (drawnCard) {
+              nextPlayer.hand.push(drawnCard);
+            }
+          }
+        }
+        this.updateState();
+      }
+      
+      this.currentPlayerIndex = nextPlayerIndex;
+      this.advanceTurn();
     } else {
       this.advanceTurn();
     }

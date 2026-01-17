@@ -2294,3 +2294,177 @@ describe('Reverse card effect', () => {
     expect(room.playerOrder[room.currentPlayerIndex]).toBe(playerId1);
   });
 });
+
+describe('Draw Two card effect', () => {
+  it('should make next player draw 2 cards and skip their turn in 3-player game', () => {
+    const manager = new RoomManager();
+    const room = manager.createRoom();
+
+    const socketId1 = 'socket1';
+    const playerId1 = 'player1';
+    const player1 = { id: playerId1, name: 'Player 1', isReady: false, secret: 'secret1', connected: true, hand: [], handCount: 0 };
+
+    const socketId2 = 'socket2';
+    const playerId2 = 'player2';
+    const player2 = { id: playerId2, name: 'Player 2', isReady: false, secret: 'secret2', connected: true, hand: [], handCount: 0 };
+
+    const socketId3 = 'socket3';
+    const playerId3 = 'player3';
+    const player3 = { id: playerId3, name: 'Player 3', isReady: false, secret: 'secret3', connected: true, hand: [], handCount: 0 };
+
+    room.addPlayer(socketId1, player1);
+    room.addPlayer(socketId2, player2);
+    room.addPlayer(socketId3, player3);
+
+    room.startGame();
+
+    const topCard = room.discardPile[0];
+    const draw2Card: Card = { color: topCard.color, value: 'draw2' };
+
+    room.players.get(playerId1)!.hand.push(draw2Card);
+
+    const initialHandSize = room.players.get(playerId2)!.hand.length;
+
+    room.playCard(playerId1, draw2Card);
+
+    expect(room.players.get(playerId2)!.hand.length).toBe(initialHandSize + 2);
+    expect(room.currentPlayerIndex).toBe(2);
+    expect(room.playerOrder[room.currentPlayerIndex]).toBe(playerId3);
+  });
+
+  it('should make next player draw 2 cards and skip their turn in 2-player game', () => {
+    const manager = new RoomManager();
+    const room = manager.createRoom();
+
+    const socketId1 = 'socket1';
+    const playerId1 = 'player1';
+    const player1 = { id: playerId1, name: 'Player 1', isReady: false, secret: 'secret1', connected: true, hand: [], handCount: 0 };
+
+    const socketId2 = 'socket2';
+    const playerId2 = 'player2';
+    const player2 = { id: playerId2, name: 'Player 2', isReady: false, secret: 'secret2', connected: true, hand: [], handCount: 0 };
+
+    room.addPlayer(socketId1, player1);
+    room.addPlayer(socketId2, player2);
+
+    room.startGame();
+
+    const topCard = room.discardPile[0];
+    const draw2Card: Card = { color: topCard.color, value: 'draw2' };
+
+    room.players.get(playerId1)!.hand.push(draw2Card);
+
+    const initialHandSize = room.players.get(playerId2)!.hand.length;
+
+    room.playCard(playerId1, draw2Card);
+
+    expect(room.players.get(playerId2)!.hand.length).toBe(initialHandSize + 2);
+    expect(room.currentPlayerIndex).toBe(0);
+    expect(room.playerOrder[room.currentPlayerIndex]).toBe(playerId1);
+  });
+
+  it('should respect direction when drawing cards', () => {
+    const manager = new RoomManager();
+    const room = manager.createRoom();
+
+    const socketId1 = 'socket1';
+    const playerId1 = 'player1';
+    const player1 = { id: playerId1, name: 'Player 1', isReady: false, secret: 'secret1', connected: true, hand: [], handCount: 0 };
+
+    const socketId2 = 'socket2';
+    const playerId2 = 'player2';
+    const player2 = { id: playerId2, name: 'Player 2', isReady: false, secret: 'secret2', connected: true, hand: [], handCount: 0 };
+
+    const socketId3 = 'socket3';
+    const playerId3 = 'player3';
+    const player3 = { id: playerId3, name: 'Player 3', isReady: false, secret: 'secret3', connected: true, hand: [], handCount: 0 };
+
+    room.addPlayer(socketId1, player1);
+    room.addPlayer(socketId2, player2);
+    room.addPlayer(socketId3, player3);
+
+    room.startGame();
+
+    room.reverseDirection();
+
+    const topCard = room.discardPile[0];
+    const draw2Card: Card = { color: topCard.color, value: 'draw2' };
+
+    room.players.get(playerId1)!.hand.push(draw2Card);
+
+    const initialHandSize = room.players.get(playerId3)!.hand.length;
+
+    room.playCard(playerId1, draw2Card);
+
+    expect(room.players.get(playerId3)!.hand.length).toBe(initialHandSize + 2);
+    expect(room.currentPlayerIndex).toBe(1);
+    expect(room.playerOrder[room.currentPlayerIndex]).toBe(playerId2);
+  });
+
+  it('should skip disconnected players and draw for next connected player', () => {
+    const manager = new RoomManager();
+    const room = manager.createRoom();
+
+    const socketId1 = 'socket1';
+    const playerId1 = 'player1';
+    const player1 = { id: playerId1, name: 'Player 1', isReady: false, secret: 'secret1', connected: true, hand: [], handCount: 0 };
+
+    const socketId2 = 'socket2';
+    const playerId2 = 'player2';
+    const player2 = { id: playerId2, name: 'Player 2', isReady: false, secret: 'secret2', connected: true, hand: [], handCount: 0 };
+
+    const socketId3 = 'socket3';
+    const playerId3 = 'player3';
+    const player3 = { id: playerId3, name: 'Player 3', isReady: false, secret: 'secret3', connected: true, hand: [], handCount: 0 };
+
+    room.addPlayer(socketId1, player1);
+    room.addPlayer(socketId2, player2);
+    room.addPlayer(socketId3, player3);
+
+    room.startGame();
+
+    room.markPlayerDisconnected(playerId2);
+
+    const topCard = room.discardPile[0];
+    const draw2Card: Card = { color: topCard.color, value: 'draw2' };
+
+    room.players.get(playerId1)!.hand.push(draw2Card);
+
+    const initialHandSize = room.players.get(playerId3)!.hand.length;
+
+    room.playCard(playerId1, draw2Card);
+
+    expect(room.players.get(playerId3)!.hand.length).toBe(initialHandSize + 2);
+    expect(room.currentPlayerIndex).toBe(0);
+    expect(room.playerOrder[room.currentPlayerIndex]).toBe(playerId1);
+  });
+
+  it('should reduce deck size by 2 when Draw Two is played', () => {
+    const manager = new RoomManager();
+    const room = manager.createRoom();
+
+    const socketId1 = 'socket1';
+    const playerId1 = 'player1';
+    const player1 = { id: playerId1, name: 'Player 1', isReady: false, secret: 'secret1', connected: true, hand: [], handCount: 0 };
+
+    const socketId2 = 'socket2';
+    const playerId2 = 'player2';
+    const player2 = { id: playerId2, name: 'Player 2', isReady: false, secret: 'secret2', connected: true, hand: [], handCount: 0 };
+
+    room.addPlayer(socketId1, player1);
+    room.addPlayer(socketId2, player2);
+
+    room.startGame();
+
+    const topCard = room.discardPile[0];
+    const draw2Card: Card = { color: topCard.color, value: 'draw2' };
+
+    room.players.get(playerId1)!.hand.push(draw2Card);
+
+    const initialDeckSize = room.deck!.size;
+
+    room.playCard(playerId1, draw2Card);
+
+    expect(room.deck!.size).toBe(initialDeckSize - 2);
+  });
+});
