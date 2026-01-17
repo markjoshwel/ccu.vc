@@ -13,6 +13,9 @@ export class Room {
   state: RoomState;
   deck?: Deck;
   discardPile: Card[];
+  currentPlayerIndex: number;
+  direction: 1 | -1;
+  playerOrder: string[];
 
   constructor(code: RoomCode) {
     this.code = code;
@@ -27,6 +30,9 @@ export class Room {
       createdAt: Date.now()
     };
     this.discardPile = [];
+    this.currentPlayerIndex = 0;
+    this.direction = 1;
+    this.playerOrder = [];
   }
 
   addPlayer(socketId: string, player: StoredPlayer): void {
@@ -74,6 +80,8 @@ export class Room {
     }));
     this.state.deckSize = this.deck?.size || 0;
     this.state.discardPile = this.discardPile;
+    this.state.currentPlayerIndex = this.state.gameStatus === 'playing' ? this.currentPlayerIndex : undefined;
+    this.state.direction = this.state.gameStatus === 'playing' ? this.direction : undefined;
   }
 
   startGame(rng?: () => number): void {
@@ -84,6 +92,10 @@ export class Room {
     if (this.players.size < 2) {
       throw new Error('At least 2 players required to start');
     }
+
+    this.playerOrder = Array.from(this.players.keys());
+    this.currentPlayerIndex = 0;
+    this.direction = 1;
 
     this.deck = Deck.createStandardDeck();
     this.deck.shuffle(rng);
@@ -153,6 +165,49 @@ export class Room {
 
   get connectedPlayerCount(): number {
     return this.connectedPlayerIds.size;
+  }
+
+  nextConnectedPlayerIndex(): number {
+    const playerCount = this.playerOrder.length;
+    let nextIndex = this.currentPlayerIndex;
+    let attempts = 0;
+
+    do {
+      nextIndex = (nextIndex + this.direction + playerCount) % playerCount;
+      attempts++;
+
+      if (attempts > playerCount) {
+        break;
+      }
+    } while (!this.players.get(this.playerOrder[nextIndex])?.connected);
+
+    const connectedCount = Array.from(this.players.values()).filter(p => p.connected).length;
+
+    if (connectedCount === 1) {
+      this.state.gameStatus = 'finished';
+      this.state.gameEndedReason = 'last-player-connected';
+      this.updateState();
+    }
+
+    return nextIndex;
+  }
+
+  advanceTurn(): void {
+    if (this.state.gameStatus !== 'playing') {
+      return;
+    }
+
+    this.currentPlayerIndex = this.nextConnectedPlayerIndex();
+    this.updateState();
+  }
+
+  reverseDirection(): void {
+    if (this.state.gameStatus !== 'playing') {
+      return;
+    }
+
+    this.direction = this.direction === 1 ? -1 : 1;
+    this.updateState();
   }
 }
 

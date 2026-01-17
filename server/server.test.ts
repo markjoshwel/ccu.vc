@@ -1588,3 +1588,235 @@ describe('Room startGame', () => {
     expect(discard1).toEqual(discard2);
   });
 });
+
+describe('Room turn order', () => {
+  it('should initialize turn order on game start', () => {
+    const manager = new RoomManager();
+    const room = manager.createRoom();
+
+    const socketId1 = 'socket1';
+    const playerId1 = 'player1';
+    const player1 = { id: playerId1, name: 'Player 1', isReady: false, secret: 'secret1', connected: true, hand: [], handCount: 0 };
+
+    const socketId2 = 'socket2';
+    const playerId2 = 'player2';
+    const player2 = { id: playerId2, name: 'Player 2', isReady: false, secret: 'secret2', connected: true, hand: [], handCount: 0 };
+
+    const socketId3 = 'socket3';
+    const playerId3 = 'player3';
+    const player3 = { id: playerId3, name: 'Player 3', isReady: false, secret: 'secret3', connected: true, hand: [], handCount: 0 };
+
+    room.addPlayer(socketId1, player1);
+    room.addPlayer(socketId2, player2);
+    room.addPlayer(socketId3, player3);
+
+    room.startGame();
+
+    expect(room.playerOrder).toEqual(['player1', 'player2', 'player3']);
+    expect(room.currentPlayerIndex).toBe(0);
+    expect(room.direction).toBe(1);
+    expect(room.state.currentPlayerIndex).toBe(0);
+    expect(room.state.direction).toBe(1);
+  });
+
+  it('should advance turn forward', () => {
+    const manager = new RoomManager();
+    const room = manager.createRoom();
+
+    const socketId1 = 'socket1';
+    const playerId1 = 'player1';
+    const player1 = { id: playerId1, name: 'Player 1', isReady: false, secret: 'secret1', connected: true, hand: [], handCount: 0 };
+
+    const socketId2 = 'socket2';
+    const playerId2 = 'player2';
+    const player2 = { id: playerId2, name: 'Player 2', isReady: false, secret: 'secret2', connected: true, hand: [], handCount: 0 };
+
+    const socketId3 = 'socket3';
+    const playerId3 = 'player3';
+    const player3 = { id: playerId3, name: 'Player 3', isReady: false, secret: 'secret3', connected: true, hand: [], handCount: 0 };
+
+    room.addPlayer(socketId1, player1);
+    room.addPlayer(socketId2, player2);
+    room.addPlayer(socketId3, player3);
+
+    room.startGame();
+    expect(room.currentPlayerIndex).toBe(0);
+
+    room.advanceTurn();
+    expect(room.currentPlayerIndex).toBe(1);
+
+    room.advanceTurn();
+    expect(room.currentPlayerIndex).toBe(2);
+
+    room.advanceTurn();
+    expect(room.currentPlayerIndex).toBe(0);
+  });
+
+  it('should advance turn backward when direction is reversed', () => {
+    const manager = new RoomManager();
+    const room = manager.createRoom();
+
+    const socketId1 = 'socket1';
+    const playerId1 = 'player1';
+    const player1 = { id: playerId1, name: 'Player 1', isReady: false, secret: 'secret1', connected: true, hand: [], handCount: 0 };
+
+    const socketId2 = 'socket2';
+    const playerId2 = 'player2';
+    const player2 = { id: playerId2, name: 'Player 2', isReady: false, secret: 'secret2', connected: true, hand: [], handCount: 0 };
+
+    const socketId3 = 'socket3';
+    const playerId3 = 'player3';
+    const player3 = { id: playerId3, name: 'Player 3', isReady: false, secret: 'secret3', connected: true, hand: [], handCount: 0 };
+
+    room.addPlayer(socketId1, player1);
+    room.addPlayer(socketId2, player2);
+    room.addPlayer(socketId3, player3);
+
+    room.startGame();
+    expect(room.currentPlayerIndex).toBe(0);
+
+    room.reverseDirection();
+    expect(room.direction).toBe(-1);
+    expect(room.state.direction).toBe(-1);
+
+    room.advanceTurn();
+    expect(room.currentPlayerIndex).toBe(2);
+
+    room.advanceTurn();
+    expect(room.currentPlayerIndex).toBe(1);
+
+    room.advanceTurn();
+    expect(room.currentPlayerIndex).toBe(0);
+  });
+
+  it('should skip disconnected players when advancing turn', () => {
+    const manager = new RoomManager();
+    const room = manager.createRoom();
+
+    const socketId1 = 'socket1';
+    const playerId1 = 'player1';
+    const player1 = { id: playerId1, name: 'Player 1', isReady: false, secret: 'secret1', connected: true, hand: [], handCount: 0 };
+
+    const socketId2 = 'socket2';
+    const playerId2 = 'player2';
+    const player2 = { id: playerId2, name: 'Player 2', isReady: false, secret: 'secret2', connected: true, hand: [], handCount: 0 };
+
+    const socketId3 = 'socket3';
+    const playerId3 = 'player3';
+    const player3 = { id: playerId3, name: 'Player 3', isReady: false, secret: 'secret3', connected: true, hand: [], handCount: 0 };
+
+    room.addPlayer(socketId1, player1);
+    room.addPlayer(socketId2, player2);
+    room.addPlayer(socketId3, player3);
+
+    room.startGame();
+    expect(room.currentPlayerIndex).toBe(0);
+
+    room.markPlayerDisconnected(playerId2);
+    expect(room.players.get(playerId2)?.connected).toBe(false);
+
+    room.advanceTurn();
+    expect(room.currentPlayerIndex).toBe(2);
+
+    room.markPlayerDisconnected(playerId3);
+    expect(room.players.get(playerId3)?.connected).toBe(false);
+
+    room.advanceTurn();
+    expect(room.currentPlayerIndex).toBe(0);
+  });
+
+  it('should skip disconnected players when advancing turn backward', () => {
+    const manager = new RoomManager();
+    const room = manager.createRoom();
+
+    const socketId1 = 'socket1';
+    const playerId1 = 'player1';
+    const player1 = { id: playerId1, name: 'Player 1', isReady: false, secret: 'secret1', connected: true, hand: [], handCount: 0 };
+
+    const socketId2 = 'socket2';
+    const playerId2 = 'player2';
+    const player2 = { id: playerId2, name: 'Player 2', isReady: false, secret: 'secret2', connected: true, hand: [], handCount: 0 };
+
+    const socketId3 = 'socket3';
+    const playerId3 = 'player3';
+    const player3 = { id: playerId3, name: 'Player 3', isReady: false, secret: 'secret3', connected: true, hand: [], handCount: 0 };
+
+    room.addPlayer(socketId1, player1);
+    room.addPlayer(socketId2, player2);
+    room.addPlayer(socketId3, player3);
+
+    room.startGame();
+    room.reverseDirection();
+
+    room.markPlayerDisconnected(playerId2);
+    expect(room.players.get(playerId2)?.connected).toBe(false);
+
+    room.advanceTurn();
+    expect(room.currentPlayerIndex).toBe(2);
+
+    room.markPlayerDisconnected(playerId3);
+    expect(room.players.get(playerId3)?.connected).toBe(false);
+
+    room.advanceTurn();
+    expect(room.currentPlayerIndex).toBe(0);
+  });
+
+  it('should end game when only one connected player remains', () => {
+    const manager = new RoomManager();
+    const room = manager.createRoom();
+
+    const socketId1 = 'socket1';
+    const playerId1 = 'player1';
+    const player1 = { id: playerId1, name: 'Player 1', isReady: false, secret: 'secret1', connected: true, hand: [], handCount: 0 };
+
+    const socketId2 = 'socket2';
+    const playerId2 = 'player2';
+    const player2 = { id: playerId2, name: 'Player 2', isReady: false, secret: 'secret2', connected: true, hand: [], handCount: 0 };
+
+    room.addPlayer(socketId1, player1);
+    room.addPlayer(socketId2, player2);
+
+    room.startGame();
+    expect(room.state.gameStatus).toBe('playing');
+
+    room.markPlayerDisconnected(playerId2);
+    expect(room.players.get(playerId2)?.connected).toBe(false);
+
+    room.advanceTurn();
+
+    expect(room.state.gameStatus).toBe('finished');
+    expect(room.state.gameEndedReason).toBe('last-player-connected');
+  });
+
+  it('should not end game when more than one connected player remains', () => {
+    const manager = new RoomManager();
+    const room = manager.createRoom();
+
+    const socketId1 = 'socket1';
+    const playerId1 = 'player1';
+    const player1 = { id: playerId1, name: 'Player 1', isReady: false, secret: 'secret1', connected: true, hand: [], handCount: 0 };
+
+    const socketId2 = 'socket2';
+    const playerId2 = 'player2';
+    const player2 = { id: playerId2, name: 'Player 2', isReady: false, secret: 'secret2', connected: true, hand: [], handCount: 0 };
+
+    const socketId3 = 'socket3';
+    const playerId3 = 'player3';
+    const player3 = { id: playerId3, name: 'Player 3', isReady: false, secret: 'secret3', connected: true, hand: [], handCount: 0 };
+
+    room.addPlayer(socketId1, player1);
+    room.addPlayer(socketId2, player2);
+    room.addPlayer(socketId3, player3);
+
+    room.startGame();
+    expect(room.state.gameStatus).toBe('playing');
+
+    room.markPlayerDisconnected(playerId3);
+    expect(room.players.get(playerId3)?.connected).toBe(false);
+
+    room.advanceTurn();
+
+    expect(room.state.gameStatus).toBe('playing');
+    expect(room.state.gameEndedReason).toBeUndefined();
+  });
+});

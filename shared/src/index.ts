@@ -6,6 +6,9 @@ export type RoomState = {
   createdAt: number;
   deckSize?: number;
   discardPile?: Card[];
+  currentPlayerIndex?: number;
+  direction?: 1 | -1;
+  gameEndedReason?: string;
 };
 
 export type Card = {
