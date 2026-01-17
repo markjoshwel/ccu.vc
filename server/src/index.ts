@@ -1,6 +1,7 @@
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import type { ClientToServerEvents, ServerToClientEvents } from '@ccu/shared';
+import { setupSocketHandlers } from './socketHandlers';
 
 const PORT = parseInt(process.env.PORT || '3000', 10);
 
@@ -26,14 +27,8 @@ const io = new Server<ClientToServerEvents, ServerToClientEvents>(httpServer, {
   }
 });
 
-// Socket connection handling (to be expanded in later stories)
-io.on('connection', (socket) => {
-  console.log(`Client connected: ${socket.id}`);
-  
-  socket.on('disconnect', () => {
-    console.log(`Client disconnected: ${socket.id}`);
-  });
-});
+// Setup socket event handlers
+setupSocketHandlers(io);
 
 // Start server
 httpServer.listen(PORT, () => {
