@@ -2658,3 +2658,171 @@ describe('Wild card and active color selection', () => {
     expect(() => room.playCard(playerId1, redCard, 'blue')).toThrow('Cannot choose color for non-Wild cards');
   });
 });
+
+describe('Wild Draw Four card effect', () => {
+  it('should make next player draw 4 cards and skip their turn in 3-player game', () => {
+    const manager = new RoomManager();
+    const room = manager.createRoom();
+
+    const socketId1 = 'socket1';
+    const playerId1 = 'player1';
+    const player1 = { id: playerId1, name: 'Player 1', isReady: false, secret: 'secret1', connected: true, hand: [], handCount: 0 };
+
+    const socketId2 = 'socket2';
+    const playerId2 = 'player2';
+    const player2 = { id: playerId2, name: 'Player 2', isReady: false, secret: 'secret2', connected: true, hand: [], handCount: 0 };
+
+    const socketId3 = 'socket3';
+    const playerId3 = 'player3';
+    const player3 = { id: playerId3, name: 'Player 3', isReady: false, secret: 'secret3', connected: true, hand: [], handCount: 0 };
+
+    room.addPlayer(socketId1, player1);
+    room.addPlayer(socketId2, player2);
+    room.addPlayer(socketId3, player3);
+
+    room.startGame();
+
+    const wildDraw4Card: Card = { color: 'wild' as const, value: 'wild_draw4' };
+    room.players.get(playerId1)!.hand.push(wildDraw4Card);
+
+    const initialHandSize = room.players.get(playerId2)!.hand.length;
+
+    room.playCard(playerId1, wildDraw4Card, 'red');
+
+    expect(room.players.get(playerId2)!.hand.length).toBe(initialHandSize + 4);
+    expect(room.activeColor).toBe('red');
+    expect(room.currentPlayerIndex).toBe(2);
+    expect(room.playerOrder[room.currentPlayerIndex]).toBe(playerId3);
+  });
+
+  it('should make next player draw 4 cards and skip their turn in 2-player game', () => {
+    const manager = new RoomManager();
+    const room = manager.createRoom();
+
+    const socketId1 = 'socket1';
+    const playerId1 = 'player1';
+    const player1 = { id: playerId1, name: 'Player 1', isReady: false, secret: 'secret1', connected: true, hand: [], handCount: 0 };
+
+    const socketId2 = 'socket2';
+    const playerId2 = 'player2';
+    const player2 = { id: playerId2, name: 'Player 2', isReady: false, secret: 'secret2', connected: true, hand: [], handCount: 0 };
+
+    room.addPlayer(socketId1, player1);
+    room.addPlayer(socketId2, player2);
+
+    room.startGame();
+
+    const wildDraw4Card: Card = { color: 'wild' as const, value: 'wild_draw4' };
+    room.players.get(playerId1)!.hand.push(wildDraw4Card);
+
+    const initialHandSize = room.players.get(playerId2)!.hand.length;
+
+    room.playCard(playerId1, wildDraw4Card, 'blue');
+
+    expect(room.players.get(playerId2)!.hand.length).toBe(initialHandSize + 4);
+    expect(room.activeColor).toBe('blue');
+    expect(room.currentPlayerIndex).toBe(0);
+    expect(room.playerOrder[room.currentPlayerIndex]).toBe(playerId1);
+  });
+
+  it('should respect direction when drawing cards', () => {
+    const manager = new RoomManager();
+    const room = manager.createRoom();
+
+    const socketId1 = 'socket1';
+    const playerId1 = 'player1';
+    const player1 = { id: playerId1, name: 'Player 1', isReady: false, secret: 'secret1', connected: true, hand: [], handCount: 0 };
+
+    const socketId2 = 'socket2';
+    const playerId2 = 'player2';
+    const player2 = { id: playerId2, name: 'Player 2', isReady: false, secret: 'secret2', connected: true, hand: [], handCount: 0 };
+
+    const socketId3 = 'socket3';
+    const playerId3 = 'player3';
+    const player3 = { id: playerId3, name: 'Player 3', isReady: false, secret: 'secret3', connected: true, hand: [], handCount: 0 };
+
+    room.addPlayer(socketId1, player1);
+    room.addPlayer(socketId2, player2);
+    room.addPlayer(socketId3, player3);
+
+    room.startGame();
+
+    room.reverseDirection();
+
+    const wildDraw4Card: Card = { color: 'wild' as const, value: 'wild_draw4' };
+    room.players.get(playerId1)!.hand.push(wildDraw4Card);
+
+    const initialHandSize = room.players.get(playerId3)!.hand.length;
+
+    room.playCard(playerId1, wildDraw4Card, 'green');
+
+    expect(room.players.get(playerId3)!.hand.length).toBe(initialHandSize + 4);
+    expect(room.activeColor).toBe('green');
+    expect(room.currentPlayerIndex).toBe(1);
+    expect(room.playerOrder[room.currentPlayerIndex]).toBe(playerId2);
+  });
+
+  it('should skip disconnected players and draw for next connected player', () => {
+    const manager = new RoomManager();
+    const room = manager.createRoom();
+
+    const socketId1 = 'socket1';
+    const playerId1 = 'player1';
+    const player1 = { id: playerId1, name: 'Player 1', isReady: false, secret: 'secret1', connected: true, hand: [], handCount: 0 };
+
+    const socketId2 = 'socket2';
+    const playerId2 = 'player2';
+    const player2 = { id: playerId2, name: 'Player 2', isReady: false, secret: 'secret2', connected: true, hand: [], handCount: 0 };
+
+    const socketId3 = 'socket3';
+    const playerId3 = 'player3';
+    const player3 = { id: playerId3, name: 'Player 3', isReady: false, secret: 'secret3', connected: true, hand: [], handCount: 0 };
+
+    room.addPlayer(socketId1, player1);
+    room.addPlayer(socketId2, player2);
+    room.addPlayer(socketId3, player3);
+
+    room.startGame();
+
+    room.markPlayerDisconnected(playerId2);
+
+    const wildDraw4Card: Card = { color: 'wild' as const, value: 'wild_draw4' };
+    room.players.get(playerId1)!.hand.push(wildDraw4Card);
+
+    const initialHandSize = room.players.get(playerId3)!.hand.length;
+
+    room.playCard(playerId1, wildDraw4Card, 'yellow');
+
+    expect(room.players.get(playerId3)!.hand.length).toBe(initialHandSize + 4);
+    expect(room.activeColor).toBe('yellow');
+    expect(room.currentPlayerIndex).toBe(0);
+    expect(room.playerOrder[room.currentPlayerIndex]).toBe(playerId1);
+  });
+
+  it('should reduce deck size by 4 when Wild Draw Four is played', () => {
+    const manager = new RoomManager();
+    const room = manager.createRoom();
+
+    const socketId1 = 'socket1';
+    const playerId1 = 'player1';
+    const player1 = { id: playerId1, name: 'Player 1', isReady: false, secret: 'secret1', connected: true, hand: [], handCount: 0 };
+
+    const socketId2 = 'socket2';
+    const playerId2 = 'player2';
+    const player2 = { id: playerId2, name: 'Player 2', isReady: false, secret: 'secret2', connected: true, hand: [], handCount: 0 };
+
+    room.addPlayer(socketId1, player1);
+    room.addPlayer(socketId2, player2);
+
+    room.startGame();
+
+    const wildDraw4Card: Card = { color: 'wild' as const, value: 'wild_draw4' };
+    room.players.get(playerId1)!.hand.push(wildDraw4Card);
+
+    const initialDeckSize = room.deck!.size;
+
+    room.playCard(playerId1, wildDraw4Card, 'red');
+
+    expect(room.deck!.size).toBe(initialDeckSize - 4);
+  });
+});
