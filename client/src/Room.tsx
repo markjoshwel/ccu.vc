@@ -144,6 +144,7 @@ export default function Room({ session, gameView, onGameViewUpdate, onLeaveRoom 
   const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [colorPickerCard, setColorPickerCard] = useState<CardWithId | null>(null);
   const [clockSync, setClockSync] = useState<ClockSync | null>(null);
+  const [unoNotification, setUnoNotification] = useState<string | null>(null);
 
   useEffect(() => {
     const socket = getSocket();
@@ -158,6 +159,25 @@ export default function Room({ session, gameView, onGameViewUpdate, onLeaveRoom 
       console.log('Player timed out:', event.playerId, 'Policy:', event.policy);
     });
     
+    socket.on('unoCalled', (event) => {
+      const playerName = event.playerId === gameView.myPlayerId 
+        ? 'You' 
+        : gameView.opponents.find(o => o.playerId === event.playerId)?.displayName || 'Someone';
+      setUnoNotification(`${playerName} called UNO!`);
+      setTimeout(() => setUnoNotification(null), 3000);
+    });
+    
+    socket.on('unoCaught', (event) => {
+      const catcherName = event.catcherId === gameView.myPlayerId 
+        ? 'You' 
+        : gameView.opponents.find(o => o.playerId === event.catcherId)?.displayName || 'Someone';
+      const caughtName = event.caughtPlayerId === gameView.myPlayerId 
+        ? 'you' 
+        : gameView.opponents.find(o => o.playerId === event.caughtPlayerId)?.displayName || 'someone';
+      setUnoNotification(`${catcherName} caught ${caughtName}! +2 cards penalty`);
+      setTimeout(() => setUnoNotification(null), 3000);
+    });
+    
     socket.on('error', (message) => {
       console.error('Socket error:', message);
     });
@@ -166,9 +186,11 @@ export default function Room({ session, gameView, onGameViewUpdate, onLeaveRoom 
       socket.off('gameStateUpdate', onGameViewUpdate);
       socket.off('clockSync');
       socket.off('timeOut');
+      socket.off('unoCalled');
+      socket.off('unoCaught');
       socket.off('error');
     };
-  }, [onGameViewUpdate]);
+  }, [onGameViewUpdate, gameView]);
 
   const handleLeave = () => {
     clearSession();
@@ -251,7 +273,36 @@ export default function Room({ session, gameView, onGameViewUpdate, onLeaveRoom 
     });
   }, []);
 
+  const handleCallUno = useCallback(() => {
+    const socket = getSocket();
+    const actionId = `uno-${Date.now()}`;
+    
+    socket.emit('callUno', { actionId }, (ack) => {
+      if (!ack.ok) {
+        console.error('Call UNO failed:', ack.errorCode);
+      }
+    });
+  }, []);
+
+  const handleCatchUno = useCallback(() => {
+    if (!gameView.unoWindow) return;
+    
+    const socket = getSocket();
+    const actionId = `catch-${Date.now()}`;
+    
+    socket.emit('catchUno', { 
+      actionId, 
+      targetPlayerId: gameView.unoWindow.playerId 
+    }, (ack) => {
+      if (!ack.ok) {
+        console.error('Catch UNO failed:', ack.errorCode);
+      }
+    });
+  }, [gameView.unoWindow]);
+
   const isMyTurn = gameView.currentPlayerId === gameView.myPlayerId;
+  const canCallUno = gameView.unoWindow?.playerId === gameView.myPlayerId && !gameView.unoWindow?.calledUno;
+  const canCatchUno = gameView.unoWindow && gameView.unoWindow.playerId !== gameView.myPlayerId && !gameView.unoWindow.calledUno;
 
   return (
     <div className="room">
@@ -259,6 +310,13 @@ export default function Room({ session, gameView, onGameViewUpdate, onLeaveRoom 
         <h2>Room: {session.roomCode}</h2>
         <button onClick={handleLeave}>Leave Room</button>
       </header>
+
+      {/* UNO notification */}
+      {unoNotification && (
+        <div className="uno-notification">
+          {unoNotification}
+        </div>
+      )}
 
       {/* Finished state */}
       {gameView.phase === 'finished' && (
@@ -310,6 +368,26 @@ export default function Room({ session, gameView, onGameViewUpdate, onLeaveRoom 
             >
               {gameView.activeColor || 'None'}
             </span>
+          </div>
+
+          {/* UNO buttons */}
+          <div className="uno-buttons">
+            {canCallUno && (
+              <button 
+                className="uno-btn call-uno"
+                onClick={handleCallUno}
+              >
+                Call UNO!
+              </button>
+            )}
+            {canCatchUno && (
+              <button 
+                className="uno-btn catch-uno"
+                onClick={handleCatchUno}
+              >
+                Catch! 🎣
+              </button>
+            )}
           </div>
 
           {/* Discard pile */}

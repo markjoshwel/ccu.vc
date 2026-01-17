@@ -209,6 +209,9 @@ export function playCard(
     return { actionId: '', ok: false, errorCode: 'COLOR_REQUIRED' };
   }
 
+  // Close any UNO window when player takes action (before we modify hands)
+  closeUnoWindow(room);
+
   // Remove card from hand and add to discard pile
   player.hand.splice(cardIndex, 1);
   player.handCount = player.hand.length;
@@ -273,7 +276,16 @@ export function playCard(
     room.phase = 'finished';
     room.winnerId = playerId;
     room.winReason = 'empty-hand';
+    room.unoWindow = null;
     return { actionId: '', ok: true };
+  }
+
+  // Open UNO window if player has 1 card left
+  if (player.hand.length === 1) {
+    room.unoWindow = {
+      playerId: playerId,
+      calledUno: false
+    };
   }
 
   // Advance turn
@@ -321,8 +333,81 @@ export function drawCard(room: RoomState, playerId: string): ActionAck {
     }
   }
 
+  // Close any UNO window when player takes action (draw counts as action)
+  closeUnoWindow(room);
+
   // End turn
   advanceTurn(room);
 
   return { actionId: '', ok: true };
+}
+
+/**
+ * Close the UNO window when next player takes action
+ */
+export function closeUnoWindow(room: RoomState): void {
+  if (room.unoWindow && room.activePlayerId !== room.unoWindow.playerId) {
+    // Window closes when a different player takes action
+    room.unoWindow = null;
+  }
+}
+
+/**
+ * Call UNO (player announces they have one card)
+ */
+export function callUno(room: RoomState, playerId: string): ActionAck {
+  if (room.phase !== 'playing') {
+    return { actionId: '', ok: false, errorCode: 'GAME_NOT_PLAYING' };
+  }
+
+  // Check if there's an open UNO window for this player
+  if (!room.unoWindow || room.unoWindow.playerId !== playerId) {
+    return { actionId: '', ok: false, errorCode: 'NO_UNO_WINDOW' };
+  }
+
+  // Mark as called
+  room.unoWindow.calledUno = true;
+
+  return { actionId: '', ok: true };
+}
+
+/**
+ * Catch a player who failed to call UNO
+ */
+export function catchUno(room: RoomState, catcherId: string): ActionAck {
+  if (room.phase !== 'playing') {
+    return { actionId: '', ok: false, errorCode: 'GAME_NOT_PLAYING' };
+  }
+
+  // Check if there's an open UNO window
+  if (!room.unoWindow) {
+    return { actionId: '', ok: false, errorCode: 'NO_UNO_WINDOW' };
+  }
+
+  // Can't catch yourself
+  if (room.unoWindow.playerId === catcherId) {
+    return { actionId: '', ok: false, errorCode: 'CANT_CATCH_SELF' };
+  }
+
+  // If player already called UNO, can't catch them
+  if (room.unoWindow.calledUno) {
+    return { actionId: '', ok: false, errorCode: 'ALREADY_CALLED_UNO' };
+  }
+
+  // Apply penalty: player who failed to call UNO draws 2 cards
+  const penalizedPlayer = room.players.find(p => p.playerId === room.unoWindow!.playerId);
+  if (penalizedPlayer) {
+    for (let i = 0; i < 2; i++) {
+      const drawnCard = room.deck.pop();
+      if (drawnCard) {
+        penalizedPlayer.hand.push(drawnCard);
+        penalizedPlayer.handCount = penalizedPlayer.hand.length;
+      }
+    }
+  }
+
+  // Close the window
+  room.unoWindow = null;
+
+  return { actionId: '', ok: true, caughtPlayerId: penalizedPlayer?.playerId };
 }

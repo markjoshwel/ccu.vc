@@ -156,6 +156,16 @@ export interface ActionAck {
   actionId: string;
   ok: boolean;
   errorCode?: string;
+  caughtPlayerId?: string; // For catchUno result
+}
+
+export interface UnoCalledEvent {
+  playerId: string;
+}
+
+export interface UnoCaughtEvent {
+  catcherId: string;
+  caughtPlayerId: string;
 }
 
 export interface ClockSync {
@@ -194,6 +204,8 @@ export interface ServerToClientEvents {
   actionResolved: (data: { actionId: string; effects: string[] }) => void;
   clockSync: (sync: ClockSync) => void;
   timeOut: (event: TimeOutEvent) => void;
+  unoCalled: (event: UnoCalledEvent) => void;
+  unoCaught: (event: UnoCaughtEvent) => void;
   chatMessage: (msg: ChatMessage) => void;
   chatHistory: (messages: ChatMessage[]) => void;
   playerJoined: (player: OpponentView) => void;

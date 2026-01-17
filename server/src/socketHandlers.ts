@@ -14,7 +14,7 @@ import type {
 } from '@ccu/shared';
 import { RoomManager, roomManager as defaultRoomManager, generatePlayerId, generatePlayerSecret } from './RoomManager';
 import { toGameView } from './gameView';
-import { startGame, playCard, drawCard } from './gameEngine';
+import { startGame, playCard, drawCard, callUno, catchUno } from './gameEngine';
 import { startClockSync, stopClockSync, handleTimeout, applyIncrement } from './clock';
 
 // Validate display name: 1-24 chars after trimming, no control characters
@@ -295,6 +295,55 @@ export function setupSocketHandlers(
       if (result.ok) {
         // Apply time increment to the player who just drew
         applyIncrement(room, previousPlayer);
+        broadcastGameState(io, room);
+      }
+    });
+
+    // Call UNO handler
+    socket.on('callUno', (payload: ActionPayload, callback) => {
+      const info = socketRoomMap.get(socket.id);
+      if (!info) {
+        callback({ actionId: payload.actionId, ok: false, errorCode: 'NOT_IN_ROOM' });
+        return;
+      }
+
+      const room = roomManagerInstance.getRoom(info.roomCode);
+      if (!room) {
+        callback({ actionId: payload.actionId, ok: false, errorCode: 'ROOM_NOT_FOUND' });
+        return;
+      }
+
+      const result = callUno(room, info.playerId);
+      callback({ actionId: payload.actionId, ok: result.ok, errorCode: result.errorCode });
+      
+      if (result.ok) {
+        io.to(room.roomCode).emit('unoCalled', { playerId: info.playerId });
+        broadcastGameState(io, room);
+      }
+    });
+
+    // Catch UNO handler
+    socket.on('catchUno', (payload: ActionPayload, callback) => {
+      const info = socketRoomMap.get(socket.id);
+      if (!info) {
+        callback({ actionId: payload.actionId, ok: false, errorCode: 'NOT_IN_ROOM' });
+        return;
+      }
+
+      const room = roomManagerInstance.getRoom(info.roomCode);
+      if (!room) {
+        callback({ actionId: payload.actionId, ok: false, errorCode: 'ROOM_NOT_FOUND' });
+        return;
+      }
+
+      const result = catchUno(room, info.playerId);
+      callback({ actionId: payload.actionId, ok: result.ok, errorCode: result.errorCode });
+      
+      if (result.ok && result.caughtPlayerId) {
+        io.to(room.roomCode).emit('unoCaught', { 
+          catcherId: info.playerId, 
+          caughtPlayerId: result.caughtPlayerId 
+        });
         broadcastGameState(io, room);
       }
     });

@@ -302,6 +302,80 @@ h1 {
   cursor: not-allowed;
 }
 
+/* UNO buttons */
+.uno-buttons {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  margin: 1rem 0;
+}
+
+.uno-btn {
+  padding: 1rem 2rem;
+  font-size: 1.25rem;
+  font-weight: bold;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  animation: pulse-uno 0.5s ease-in-out infinite alternate;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .uno-btn {
+    animation: none;
+  }
+}
+
+@keyframes pulse-uno {
+  from { transform: scale(1); }
+  to { transform: scale(1.05); }
+}
+
+.call-uno {
+  background-color: #ffc107;
+  color: #333;
+}
+
+.call-uno:hover {
+  background-color: #e0a800;
+}
+
+.catch-uno {
+  background-color: #dc3545;
+  color: white;
+}
+
+.catch-uno:hover {
+  background-color: #c82333;
+}
+
+/* UNO notification */
+.uno-notification {
+  position: fixed;
+  top: 20%;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #ffc107;
+  color: #333;
+  padding: 1rem 2rem;
+  border-radius: 8px;
+  font-size: 1.5rem;
+  font-weight: bold;
+  z-index: 200;
+  animation: slide-in 0.3s ease-out;
+}
+
+@keyframes slide-in {
+  from { 
+    opacity: 0;
+    transform: translateX(-50%) translateY(-20px);
+  }
+  to { 
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
 .hand {
   margin-top: 1rem;
 }
