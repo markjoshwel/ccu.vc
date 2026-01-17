@@ -161,3 +161,28 @@ Let me rebuild the shared package to update the types, then fix the server:
 All acceptance criteria have been met. Let me commit the changes.
 
 ---
+## ✓ Iteration 16 - US-016: Implement special cards: Skip and Reverse (server)
+*2026-01-17T20:11:14.977Z (222s)*
+
+**Status:** Completed
+
+**Notes:**
+I'll implement US-016 to add Skip and Reverse special cards. Let me start by exploring the codebase structure.
+Now I'll implement the Skip and Reverse card effects. Let me modify the RoomManager to handle these special cards.
+Now let me add tests for the Skip and Reverse card effects:
+Let me check the test failure. This is a pre-existing test issue with the random seed. Let me fix this test to ensure the card isn't in the player's hand:
+
+---
+## ✓ Iteration 17 - US-017: Implement special cards: Draw Two effect (server)
+*2026-01-17T20:13:28.109Z (132s)*
+
+**Status:** Completed
+
+**Notes:**
+I'll implement US-017 to add the Draw Two card effect. Let me start by exploring the codebase structure.
+Now I'll implement the Draw Two card effect. Looking at how Skip and Reverse are handled in the `playCard` method, I'll add similar logic for Draw Two.
+Now let me add tests for the Draw Two card effect:
+Now let me run the tests and typecheck to verify the implementation:
+All tests pass and typecheck succeeds. Let me commit the changes:
+
+---

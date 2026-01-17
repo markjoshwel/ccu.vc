@@ -1,0 +1,94 @@
+# Iteration 16 Log
+
+## Metadata
+
+- **Task ID**: US-016
+- **Task Title**: Implement special cards: Skip and Reverse (server)
+- **Description**: Add core turn-manipulation effects needed for real UNO games.
+- **Status**: completed
+- **Task Completed**: Yes
+- **Promise Detected**: Yes
+- **Started At**: 2026-01-17T20:07:32.799Z
+- **Ended At**: 2026-01-17T20:11:14.957Z
+- **Duration**: 3m 42s
+- **Agent**: opencode
+- **Model**: opencode/glm-4.7-free
+--- RAW OUTPUT ---
+I'll implement US-016 to add Skip and Reverse special cards. Let me start by exploring the codebase structure.
+Now I'll implement the Skip and Reverse card effects. Let me modify the RoomManager to handle these special cards.
+Now let me add tests for the Skip and Reverse card effects:
+Let me check the test failure. This is a pre-existing test issue with the random seed. Let me fix this test to ensure the card isn't in the player's hand:
+<promise>COMPLETE</promise>
+
+--- STDERR ---
+[94m[1m| [0m[90m Glob     [0m{"pattern":"**/*.ts"}
+[96m[1m| [0m[90m Read     [0mpackage.json
+[96m[1m| [0m[90m Read     [0mserver\src\RoomManager.ts
+[96m[1m| [0m[90m Read     [0mserver\src\Deck.ts
+[96m[1m| [0m[90m Read     [0mshared\src\index.ts
+[96m[1m| [0m[90m Read     [0mserver\server.test.ts
+
+[96m[1m| [0m[90m Read     [0mserver\server.test.ts[92m[1m| [0m[90m Edit     [0mserver\src\RoomManager.ts
+[92m[1m| [0m[90m Edit     [0mserver\server.test.ts
+[91m[1m| [0m[90m Bash     [0mRun server tests
+
+bun test v1.3.6 (d530ed99)
+
+server.test.ts:
+gameStateUpdate not received in time, checking room directly
+2003 | 
+2004 |     room.startGame();
+2005 | 
+2006 |     const cardNotInHand: Card = { color: 'wild', value: 'wild_draw4' };
+2007 | 
+2008 |     expect(() => room.playCard(playerId1, cardNotInHand)).toThrow('Card not in hand');
+                                                                 ^
+error: expect(received).toThrow(expected)
+
+Expected substring: "Card not in hand"
+
+Received function did not throw
+Received value: undefined
+
+      at <anonymous> (C:\Users\mark\Works\ccu.vc\server\server.test.ts:2008:59)
+(fail) playCard validation > should reject play when card not in hand
+
+ 69 pass
+ 1 fail
+ 242 expect() calls
+Ran 70 tests across 1 file. [3.19s]
+
+[96m[1m| [0m[90m Read     [0mserver\server.test.ts
+[92m[1m| [0m[90m Edit     [0mserver\server.test.ts
+[91m[1m| [0m[90m Bash     [0mRun server tests again
+
+bun test v1.3.6 (d530ed99)
+
+server.test.ts:
+gameStateUpdate not received in time, checking room directly
+
+ 70 pass
+ 0 fail
+ 242 expect() calls
+Ran 70 tests across 1 file. [3.24s]
+
+[91m[1m| [0m[90m Bash     [0mRun typecheck on server
+
+$ tsc --noEmit
+
+[91m[1m| [0m[90m Bash     [0mCommit Skip and Reverse implementation
+
+warning: in the working copy of '.ralph-tui/progress.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.ralph-tui/session.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'prd.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'server/server.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'server/src/RoomManager.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.ralph-tui/iterations/iteration-015-US-015.log', LF will be replaced by CRLF the next time Git touches it
+[main 50ac5f2] Implement Skip and Reverse card effects (US-016)
+ 6 files changed, 306 insertions(+), 9 deletions(-)
+ create mode 100644 .ralph-tui/iterations/iteration-015-US-015.log
+
+[91m[1m| [0m[90m Bash     [0mVerify commit
+
+50ac5f2 Implement Skip and Reverse card effects (US-016)
+

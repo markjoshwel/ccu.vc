@@ -243,3 +243,112 @@ button:disabled {
 .player.active .name {
   color: #4a90e2;
 }
+
+.active-color-indicator {
+  margin-bottom: 12px;
+  font-size: 14px;
+}
+
+.color-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-weight: bold;
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.color-badge.red {
+  background: #e74c3c;
+  color: white;
+}
+
+.color-badge.blue {
+  background: #3498db;
+  color: white;
+}
+
+.color-badge.green {
+  background: #27ae60;
+  color: white;
+}
+
+.color-badge.yellow {
+  background: #f1c40f;
+  color: black;
+}
+
+.color-picker-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.color-picker-modal {
+  background: white;
+  border-radius: 8px;
+  padding: 24px;
+  max-width: 320px;
+  width: 90%;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.color-picker-modal h3 {
+  margin: 0 0 16px 0;
+  font-size: 18px;
+  text-align: center;
+}
+
+.color-options {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.color-btn {
+  padding: 24px;
+  border: none;
+  border-radius: 8px;
+  font-weight: bold;
+  font-size: 16px;
+  color: white;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.color-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.color-btn.red {
+  background: linear-gradient(135deg, #e74c3c, #c0392b);
+}
+
+.color-btn.blue {
+  background: linear-gradient(135deg, #3498db, #2980b9);
+}
+
+.color-btn.green {
+  background: linear-gradient(135deg, #27ae60, #1e8449);
+}
+
+.color-btn.yellow {
+  background: linear-gradient(135deg, #f1c40f, #d4ac0d);
+}
+
+.cancel-btn {
+  background: #ccc;
+}
+
+.cancel-btn:hover {
+  background: #bbb;
+}

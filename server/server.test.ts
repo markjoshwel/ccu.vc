@@ -1919,11 +1919,12 @@ describe('playCard validation', () => {
 
     room.players.get(playerId1)!.hand.push(wildCard);
 
-    room.playCard(playerId1, wildCard);
+    room.playCard(playerId1, wildCard, 'red');
 
     expect(room.discardPile).toHaveLength(2);
     expect(room.discardPile[1]).toEqual(wildCard);
     expect(room.players.get(playerId1)!.hand.length).toBe(7);
+    expect(room.activeColor).toBe('red');
   });
 
   it('should reject play when not player\'s turn', () => {
@@ -2426,7 +2427,8 @@ describe('Draw Two card effect', () => {
     room.markPlayerDisconnected(playerId2);
 
     const topCard = room.discardPile[0];
-    const draw2Card: Card = { color: topCard.color, value: 'draw2' };
+    const draw2Color: 'red' | 'yellow' | 'green' | 'blue' = topCard.color === 'wild' ? 'red' : topCard.color;
+    const draw2Card: Card = { color: draw2Color, value: 'draw2' };
 
     room.players.get(playerId1)!.hand.push(draw2Card);
 
@@ -2466,5 +2468,193 @@ describe('Draw Two card effect', () => {
     room.playCard(playerId1, draw2Card);
 
     expect(room.deck!.size).toBe(initialDeckSize - 2);
+  });
+});
+
+describe('Wild card and active color selection', () => {
+  it('should require a chosen color when playing a Wild card', () => {
+    const manager = new RoomManager();
+    const room = manager.createRoom();
+
+    const socketId1 = 'socket1';
+    const playerId1 = 'player1';
+    const player1 = { id: playerId1, name: 'Player 1', isReady: false, secret: 'secret1', connected: true, hand: [], handCount: 0 };
+
+    const socketId2 = 'socket2';
+    const playerId2 = 'player2';
+    const player2 = { id: playerId2, name: 'Player 2', isReady: false, secret: 'secret2', connected: true, hand: [], handCount: 0 };
+
+    room.addPlayer(socketId1, player1);
+    room.addPlayer(socketId2, player2);
+
+    room.startGame();
+
+    const wildCard = { color: 'wild' as const, value: 'wild' };
+    room.players.get(playerId1)!.hand.push(wildCard);
+
+    expect(() => room.playCard(playerId1, wildCard)).toThrow('Must choose a color when playing a Wild card');
+  });
+
+  it('should set activeColor when playing a Wild card with a chosen color', () => {
+    const manager = new RoomManager();
+    const room = manager.createRoom();
+
+    const socketId1 = 'socket1';
+    const playerId1 = 'player1';
+    const player1 = { id: playerId1, name: 'Player 1', isReady: false, secret: 'secret1', connected: true, hand: [], handCount: 0 };
+
+    const socketId2 = 'socket2';
+    const playerId2 = 'player2';
+    const player2 = { id: playerId2, name: 'Player 2', isReady: false, secret: 'secret2', connected: true, hand: [], handCount: 0 };
+
+    room.addPlayer(socketId1, player1);
+    room.addPlayer(socketId2, player2);
+
+    room.startGame();
+
+    const wildCard = { color: 'wild' as const, value: 'wild' };
+    room.players.get(playerId1)!.hand.push(wildCard);
+
+    room.playCard(playerId1, wildCard, 'red');
+
+    expect(room.activeColor).toBe('red');
+    expect(room.state.activeColor).toBe('red');
+  });
+
+  it('should validate plays against activeColor after Wild card is played', () => {
+    const manager = new RoomManager();
+    const room = manager.createRoom();
+
+    const socketId1 = 'socket1';
+    const playerId1 = 'player1';
+    const player1 = { id: playerId1, name: 'Player 1', isReady: false, secret: 'secret1', connected: true, hand: [], handCount: 0 };
+
+    const socketId2 = 'socket2';
+    const playerId2 = 'player2';
+    const player2 = { id: playerId2, name: 'Player 2', isReady: false, secret: 'secret2', connected: true, hand: [], handCount: 0 };
+
+    const socketId3 = 'socket3';
+    const playerId3 = 'player3';
+    const player3 = { id: playerId3, name: 'Player 3', isReady: false, secret: 'secret3', connected: true, hand: [], handCount: 0 };
+
+    room.addPlayer(socketId1, player1);
+    room.addPlayer(socketId2, player2);
+    room.addPlayer(socketId3, player3);
+
+    let seed = 1;
+    const seededRng = () => {
+      seed = (seed * 1103515245 + 12345) % 0x80000000;
+      return seed / 0x80000000;
+    };
+
+    room.startGame(seededRng);
+
+    const topCard = room.discardPile[0];
+    const wildCard = { color: 'wild' as const, value: 'wild' };
+    room.players.get(playerId1)!.hand.push(wildCard);
+
+    room.playCard(playerId1, wildCard, 'red');
+
+    const redCard = { color: 'red' as const, value: '5' };
+    const blueCard = { color: 'blue' as const, value: '7' };
+
+    room.players.get(playerId2)!.hand.push(redCard);
+    room.players.get(playerId3)!.hand.push(blueCard);
+
+    expect(() => room.playCard(playerId2, redCard)).not.toThrow();
+    expect(() => room.playCard(playerId3, blueCard)).toThrow('Card does not match top discard');
+  });
+
+  it('should reset activeColor when a non-wild card is played', () => {
+    const manager = new RoomManager();
+    const room = manager.createRoom();
+
+    const socketId1 = 'socket1';
+    const playerId1 = 'player1';
+    const player1 = { id: playerId1, name: 'Player 1', isReady: false, secret: 'secret1', connected: true, hand: [], handCount: 0 };
+
+    const socketId2 = 'socket2';
+    const playerId2 = 'player2';
+    const player2 = { id: playerId2, name: 'Player 2', isReady: false, secret: 'secret2', connected: true, hand: [], handCount: 0 };
+
+    room.addPlayer(socketId1, player1);
+    room.addPlayer(socketId2, player2);
+
+    room.startGame();
+
+    const wildCard = { color: 'wild' as const, value: 'wild' };
+    room.players.get(playerId1)!.hand.push(wildCard);
+
+    room.playCard(playerId1, wildCard, 'red');
+
+    expect(room.activeColor).toBe('red');
+
+    const redCard = { color: 'red' as const, value: '5' };
+    room.players.get(playerId2)!.hand.push(redCard);
+
+    room.playCard(playerId2, redCard);
+
+    expect(room.activeColor).toBeUndefined();
+    expect(room.state.activeColor).toBeUndefined();
+  });
+
+  it('should allow playing a number card matching activeColor even if it does not match top card color', () => {
+    const manager = new RoomManager();
+    const room = manager.createRoom();
+
+    const socketId1 = 'socket1';
+    const playerId1 = 'player1';
+    const player1 = { id: playerId1, name: 'Player 1', isReady: false, secret: 'secret1', connected: true, hand: [], handCount: 0 };
+
+    const socketId2 = 'socket2';
+    const playerId2 = 'player2';
+    const player2 = { id: playerId2, name: 'Player 2', isReady: false, secret: 'secret2', connected: true, hand: [], handCount: 0 };
+
+    room.addPlayer(socketId1, player1);
+    room.addPlayer(socketId2, player2);
+
+    let seed = 1;
+    const seededRng = () => {
+      seed = (seed * 1103515245 + 12345) % 0x80000000;
+      return seed / 0x80000000;
+    };
+
+    room.startGame(seededRng);
+
+    const topCard = room.discardPile[0];
+    const wildCard = { color: 'wild' as const, value: 'wild' };
+    room.players.get(playerId1)!.hand.push(wildCard);
+
+    room.playCard(playerId1, wildCard, 'red');
+
+    const redCard = { color: 'red' as const, value: '7' };
+    room.players.get(playerId2)!.hand.push(redCard);
+
+    expect(() => room.playCard(playerId2, redCard)).not.toThrow();
+  });
+
+  it('should reject color choice for non-Wild cards', () => {
+    const manager = new RoomManager();
+    const room = manager.createRoom();
+
+    const socketId1 = 'socket1';
+    const playerId1 = 'player1';
+    const player1 = { id: playerId1, name: 'Player 1', isReady: false, secret: 'secret1', connected: true, hand: [], handCount: 0 };
+
+    const socketId2 = 'socket2';
+    const playerId2 = 'player2';
+    const player2 = { id: playerId2, name: 'Player 2', isReady: false, secret: 'secret2', connected: true, hand: [], handCount: 0 };
+
+    room.addPlayer(socketId1, player1);
+    room.addPlayer(socketId2, player2);
+
+    room.startGame();
+
+    const topCard = room.discardPile[0];
+    const redCard = { color: topCard.color, value: '5' };
+
+    room.players.get(playerId1)!.hand.push(redCard);
+
+    expect(() => room.playCard(playerId1, redCard, 'blue')).toThrow('Cannot choose color for non-Wild cards');
   });
 });

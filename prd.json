@@ -246,8 +246,9 @@
         "quality gate: `bun --filter server run typecheck` exits with code 0"
       ],
       "priority": 16,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "",
+      "completionNotes": "Completed by agent"
     },
     {
       "id": "US-017",
@@ -260,8 +261,9 @@
         "quality gate: `bun --filter server run typecheck` exits with code 0"
       ],
       "priority": 17,
-      "passes": false,
-      "notes": "Stacking rules are not included in v1 unless later configured."
+      "passes": true,
+      "notes": "Stacking rules are not included in v1 unless later configured.",
+      "completionNotes": "Completed by agent"
     },
     {
       "id": "US-018",
@@ -534,6 +536,6 @@
     }
   ],
   "metadata": {
-    "updatedAt": "2026-01-17T20:07:32.799Z"
+    "updatedAt": "2026-01-17T20:13:29.146Z"
   }
 }

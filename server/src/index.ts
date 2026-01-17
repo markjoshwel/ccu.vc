@@ -182,7 +182,7 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('playCard', (actionId: string, card: any, callback: (response: { success: boolean; error?: string }) => void) => {
+  socket.on('playCard', (actionId: string, card: any, callback: (response: { success: boolean; error?: string }) => void, chosenColor?: 'red' | 'yellow' | 'green' | 'blue') => {
     const roomCode = socketRoomMap.get(socket.id);
     
     if (!roomCode) {
@@ -207,7 +207,7 @@ io.on('connection', (socket) => {
     }
     
     try {
-      room.playCard(playerData.playerId, card);
+      room.playCard(playerData.playerId, card, chosenColor);
       io.to(roomCode).emit('roomUpdated', room.state);
       broadcastGameStateUpdate(roomCode);
       socket.emit('actionAck', { actionId, ok: true });

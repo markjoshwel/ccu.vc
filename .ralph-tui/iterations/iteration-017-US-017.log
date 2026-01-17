@@ -1,0 +1,409 @@
+# Iteration 17 Log
+
+## Metadata
+
+- **Task ID**: US-017
+- **Task Title**: Implement special cards: Draw Two effect (server)
+- **Description**: Support forced drawing as a core UNO interaction.
+- **Status**: completed
+- **Task Completed**: Yes
+- **Promise Detected**: Yes
+- **Started At**: 2026-01-17T20:11:16.007Z
+- **Ended At**: 2026-01-17T20:13:28.088Z
+- **Duration**: 2m 12s
+- **Agent**: opencode
+- **Model**: opencode/glm-4.7-free
+--- RAW OUTPUT ---
+I'll implement US-017 to add the Draw Two card effect. Let me start by exploring the codebase structure.
+Now I'll implement the Draw Two card effect. Looking at how Skip and Reverse are handled in the `playCard` method, I'll add similar logic for Draw Two.
+Now let me add tests for the Draw Two card effect:
+Now let me run the tests and typecheck to verify the implementation:
+All tests pass and typecheck succeeds. Let me commit the changes:
+<promise>COMPLETE</promise>
+
+--- STDERR ---
+[94m[1m| [0m[90m Glob     [0m{"pattern":"**/server/**/*.ts"}
+[94m[1m| [0m[90m Glob     [0m{"pattern":"**/server/**/*.test.ts"}
+[94m[1m| [0m[90m Glob     [0m{"pattern":"**/shared/**/*.ts"}
+[96m[1m| [0m[90m Read     [0mshared\src\index.ts
+[96m[1m| [0m[90m Read     [0mserver\src\RoomManager.ts
+[96m[1m| [0m[90m Read     [0mserver\server.test.ts
+[96m[1m| [0m[90m Read     [0mserver\server.test.ts
+[92m[1m| [0m[90m Edit     [0mserver\src\RoomManager.ts
+[92m[1m| [0m[90m Edit     [0mserver\server.test.ts
+[91m[1m| [0m[90m Bash     [0mRun server typecheck
+
+$ tsc --noEmit
+
+[91m[1m| [0m[90m Bash     [0mRun server tests
+
+bun test v1.3.6 (d530ed99)
+
+server.test.ts:
+gameStateUpdate not received in time, checking room directly
+
+ 75 pass
+ 0 fail
+ 255 expect() calls
+Ran 75 tests across 1 file. [3.19s]
+
+[91m[1m| [0m[90m Bash     [0mCheck git status and changes
+
+On branch main
+Your branch is ahead of 'origin/main' by 13 commits.
+  (use "git push" to publish your local commits)
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   .ralph-tui/progress.md
+	modified:   .ralph-tui/session.json
+	modified:   prd.json
+	modified:   server/server.test.ts
+	modified:   server/src/RoomManager.ts
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	.ralph-tui/iterations/iteration-016-US-016.log
+
+no changes added to commit (use "git add" and/or "git commit -a")
+warning: in the working copy of '.ralph-tui/progress.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.ralph-tui/session.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'prd.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'server/server.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'server/src/RoomManager.ts', LF will be replaced by CRLF the next time Git touches it
+diff --git a/.ralph-tui/progress.md b/.ralph-tui/progress.md
+index a2cc44a..9235dd1 100644
+--- a/.ralph-tui/progress.md
++++ b/.ralph-tui/progress.md
+@@ -161,3 +161,15 @@ Let me rebuild the shared package to update the types, then fix the server:
+ All acceptance criteria have been met. Let me commit the changes.
+ 
+ ---
++## ✓ Iteration 16 - US-016: Implement special cards: Skip and Reverse (server)
++*2026-01-17T20:11:14.977Z (222s)*
++
++**Status:** Completed
++
++**Notes:**
++I'll implement US-016 to add Skip and Reverse special cards. Let me start by exploring the codebase structure.
++Now I'll implement the Skip and Reverse card effects. Let me modify the RoomManager to handle these special cards.
++Now let me add tests for the Skip and Reverse card effects:
++Let me check the test failure. This is a pre-existing test issue with the random seed. Let me fix this test to ensure the card isn't in the player's hand:
++
++---
+diff --git a/.ralph-tui/session.json b/.ralph-tui/session.json
+index a6fca07..91c34d4 100644
+--- a/.ralph-tui/session.json
++++ b/.ralph-tui/session.json
+@@ -3,10 +3,10 @@
+   "sessionId": "e4783755-3905-4470-8efb-6fa82f4e2471",
+   "status": "running",
+   "startedAt": "2026-01-17T18:27:42.045Z",
+-  "updatedAt": "2026-01-17T20:07:32.826Z",
+-  "currentIteration": 15,
++  "updatedAt": "2026-01-17T20:11:16.023Z",
++  "currentIteration": 16,
+   "maxIterations": 10,
+-  "tasksCompleted": 15,
++  "tasksCompleted": 16,
+   "isPaused": false,
+   "agentPlugin": "opencode",
+   "model": "opencode/glm-4.7-free",
+@@ -108,8 +108,8 @@
+       {
+         "id": "US-016",
+         "title": "Implement special cards: Skip and Reverse (server)",
+-        "status": "open",
+-        "completedInSession": false
++        "status": "completed",
++        "completedInSession": true
+       },
+       {
+         "id": "US-017",
+@@ -383,12 +383,22 @@
+       "durationMs": 251471,
+       "startedAt": "2026-01-17T20:03:20.276Z",
+       "endedAt": "2026-01-17T20:07:31.747Z"
++    },
++    {
++      "iteration": 16,
++      "status": "completed",
++      "taskId": "US-016",
++      "taskTitle": "Implement special cards: Skip and Reverse (server)",
++      "taskCompleted": true,
++      "durationMs": 222158,
++      "startedAt": "2026-01-17T20:07:32.799Z",
++      "endedAt": "2026-01-17T20:11:14.957Z"
+     }
+   ],
+   "skippedTaskIds": [],
+   "cwd": "C:\\Users\\mark\\Works\\ccu.vc",
+   "activeTaskIds": [
+-    "US-016"
++    "US-017"
+   ],
+   "subagentPanelVisible": false
+ }
+\ No newline at end of file
+diff --git a/prd.json b/prd.json
+index 07ce535..6e8260a 100644
+--- a/prd.json
++++ b/prd.json
+@@ -246,8 +246,9 @@
+         "quality gate: `bun --filter server run typecheck` exits with code 0"
+       ],
+       "priority": 16,
+-      "passes": false,
+-      "notes": ""
++      "passes": true,
++      "notes": "",
++      "completionNotes": "Completed by agent"
+     },
+     {
+       "id": "US-017",
+@@ -534,6 +535,6 @@
+     }
+   ],
+   "metadata": {
+-    "updatedAt": "2026-01-17T20:07:32.799Z"
++    "updatedAt": "2026-01-17T20:11:16.007Z"
+   }
+ }
+\ No newline at end of file
+diff --git a/server/server.test.ts b/server/server.test.ts
+index 417ac49..be7a1ed 100644
+--- a/server/server.test.ts
++++ b/server/server.test.ts
+@@ -2294,3 +2294,177 @@ describe('Reverse card effect', () => {
+     expect(room.playerOrder[room.currentPlayerIndex]).toBe(playerId1);
+   });
+ });
++
++describe('Draw Two card effect', () => {
++  it('should make next player draw 2 cards and skip their turn in 3-player game', () => {
++    const manager = new RoomManager();
++    const room = manager.createRoom();
++
++    const socketId1 = 'socket1';
++    const playerId1 = 'player1';
++    const player1 = { id: playerId1, name: 'Player 1', isReady: false, secret: 'secret1', connected: true, hand: [], handCount: 0 };
++
++    const socketId2 = 'socket2';
++    const playerId2 = 'player2';
++    const player2 = { id: playerId2, name: 'Player 2', isReady: false, secret: 'secret2', connected: true, hand: [], handCount: 0 };
++
++    const socketId3 = 'socket3';
++    const playerId3 = 'player3';
++    const player3 = { id: playerId3, name: 'Player 3', isReady: false, secret: 'secret3', connected: true, hand: [], handCount: 0 };
++
++    room.addPlayer(socketId1, player1);
++    room.addPlayer(socketId2, player2);
++    room.addPlayer(socketId3, player3);
++
++    room.startGame();
++
++    const topCard = room.discardPile[0];
++    const draw2Card: Card = { color: topCard.color, value: 'draw2' };
++
++    room.players.get(playerId1)!.hand.push(draw2Card);
++
++    const initialHandSize = room.players.get(playerId2)!.hand.length;
++
++    room.playCard(playerId1, draw2Card);
++
++    expect(room.players.get(playerId2)!.hand.length).toBe(initialHandSize + 2);
++    expect(room.currentPlayerIndex).toBe(2);
++    expect(room.playerOrder[room.currentPlayerIndex]).toBe(playerId3);
++  });
++
++  it('should make next player draw 2 cards and skip their turn in 2-player game', () => {
++    const manager = new RoomManager();
++    const room = manager.createRoom();
++
++    const socketId1 = 'socket1';
++    const playerId1 = 'player1';
++    const player1 = { id: playerId1, name: 'Player 1', isReady: false, secret: 'secret1', connected: true, hand: [], handCount: 0 };
++
++    const socketId2 = 'socket2';
++    const playerId2 = 'player2';
++    const player2 = { id: playerId2, name: 'Player 2', isReady: false, secret: 'secret2', connected: true, hand: [], handCount: 0 };
++
++    room.addPlayer(socketId1, player1);
++    room.addPlayer(socketId2, player2);
++
++    room.startGame();
++
++    const topCard = room.discardPile[0];
++    const draw2Card: Card = { color: topCard.color, value: 'draw2' };
++
++    room.players.get(playerId1)!.hand.push(draw2Card);
++
++    const initialHandSize = room.players.get(playerId2)!.hand.length;
++
++    room.playCard(playerId1, draw2Card);
++
++    expect(room.players.get(playerId2)!.hand.length).toBe(initialHandSize + 2);
++    expect(room.currentPlayerIndex).toBe(0);
++    expect(room.playerOrder[room.currentPlayerIndex]).toBe(playerId1);
++  });
++
++  it('should respect direction when drawing cards', () => {
++    const manager = new RoomManager();
++    const room = manager.createRoom();
++
++    const socketId1 = 'socket1';
++    const playerId1 = 'player1';
++    const player1 = { id: playerId1, name: 'Player 1', isReady: false, secret: 'secret1', connected: true, hand: [], handCount: 0 };
++
++    const socketId2 = 'socket2';
++    const playerId2 = 'player2';
++    const player2 = { id: playerId2, name: 'Player 2', isReady: false, secret: 'secret2', connected: true, hand: [], handCount: 0 };
++
++    const socketId3 = 'socket3';
++    const playerId3 = 'player3';
++    const player3 = { id: playerId3, name: 'Player 3', isReady: false, secret: 'secret3', connected: true, hand: [], handCount: 0 };
++
++    room.addPlayer(socketId1, player1);
++    room.addPlayer(socketId2, player2);
++    room.addPlayer(socketId3, player3);
++
++    room.startGame();
++
++    room.reverseDirection();
++
++    const topCard = room.discardPile[0];
++    const draw2Card: Card = { color: topCard.color, value: 'draw2' };
++
++    room.players.get(playerId1)!.hand.push(draw2Card);
++
++    const initialHandSize = room.players.get(playerId3)!.hand.length;
++
++    room.playCard(playerId1, draw2Card);
++
++    expect(room.players.get(playerId3)!.hand.length).toBe(initialHandSize + 2);
++    expect(room.currentPlayerIndex).toBe(1);
++    expect(room.playerOrder[room.currentPlayerIndex]).toBe(playerId2);
++  });
++
++  it('should skip disconnected players and draw for next connected player', () => {
++    const manager = new RoomManager();
++    const room = manager.createRoom();
++
++    const socketId1 = 'socket1';
++    const playerId1 = 'player1';
++    const player1 = { id: playerId1, name: 'Player 1', isReady: false, secret: 'secret1', connected: true, hand: [], handCount: 0 };
++
++    const socketId2 = 'socket2';
++    const playerId2 = 'player2';
++    const player2 = { id: playerId2, name: 'Player 2', isReady: false, secret: 'secret2', connected: true, hand: [], handCount: 0 };
++
++    const socketId3 = 'socket3';
++    const playerId3 = 'player3';
++    const player3 = { id: playerId3, name: 'Player 3', isReady: false, secret: 'secret3', connected: true, hand: [], handCount: 0 };
++
++    room.addPlayer(socketId1, player1);
++    room.addPlayer(socketId2, player2);
++    room.addPlayer(socketId3, player3);
++
++    room.startGame();
++
++    room.markPlayerDisconnected(playerId2);
++
++    const topCard = room.discardPile[0];
++    const draw2Card: Card = { color: topCard.color, value: 'draw2' };
++
++    room.players.get(playerId1)!.hand.push(draw2Card);
++
++    const initialHandSize = room.players.get(playerId3)!.hand.length;
++
++    room.playCard(playerId1, draw2Card);
++
++    expect(room.players.get(playerId3)!.hand.length).toBe(initialHandSize + 2);
++    expect(room.currentPlayerIndex).toBe(0);
++    expect(room.playerOrder[room.currentPlayerIndex]).toBe(playerId1);
++  });
++
++  it('should reduce deck size by 2 when Draw Two is played', () => {
++    const manager = new RoomManager();
++    const room = manager.createRoom();
++
++    const socketId1 = 'socket1';
++    const playerId1 = 'player1';
++    const player1 = { id: playerId1, name: 'Player 1', isReady: false, secret: 'secret1', connected: true, hand: [], handCount: 0 };
++
++    const socketId2 = 'socket2';
++    const playerId2 = 'player2';
++    const player2 = { id: playerId2, name: 'Player 2', isReady: false, secret: 'secret2', connected: true, hand: [], handCount: 0 };
++
++    room.addPlayer(socketId1, player1);
++    room.addPlayer(socketId2, player2);
++
++    room.startGame();
++
++    const topCard = room.discardPile[0];
++    const draw2Card: Card = { color: topCard.color, value: 'draw2' };
++
++    room.players.get(playerId1)!.hand.push(draw2Card);
++
++    const initialDeckSize = room.deck!.size;
++
++    room.playCard(playerId1, draw2Card);
++
++    expect(room.deck!.size).toBe(initialDeckSize - 2);
++  });
++});
+diff --git a/server/src/RoomManager.ts b/server/src/RoomManager.ts
+index 3ee1144..3ccc9db 100644
+--- a/server/src/RoomManager.ts
++++ b/server/src/RoomManager.ts
+@@ -262,6 +262,25 @@ export class Room {
+         this.advanceTurn();
+         this.advanceTurn();
+       }
++    } else if (card.value === 'draw2') {
++      const nextPlayerIndex = this.nextConnectedPlayerIndex();
++      const nextPlayerId = this.playerOrder[nextPlayerIndex];
++      const nextPlayer = this.players.get(nextPlayerId);
++      
++      if (nextPlayer) {
++        for (let i = 0; i < 2; i++) {
++          if (this.deck && !this.deck.isEmpty()) {
++            const drawnCard = this.deck.draw();
++            if (drawnCard) {
++              nextPlayer.hand.push(drawnCard);
++            }
++          }
++        }
++        this.updateState();
++      }
++      
++      this.currentPlayerIndex = nextPlayerIndex;
++      this.advanceTurn();
+     } else {
+       this.advanceTurn();
+     }
+
+[91m[1m| [0m[90m Bash     [0mCommit Draw Two implementation
+
+warning: in the working copy of 'server/server.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'server/src/RoomManager.ts', LF will be replaced by CRLF the next time Git touches it
+[main 5d632b4] Implement Draw Two card effect
+ 2 files changed, 193 insertions(+)
+
+[91m[1m| [0m[90m Bash     [0mVerify all tests pass
+
+bun test v1.3.6 (d530ed99)
+
+server.test.ts:
+gameStateUpdate not received in time, checking room directly
+
+ 75 pass
+ 0 fail
+ 255 expect() calls
+Ran 75 tests across 1 file. [3.29s]
+
+
+[91m[1m| [0m[90m Bash     [0mVerify typecheck passes
+$ tsc --noEmit
+

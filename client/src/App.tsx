@@ -27,6 +27,8 @@ function App() {
   const [socket, setSocket] = useState<Socket<ServerToClientEvents, ClientToServerEvents> | null>(null);
   const [pendingActions, setPendingActions] = useState<Set<string>>(new Set());
   const [gameView, setGameView] = useState<GameView | null>(null);
+  const [showColorPicker, setShowColorPicker] = useState(false);
+  const [pendingWildCard, setPendingWildCard] = useState<Card | null>(null);
 
   useEffect(() => {
     const storedSecret = localStorage.getItem(STORAGE_KEYS.PLAYER_SECRET);
@@ -222,6 +224,12 @@ function App() {
   const handlePlayCard = (card: Card) => {
     if (!socket) return;
     
+    if (card.color === 'wild') {
+      setPendingWildCard(card);
+      setShowColorPicker(true);
+      return;
+    }
+    
     const actionId = generateActionId();
     setPendingActions((prev) => new Set(prev).add(actionId));
     
@@ -230,6 +238,27 @@ function App() {
         setError(response.error || 'Failed to play card');
       }
     });
+  };
+
+  const handleColorSelect = (color: 'red' | 'yellow' | 'green' | 'blue') => {
+    if (!socket || !pendingWildCard) return;
+    
+    const actionId = generateActionId();
+    setPendingActions((prev) => new Set(prev).add(actionId));
+    
+    socket.emit('playCard', actionId, pendingWildCard, (response) => {
+      if (!response.success) {
+        setError(response.error || 'Failed to play card');
+      }
+    }, color);
+    
+    setShowColorPicker(false);
+    setPendingWildCard(null);
+  };
+
+  const handleColorPickerCancel = () => {
+    setShowColorPicker(false);
+    setPendingWildCard(null);
   };
 
   const handleDrawCard = () => {
@@ -282,6 +311,12 @@ function App() {
             <div className="game-area">
               <div className="discard-area">
                 <h2>Discard Pile</h2>
+                {room.activeColor && (
+                  <div className="active-color-indicator">
+                    <span>Active Color: </span>
+                    <span className={`color-badge ${room.activeColor}`}>{room.activeColor}</span>
+                  </div>
+                )}
                 <div className={`card-display color-${topCard.color}`}>
                   <span className="card-value">{topCard.value}</span>
                 </div>
@@ -347,6 +382,21 @@ function App() {
             Leave Room
           </button>
         </div>
+
+        {showColorPicker && (
+          <div className="color-picker-overlay">
+            <div className="color-picker-modal">
+              <h3>Choose a Color</h3>
+              <div className="color-options">
+                <button className="color-btn red" onClick={() => handleColorSelect('red')}>Red</button>
+                <button className="color-btn yellow" onClick={() => handleColorSelect('yellow')}>Yellow</button>
+                <button className="color-btn green" onClick={() => handleColorSelect('green')}>Green</button>
+                <button className="color-btn blue" onClick={() => handleColorSelect('blue')}>Blue</button>
+              </div>
+              <button className="cancel-btn" onClick={handleColorPickerCancel}>Cancel</button>
+            </div>
+          </div>
+        )}
       </div>
     );
   }

@@ -16,6 +16,7 @@ export class Room {
   currentPlayerIndex: number;
   direction: 1 | -1;
   playerOrder: string[];
+  activeColor?: 'red' | 'yellow' | 'green' | 'blue';
 
   constructor(code: RoomCode) {
     this.code = code;
@@ -82,6 +83,7 @@ export class Room {
     this.state.discardPile = this.discardPile;
     this.state.currentPlayerIndex = this.state.gameStatus === 'playing' ? this.currentPlayerIndex : undefined;
     this.state.direction = this.state.gameStatus === 'playing' ? this.direction : undefined;
+    this.state.activeColor = this.activeColor;
   }
 
   startGame(rng?: () => number): void {
@@ -210,7 +212,7 @@ export class Room {
     this.updateState();
   }
 
-  playCard(playerId: string, card: Card): void {
+  playCard(playerId: string, card: Card, chosenColor?: 'red' | 'yellow' | 'green' | 'blue'): void {
     if (this.state.gameStatus !== 'playing') {
       throw new Error('Game is not in playing state');
     }
@@ -238,9 +240,21 @@ export class Room {
       throw new Error('No top card in discard pile');
     }
 
+    if (card.color === 'wild') {
+      if (!chosenColor) {
+        throw new Error('Must choose a color when playing a Wild card');
+      }
+      if (!['red', 'yellow', 'green', 'blue'].includes(chosenColor)) {
+        throw new Error('Invalid color choice');
+      }
+    } else if (chosenColor) {
+      throw new Error('Cannot choose color for non-Wild cards');
+    }
+
+    const effectiveColor = this.activeColor || topCard.color;
     const isMatch =
       card.color === 'wild' ||
-      card.color === topCard.color ||
+      card.color === effectiveColor ||
       card.value === topCard.value;
 
     if (!isMatch) {
@@ -249,6 +263,13 @@ export class Room {
 
     player.hand.splice(cardIndex, 1);
     this.discardPile.push(card);
+
+    if (card.color === 'wild') {
+      this.activeColor = chosenColor;
+    } else {
+      this.activeColor = undefined;
+    }
+
     this.updateState();
 
     if (card.value === 'skip') {

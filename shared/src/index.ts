@@ -8,6 +8,7 @@ export type RoomState = {
   discardPile?: Card[];
   currentPlayerIndex?: number;
   direction?: 1 | -1;
+  activeColor?: 'red' | 'yellow' | 'green' | 'blue';
   gameEndedReason?: string;
 };
 
@@ -50,7 +51,7 @@ export type ClientToServerEvents = {
   updatePlayer: (data: Partial<PlayerPrivate>) => void;
   playerReady: () => void;
   start_game: (actionId: string, callback: (response: { success: boolean; error?: string }) => void) => void;
-  playCard: (actionId: string, card: Card, callback: (response: { success: boolean; error?: string }) => void) => void;
+  playCard: (actionId: string, card: Card, callback: (response: { success: boolean; error?: string }) => void, chosenColor?: 'red' | 'yellow' | 'green' | 'blue') => void;
   drawCard: (actionId: string, callback: (response: { success: boolean; error?: string }) => void) => void;
 };
 

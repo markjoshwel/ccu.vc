@@ -3,10 +3,10 @@
   "sessionId": "e4783755-3905-4470-8efb-6fa82f4e2471",
   "status": "running",
   "startedAt": "2026-01-17T18:27:42.045Z",
-  "updatedAt": "2026-01-17T20:07:32.826Z",
-  "currentIteration": 15,
+  "updatedAt": "2026-01-17T20:13:29.165Z",
+  "currentIteration": 17,
   "maxIterations": 10,
-  "tasksCompleted": 15,
+  "tasksCompleted": 17,
   "isPaused": false,
   "agentPlugin": "opencode",
   "model": "opencode/glm-4.7-free",
@@ -108,14 +108,14 @@
       {
         "id": "US-016",
         "title": "Implement special cards: Skip and Reverse (server)",
-        "status": "open",
-        "completedInSession": false
+        "status": "completed",
+        "completedInSession": true
       },
       {
         "id": "US-017",
         "title": "Implement special cards: Draw Two effect (server)",
-        "status": "open",
-        "completedInSession": false
+        "status": "completed",
+        "completedInSession": true
       },
       {
         "id": "US-018",
@@ -383,12 +383,32 @@
       "durationMs": 251471,
       "startedAt": "2026-01-17T20:03:20.276Z",
       "endedAt": "2026-01-17T20:07:31.747Z"
+    },
+    {
+      "iteration": 16,
+      "status": "completed",
+      "taskId": "US-016",
+      "taskTitle": "Implement special cards: Skip and Reverse (server)",
+      "taskCompleted": true,
+      "durationMs": 222158,
+      "startedAt": "2026-01-17T20:07:32.799Z",
+      "endedAt": "2026-01-17T20:11:14.957Z"
+    },
+    {
+      "iteration": 17,
+      "status": "completed",
+      "taskId": "US-017",
+      "taskTitle": "Implement special cards: Draw Two effect (server)",
+      "taskCompleted": true,
+      "durationMs": 132081,
+      "startedAt": "2026-01-17T20:11:16.007Z",
+      "endedAt": "2026-01-17T20:13:28.088Z"
     }
   ],
   "skippedTaskIds": [],
   "cwd": "C:\\Users\\mark\\Works\\ccu.vc",
   "activeTaskIds": [
-    "US-016"
+    "US-018"
   ],
   "subagentPanelVisible": false
 }
