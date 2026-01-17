@@ -1,0 +1,17 @@
+{
+  "name": "ccu-vc",
+  "version": "0.0.1",
+  "workspaces": [
+    "client",
+    "server",
+    "shared"
+  ],
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "scripts": {
+    "install:all": "bun install",
+    "build": "bun run --filter=\"*\" build",
+    "typecheck": "bun run --filter=\"*\" typecheck"
+  }
+}

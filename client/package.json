@@ -1,0 +1,15 @@
+{
+  "name": "client",
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "build": "tsc --outDir dist",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "shared": "workspace:*"
+  }
+}
