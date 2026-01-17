@@ -342,9 +342,9 @@ describe('Socket Handlers - Reconnect', () => {
     });
     
     // Track playerLeft event on host
-    let leftPlayerId: string | null = null;
+    const receivedPlayerIds: string[] = [];
     host.on('playerLeft', (playerId) => {
-      leftPlayerId = playerId;
+      receivedPlayerIds.push(playerId);
     });
     
     // Player 1 disconnects
@@ -353,7 +353,8 @@ describe('Socket Handlers - Reconnect', () => {
     clients = clients.filter(c => c !== player1);
     await new Promise(r => setTimeout(r, 150)); // Wait for disconnect
     
-    // Host should have received playerLeft event
-    expect(leftPlayerId).toBe(player1Id);
+    // Host should have received playerLeft event with correct ID
+    expect(receivedPlayerIds.length).toBe(1);
+    expect(receivedPlayerIds[0]).toBe(player1Id);
   });
 });
