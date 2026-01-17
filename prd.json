@@ -231,8 +231,9 @@
         "quality gate: `bun --filter client run typecheck` exits with code 0"
       ],
       "priority": 15,
-      "passes": false,
-      "notes": "No special card effects required yet."
+      "passes": true,
+      "notes": "No special card effects required yet.",
+      "completionNotes": "Completed by agent"
     },
     {
       "id": "US-016",
@@ -533,6 +534,6 @@
     }
   ],
   "metadata": {
-    "updatedAt": "2026-01-17T20:03:20.277Z"
+    "updatedAt": "2026-01-17T20:07:32.799Z"
   }
 }

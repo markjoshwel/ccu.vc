@@ -250,6 +250,21 @@ export class Room {
     player.hand.splice(cardIndex, 1);
     this.discardPile.push(card);
     this.updateState();
+
+    if (card.value === 'skip') {
+      this.advanceTurn();
+      this.advanceTurn();
+    } else if (card.value === 'reverse') {
+      if (this.playerOrder.length >= 3) {
+        this.reverseDirection();
+        this.advanceTurn();
+      } else {
+        this.advanceTurn();
+        this.advanceTurn();
+      }
+    } else {
+      this.advanceTurn();
+    }
   }
 
   drawCard(playerId: string): void {

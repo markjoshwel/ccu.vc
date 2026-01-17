@@ -149,3 +149,15 @@ All tests pass and typecheck succeeds. Let me commit the changes:
 I'll implement US-014 to add actionId-based actionAck responses and pending UX hooks. Let me start by exploring the codebase structure.
 
 ---
+## ✓ Iteration 15 - US-015: Create basic gameplay UI: show hand, discard top card, and current turn
+*2026-01-17T20:07:31.766Z (251s)*
+
+**Status:** Completed
+
+**Notes:**
+I'll implement US-015 to create the basic gameplay UI. Let me start by exploring the codebase structure.
+I'll implement the basic gameplay UI to show hand, discard top card, and current turn. Let me start by updating the shared types to add playCard and drawCard events.
+Let me rebuild the shared package to update the types, then fix the server:
+All acceptance criteria have been met. Let me commit the changes.
+
+---
