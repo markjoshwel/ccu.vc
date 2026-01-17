@@ -6,10 +6,14 @@ import type {
   CreateRoomResponse,
   JoinRoomPayload,
   JoinRoomResponse,
-  PlayerPrivate
+  PlayerPrivate,
+  PlayCardPayload,
+  DrawCardPayload,
+  ActionPayload
 } from '@ccu/shared';
 import { RoomManager, roomManager as defaultRoomManager, generatePlayerId, generatePlayerSecret } from './RoomManager';
 import { toGameView } from './gameView';
+import { startGame, playCard, drawCard } from './gameEngine';
 
 // Validate display name: 1-24 chars after trimming, no control characters
 function validateDisplayName(name: string): { valid: boolean; error?: string } {
@@ -189,6 +193,84 @@ export function setupSocketHandlers(
       broadcastGameState(io, room);
 
       console.log(`Player ${player.displayName} (${playerId}) joined room ${payload.roomCode}`);
+    });
+
+    // Start game handler
+    socket.on('startGame', (payload: ActionPayload, callback) => {
+      const info = socketRoomMap.get(socket.id);
+      if (!info) {
+        callback({ actionId: payload.actionId, ok: false, errorCode: 'NOT_IN_ROOM' });
+        return;
+      }
+
+      const room = roomManagerInstance.getRoom(info.roomCode);
+      if (!room) {
+        callback({ actionId: payload.actionId, ok: false, errorCode: 'ROOM_NOT_FOUND' });
+        return;
+      }
+
+      // Only host can start game
+      if (room.hostPlayerId !== info.playerId) {
+        callback({ actionId: payload.actionId, ok: false, errorCode: 'NOT_HOST' });
+        return;
+      }
+
+      try {
+        startGame(room);
+        callback({ actionId: payload.actionId, ok: true });
+        broadcastGameState(io, room);
+        console.log(`Game started in room ${info.roomCode}`);
+      } catch (error) {
+        callback({ 
+          actionId: payload.actionId, 
+          ok: false, 
+          errorCode: error instanceof Error ? error.message : 'START_FAILED' 
+        });
+      }
+    });
+
+    // Play card handler
+    socket.on('playCard', (payload: PlayCardPayload, callback) => {
+      const info = socketRoomMap.get(socket.id);
+      if (!info) {
+        callback({ actionId: payload.actionId, ok: false, errorCode: 'NOT_IN_ROOM' });
+        return;
+      }
+
+      const room = roomManagerInstance.getRoom(info.roomCode);
+      if (!room) {
+        callback({ actionId: payload.actionId, ok: false, errorCode: 'ROOM_NOT_FOUND' });
+        return;
+      }
+
+      const result = playCard(room, info.playerId, payload.cardId, payload.chosenColor);
+      callback({ actionId: payload.actionId, ok: result.ok, errorCode: result.errorCode });
+      
+      if (result.ok) {
+        broadcastGameState(io, room);
+      }
+    });
+
+    // Draw card handler
+    socket.on('drawCard', (payload: DrawCardPayload, callback) => {
+      const info = socketRoomMap.get(socket.id);
+      if (!info) {
+        callback({ actionId: payload.actionId, ok: false, errorCode: 'NOT_IN_ROOM' });
+        return;
+      }
+
+      const room = roomManagerInstance.getRoom(info.roomCode);
+      if (!room) {
+        callback({ actionId: payload.actionId, ok: false, errorCode: 'ROOM_NOT_FOUND' });
+        return;
+      }
+
+      const result = drawCard(room, info.playerId);
+      callback({ actionId: payload.actionId, ok: result.ok, errorCode: result.errorCode });
+      
+      if (result.ok) {
+        broadcastGameState(io, room);
+      }
     });
 
     // Handle disconnect
