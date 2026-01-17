@@ -146,6 +146,9 @@ h1 {
   padding: 0.5rem;
   border: 1px solid #ddd;
   border-bottom: none;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .players-list li:first-child {
@@ -167,6 +170,42 @@ h1 {
 .players-list li.disconnected {
   opacity: 0.5;
   background-color: #f8d7da;
+}
+
+.player-info {
+  flex: 1;
+}
+
+.clock {
+  font-family: monospace;
+  font-size: 1rem;
+  padding: 0.25rem 0.5rem;
+  background-color: #f8f9fa;
+  border-radius: 4px;
+  margin-left: 0.5rem;
+}
+
+.clock.active {
+  background-color: #28a745;
+  color: white;
+  font-weight: bold;
+}
+
+.clock.low {
+  background-color: #dc3545;
+  color: white;
+  animation: pulse 0.5s ease-in-out infinite alternate;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .clock.low {
+    animation: none;
+  }
+}
+
+@keyframes pulse {
+  from { opacity: 1; }
+  to { opacity: 0.6; }
 }
 
 .lobby-info {

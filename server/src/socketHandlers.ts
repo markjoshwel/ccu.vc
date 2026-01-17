@@ -9,11 +9,13 @@ import type {
   PlayerPrivate,
   PlayCardPayload,
   DrawCardPayload,
-  ActionPayload
+  ActionPayload,
+  ClockSync
 } from '@ccu/shared';
 import { RoomManager, roomManager as defaultRoomManager, generatePlayerId, generatePlayerSecret } from './RoomManager';
 import { toGameView } from './gameView';
 import { startGame, playCard, drawCard } from './gameEngine';
+import { startClockSync, stopClockSync, handleTimeout, applyIncrement } from './clock';
 
 // Validate display name: 1-24 chars after trimming, no control characters
 function validateDisplayName(name: string): { valid: boolean; error?: string } {
@@ -219,6 +221,20 @@ export function setupSocketHandlers(
         startGame(room);
         callback({ actionId: payload.actionId, ok: true });
         broadcastGameState(io, room);
+        
+        // Start clock sync
+        startClockSync(
+          room,
+          (sync: ClockSync) => io.to(room.roomCode).emit('clockSync', sync),
+          (playerId: string) => {
+            const result = handleTimeout(room, playerId);
+            if (result.ok) {
+              io.to(room.roomCode).emit('timeOut', { playerId, policy: 'autoDrawAndSkip' });
+              broadcastGameState(io, room);
+            }
+          }
+        );
+        
         console.log(`Game started in room ${info.roomCode}`);
       } catch (error) {
         callback({ 
@@ -243,10 +259,15 @@ export function setupSocketHandlers(
         return;
       }
 
+      // Apply time increment before action (for player who just played)
+      const previousPlayer = info.playerId;
+      
       const result = playCard(room, info.playerId, payload.cardId, payload.chosenColor);
       callback({ actionId: payload.actionId, ok: result.ok, errorCode: result.errorCode });
       
       if (result.ok) {
+        // Apply time increment to the player who just played
+        applyIncrement(room, previousPlayer);
         broadcastGameState(io, room);
       }
     });
@@ -265,10 +286,15 @@ export function setupSocketHandlers(
         return;
       }
 
+      // Apply time increment before action (for player who just drew)
+      const previousPlayer = info.playerId;
+      
       const result = drawCard(room, info.playerId);
       callback({ actionId: payload.actionId, ok: result.ok, errorCode: result.errorCode });
       
       if (result.ok) {
+        // Apply time increment to the player who just drew
+        applyIncrement(room, previousPlayer);
         broadcastGameState(io, room);
       }
     });
@@ -289,6 +315,8 @@ export function setupSocketHandlers(
 
           // Check if room should be deleted
           if (roomManagerInstance.checkAndCleanupRoom(roomCode)) {
+            // Stop clock and delete room
+            stopClockSync(roomCode);
             console.log(`Room ${roomCode} deleted (no connected players)`);
           } else {
             // Broadcast updated game state

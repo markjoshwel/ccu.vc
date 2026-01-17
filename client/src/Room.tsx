@@ -1,5 +1,5 @@
-import { useEffect, useCallback, useState } from 'react';
-import type { GameView, CardWithId, CardColor } from '@ccu/shared';
+import { useEffect, useCallback, useState, useRef, useMemo } from 'react';
+import type { GameView, CardWithId, CardColor, ClockSync } from '@ccu/shared';
 import { getSocket } from './socket';
 import { StoredSession, clearSession } from './storage';
 
@@ -17,6 +17,58 @@ const colorMap: Record<CardColor, string> = {
   green: '#2a9d8f',
   blue: '#457b9d'
 };
+
+// Format time in mm:ss
+function formatTime(ms: number): string {
+  const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+}
+
+// Clock display component with interpolation
+function ClockDisplay({ 
+  timeRemainingMs, 
+  isActive, 
+  serverTimestamp 
+}: { 
+  timeRemainingMs: number; 
+  isActive: boolean;
+  serverTimestamp: number | null;
+}) {
+  const [displayTime, setDisplayTime] = useState(timeRemainingMs);
+  const lastUpdateRef = useRef<number>(Date.now());
+  const prefersReducedMotion = useMemo(
+    () => window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+    []
+  );
+
+  useEffect(() => {
+    // Update base time when receiving new data
+    setDisplayTime(timeRemainingMs);
+    lastUpdateRef.current = serverTimestamp || Date.now();
+  }, [timeRemainingMs, serverTimestamp]);
+
+  useEffect(() => {
+    if (!isActive || prefersReducedMotion) return;
+
+    // Interpolate the clock locally
+    const interval = setInterval(() => {
+      const elapsed = Date.now() - lastUpdateRef.current;
+      setDisplayTime(Math.max(0, timeRemainingMs - elapsed));
+    }, 100); // Update 10 times per second
+
+    return () => clearInterval(interval);
+  }, [isActive, timeRemainingMs, prefersReducedMotion]);
+
+  const isLow = displayTime < 10000; // Less than 10 seconds
+
+  return (
+    <span className={`clock ${isActive ? 'active' : ''} ${isLow ? 'low' : ''}`}>
+      {formatTime(displayTime)}
+    </span>
+  );
+}
 
 function CardComponent({ card, onClick, disabled }: { 
   card: CardWithId; 
@@ -91,11 +143,20 @@ function ColorPicker({ onSelect, onCancel }: {
 export default function Room({ session, gameView, onGameViewUpdate, onLeaveRoom }: RoomProps) {
   const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [colorPickerCard, setColorPickerCard] = useState<CardWithId | null>(null);
+  const [clockSync, setClockSync] = useState<ClockSync | null>(null);
 
   useEffect(() => {
     const socket = getSocket();
     
     socket.on('gameStateUpdate', onGameViewUpdate);
+    
+    socket.on('clockSync', (sync: ClockSync) => {
+      setClockSync(sync);
+    });
+    
+    socket.on('timeOut', (event) => {
+      console.log('Player timed out:', event.playerId, 'Policy:', event.policy);
+    });
     
     socket.on('error', (message) => {
       console.error('Socket error:', message);
@@ -103,6 +164,8 @@ export default function Room({ session, gameView, onGameViewUpdate, onLeaveRoom 
 
     return () => {
       socket.off('gameStateUpdate', onGameViewUpdate);
+      socket.off('clockSync');
+      socket.off('timeOut');
       socket.off('error');
     };
   }, [onGameViewUpdate]);
@@ -111,6 +174,17 @@ export default function Room({ session, gameView, onGameViewUpdate, onLeaveRoom 
     clearSession();
     onLeaveRoom();
   };
+
+  // Get player's time from clock sync or game view
+  const getPlayerTime = useCallback((playerId: string) => {
+    if (clockSync) {
+      const playerClock = clockSync.players.find(p => p.playerId === playerId);
+      if (playerClock) return playerClock.timeRemainingMs;
+    }
+    if (playerId === gameView.myPlayerId) return gameView.myTimeRemainingMs;
+    const opponent = gameView.opponents.find(o => o.playerId === playerId);
+    return opponent?.timeRemainingMs || 0;
+  }, [clockSync, gameView]);
 
   const handleStartGame = useCallback(() => {
     const socket = getSocket();
@@ -281,17 +355,35 @@ export default function Room({ session, gameView, onGameViewUpdate, onLeaveRoom 
         <h3>Players</h3>
         <ul>
           <li className={gameView.currentPlayerId === gameView.myPlayerId ? 'active' : ''}>
-            You ({gameView.myHand.length} cards)
-            {gameView.hostPlayerId === gameView.myPlayerId && ' 👑'}
+            <span className="player-info">
+              You ({gameView.myHand.length} cards)
+              {gameView.hostPlayerId === gameView.myPlayerId && ' 👑'}
+            </span>
+            {gameView.phase === 'playing' && (
+              <ClockDisplay 
+                timeRemainingMs={getPlayerTime(gameView.myPlayerId)}
+                isActive={gameView.currentPlayerId === gameView.myPlayerId}
+                serverTimestamp={clockSync?.serverTimestamp || null}
+              />
+            )}
           </li>
           {gameView.opponents.map(opponent => (
             <li 
               key={opponent.playerId}
               className={`${gameView.currentPlayerId === opponent.playerId ? 'active' : ''} ${!opponent.connected ? 'disconnected' : ''}`}
             >
-              {opponent.displayName} ({opponent.handCount} cards)
-              {!opponent.connected && ' [Disconnected]'}
-              {gameView.hostPlayerId === opponent.playerId && ' 👑'}
+              <span className="player-info">
+                {opponent.displayName} ({opponent.handCount} cards)
+                {!opponent.connected && ' [Disconnected]'}
+                {gameView.hostPlayerId === opponent.playerId && ' 👑'}
+              </span>
+              {gameView.phase === 'playing' && (
+                <ClockDisplay 
+                  timeRemainingMs={getPlayerTime(opponent.playerId)}
+                  isActive={gameView.currentPlayerId === opponent.playerId}
+                  serverTimestamp={clockSync?.serverTimestamp || null}
+                />
+              )}
             </li>
           ))}
         </ul>
