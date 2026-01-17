@@ -1,4 +1,5 @@
 import type { RoomState, PlayerPublic, PlayerPrivate, Card, GameView } from 'shared';
+import { Deck } from './Deck';
 
 type RoomCode = string;
 
@@ -10,6 +11,8 @@ export class Room {
   playerSocketMap: Map<string, string>;
   players: Map<string, StoredPlayer>;
   state: RoomState;
+  deck?: Deck;
+  discardPile: Card[];
 
   constructor(code: RoomCode) {
     this.code = code;
@@ -23,6 +26,7 @@ export class Room {
       gameStatus: 'waiting',
       createdAt: Date.now()
     };
+    this.discardPile = [];
   }
 
   addPlayer(socketId: string, player: StoredPlayer): void {
@@ -68,6 +72,49 @@ export class Room {
       connected: p.connected,
       handCount: p.hand.length
     }));
+    this.state.deckSize = this.deck?.size || 0;
+    this.state.discardPile = this.discardPile;
+  }
+
+  startGame(rng?: () => number): void {
+    if (this.state.gameStatus !== 'waiting') {
+      throw new Error('Game has already started');
+    }
+
+    if (this.players.size < 2) {
+      throw new Error('At least 2 players required to start');
+    }
+
+    this.deck = Deck.createStandardDeck();
+    this.deck.shuffle(rng);
+
+    const initialHandSize = 7;
+
+    for (const [playerId, player] of this.players) {
+      player.hand = [];
+      for (let i = 0; i < initialHandSize; i++) {
+        const card = this.deck.draw();
+        if (card) {
+          player.hand.push(card);
+        }
+      }
+    }
+
+    let initialCard = this.deck.draw();
+    while (initialCard && initialCard.color === 'wild' && initialCard.value === 'wild_draw4') {
+      this.deck.cards.unshift(initialCard);
+      this.deck.shuffle(rng);
+      initialCard = this.deck.draw();
+    }
+
+    if (initialCard) {
+      this.discardPile = [initialCard];
+    } else {
+      throw new Error('Failed to draw initial card');
+    }
+
+    this.state.gameStatus = 'playing';
+    this.updateState();
   }
 
   toGameView(playerId: string): GameView {

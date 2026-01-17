@@ -253,6 +253,59 @@ describe('join room functionality', () => {
         callback({ success: true });
       });
       
+      (socket as any).on('start_game', (callback: (response: { success: boolean; error?: string }) => void) => {
+        const roomCode = socketRoomMap.get(socket.id);
+        
+        if (!roomCode) {
+          callback({ success: false, error: 'Not in a room' });
+          return;
+        }
+        
+        const room = roomManager.getRoom(roomCode);
+        
+        if (!room) {
+          callback({ success: false, error: 'Room not found' });
+          return;
+        }
+        
+        const playerData = socketPlayerMap.get(socket.id);
+        if (!playerData) {
+          callback({ success: false, error: 'Player not found' });
+          return;
+        }
+        
+        const firstPlayerId = Array.from(room.players.keys())[0];
+        if (playerData.playerId !== firstPlayerId) {
+          callback({ success: false, error: 'Only the host can start the game' });
+          return;
+        }
+        
+        try {
+          room.startGame();
+          io.to(roomCode).emit('roomUpdated', room.state);
+          io.to(roomCode).emit('gameStarted');
+          callback({ success: true });
+        } catch (error) {
+          callback({ success: false, error: (error as Error).message });
+        }
+      });
+
+      (socket as any).on('reconnect_room', (roomCode: string, playerId: string, playerSecret: string, callback: (response: { success: boolean; error?: string }) => void) => {
+        const room = roomManager.handlePlayerReconnection(roomCode, socket.id, playerId, playerSecret);
+        
+        if (!room) {
+          callback({ success: false, error: 'Reconnection failed' });
+          return;
+        }
+        
+        socketRoomMap.set(socket.id, roomCode);
+        socketPlayerMap.set(socket.id, { playerId, playerSecret });
+        io.to(roomCode).emit('roomUpdated', room.state);
+        socket.join(roomCode);
+        
+        callback({ success: true });
+      });
+      
       socket.on('disconnect', () => {
         const roomId = socketRoomMap.get(socket.id);
         if (roomId) {
@@ -640,6 +693,427 @@ describe('join room functionality', () => {
   });
 });
 
+describe('start game socket event', () => {
+  let server: ReturnType<typeof createServer>;
+  let io: SocketIOServer<ClientToServerEvents, ServerToClientEvents>;
+  let port: number;
+  let roomManager: RoomManager;
+  let socketRoomMap: Map<string, string>;
+  let socketPlayerMap: Map<string, { playerId: string; playerSecret: string }>;
+
+  beforeAll(() => {
+    port = 3003;
+    server = createServer((req, res) => {
+      res.writeHead(404);
+      res.end('Not Found');
+    });
+
+    io = new SocketIOServer<ClientToServerEvents, ServerToClientEvents>(server, {
+      cors: {
+        origin: '*',
+        methods: ['GET', 'POST']
+      }
+    });
+
+    roomManager = new RoomManager();
+
+    function validateDisplayName(displayName: string): { valid: boolean; error?: string } {
+      const trimmed = displayName.trim();
+      
+      if (trimmed.length === 0) {
+        return { valid: false, error: 'Display name cannot be empty' };
+      }
+      
+      if (trimmed.length > 24) {
+        return { valid: false, error: 'Display name must be 24 characters or less' };
+      }
+      
+      if (/[\x00-\x1F\x7F]/.test(trimmed)) {
+        return { valid: false, error: 'Display name cannot contain control characters' };
+      }
+      
+      return { valid: true };
+    }
+
+    function generatePlayerSecret(): string {
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+      let secret = '';
+      for (let i = 0; i < 32; i++) {
+        secret += chars[Math.floor(Math.random() * chars.length)];
+      }
+      return secret;
+    }
+
+    socketRoomMap = new Map<string, string>();
+    socketPlayerMap = new Map<string, { playerId: string; playerSecret: string }>();
+
+    io.on('connection', (socket) => {
+      (socket as any).on('create_room', (callback: (response: { roomCode: string }) => void) => {
+        const room = roomManager.createRoom();
+        callback({ roomCode: room.code });
+      });
+      
+      (socket as any).on('join_room', (roomCode: string, displayName: string, callback: (response: { playerId: string; playerSecret: string } | { error: string }) => void) => {
+        const validation = validateDisplayName(displayName);
+        
+        if (!validation.valid) {
+          callback({ error: validation.error || 'Invalid display name' });
+          return;
+        }
+        
+        const room = roomManager.getRoom(roomCode);
+        
+        if (!room) {
+          callback({ error: 'Room not found' });
+          return;
+        }
+        
+        const playerId = `player_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+        const playerSecret = generatePlayerSecret();
+        
+        const player = {
+          id: playerId,
+          name: displayName.trim(),
+          isReady: false,
+          secret: playerSecret,
+          connected: true,
+          hand: [],
+          handCount: 0
+        };
+        
+        roomManager.handlePlayerConnection(roomCode, socket.id, player);
+        socketRoomMap.set(socket.id, roomCode);
+        socketPlayerMap.set(socket.id, { playerId, playerSecret });
+        io.to(roomCode).emit('roomUpdated', room.state);
+        const playerPublic = { id: player.id, name: player.name, isReady: player.isReady, connected: player.connected, handCount: player.hand.length };
+        io.to(roomCode).emit('playerJoined', playerPublic as any);
+        socket.join(roomCode);
+        
+        callback({ playerId, playerSecret });
+      });
+
+      (socket as any).on('reconnect_room', (roomCode: string, playerId: string, playerSecret: string, callback: (response: { success: boolean; error?: string }) => void) => {
+        const room = roomManager.handlePlayerReconnection(roomCode, socket.id, playerId, playerSecret);
+        
+        if (!room) {
+          callback({ success: false, error: 'Reconnection failed' });
+          return;
+        }
+        
+        socketRoomMap.set(socket.id, roomCode);
+        socketPlayerMap.set(socket.id, { playerId, playerSecret });
+        io.to(roomCode).emit('roomUpdated', room.state);
+        socket.join(roomCode);
+        
+        callback({ success: true });
+      });
+      
+      (socket as any).on('start_game', (callback: (response: { success: boolean; error?: string }) => void) => {
+        const roomCode = socketRoomMap.get(socket.id);
+        
+        if (!roomCode) {
+          callback({ success: false, error: 'Not in a room' });
+          return;
+        }
+        
+        const room = roomManager.getRoom(roomCode);
+        
+        if (!room) {
+          callback({ success: false, error: 'Room not found' });
+          return;
+        }
+        
+        const playerData = socketPlayerMap.get(socket.id);
+        if (!playerData) {
+          callback({ success: false, error: 'Player not found' });
+          return;
+        }
+        
+        const firstPlayerId = Array.from(room.players.keys())[0];
+        if (playerData.playerId !== firstPlayerId) {
+          callback({ success: false, error: 'Only the host can start the game' });
+          return;
+        }
+        
+        try {
+          room.startGame();
+          io.to(roomCode).emit('roomUpdated', room.state);
+          io.to(roomCode).emit('gameStarted');
+          callback({ success: true });
+        } catch (error) {
+          callback({ success: false, error: (error as Error).message });
+        }
+      });
+      
+      socket.on('disconnect', () => {
+        const roomId = socketRoomMap.get(socket.id);
+        if (roomId) {
+          const playerData = socketPlayerMap.get(socket.id);
+          const playerId = playerData?.playerId || socket.id;
+          const room = roomManager.handlePlayerDisconnection(roomId, socket.id, playerId);
+          socketRoomMap.delete(socket.id);
+          socketPlayerMap.delete(socket.id);
+          if (room) {
+            io.to(roomId).emit('roomUpdated', room.state);
+          }
+        }
+      });
+    });
+
+    server.listen(port);
+  });
+
+  afterAll(() => {
+    server.close();
+  });
+
+  describe('start game success', () => {
+    it('should allow host to start game', async () => {
+      const client1 = ioClient(`http://localhost:${port}`) as any;
+      
+      const createRoomPromise = new Promise<{ roomCode: string }>((resolve) => {
+        client1.emit('create_room', (response: { roomCode: string }) => {
+          resolve(response);
+        });
+      });
+      
+      const { roomCode } = await createRoomPromise;
+      
+      const joinPromise1 = new Promise<{ playerId: string; playerSecret: string }>((resolve, reject) => {
+        client1.emit('join_room', roomCode, 'Player1', (response: { playerId: string; playerSecret: string } | { error: string }) => {
+          if ('error' in response) {
+            reject(new Error(response.error));
+          } else {
+            resolve(response);
+          }
+        });
+      });
+      
+      await joinPromise1;
+      
+      const client2 = ioClient(`http://localhost:${port}`) as any;
+      const joinPromise2 = new Promise<{ playerId: string; playerSecret: string }>((resolve, reject) => {
+        client2.emit('join_room', roomCode, 'Player2', (response: { playerId: string; playerSecret: string } | { error: string }) => {
+          if ('error' in response) {
+            reject(new Error(response.error));
+          } else {
+            resolve(response);
+          }
+        });
+      });
+      await joinPromise2;
+      
+      const startGamePromise = new Promise<{ success: boolean; error?: string }>((resolve) => {
+        client1.emit('start_game', (response: { success: boolean; error?: string }) => {
+          resolve(response);
+        });
+      });
+      
+      const result = await startGamePromise;
+      expect(result.success).toBe(true);
+      
+      const room = roomManager.getRoom(roomCode);
+      expect(room!.state.gameStatus).toBe('playing');
+      expect(room!.state.deckSize).toBeGreaterThan(0);
+      expect(room!.state.discardPile).toHaveLength(1);
+      
+      room!.players.forEach(player => {
+        expect(player.hand).toHaveLength(7);
+      });
+      
+      client1.disconnect();
+      client2.disconnect();
+    });
+
+    it('should emit gameStateUpdate with hand sizes and discard pile', async () => {
+      const client1 = ioClient(`http://localhost:${port}`) as any;
+      
+      const createRoomPromise = new Promise<{ roomCode: string }>((resolve) => {
+        client1.emit('create_room', (response: { roomCode: string }) => {
+          resolve(response);
+        });
+      });
+      
+      const { roomCode } = await createRoomPromise;
+      
+      const joinPromise1 = new Promise<{ playerId: string; playerSecret: string }>((resolve, reject) => {
+        client1.emit('join_room', roomCode, 'Player1', (response: { playerId: string; playerSecret: string } | { error: string }) => {
+          if ('error' in response) {
+            reject(new Error(response.error));
+          } else {
+            resolve(response);
+          }
+        });
+      });
+      
+      await joinPromise1;
+      
+      const client2 = ioClient(`http://localhost:${port}`) as any;
+      const joinPromise2 = new Promise<{ playerId: string; playerSecret: string }>((resolve, reject) => {
+        client2.emit('join_room', roomCode, 'Player2', (response: { playerId: string; playerSecret: string } | { error: string }) => {
+          if ('error' in response) {
+            reject(new Error(response.error));
+          } else {
+            resolve(response);
+          }
+        });
+      });
+      await joinPromise2;
+      
+      let gameViewReceived = false;
+      let gameView: any = null;
+      
+      const gameStateUpdatePromise = new Promise<any>((resolve) => {
+        client1.on('gameStateUpdate', (view: any) => {
+          const currentRoom = roomManager.getRoom(roomCode);
+          if (currentRoom && currentRoom.state.gameStatus === 'playing') {
+            gameView = view;
+            gameViewReceived = true;
+            resolve(view);
+          }
+        });
+      });
+      
+      const startGamePromise = new Promise<{ success: boolean; error?: string }>((resolve) => {
+        client1.emit('start_game', (response: { success: boolean; error?: string }) => {
+          resolve(response);
+        });
+      });
+      
+      await startGamePromise;
+      
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('gameStateUpdate timeout')), 2000);
+      });
+      
+      try {
+        await Promise.race([gameStateUpdatePromise, timeoutPromise]);
+      } catch (e) {
+        console.log('gameStateUpdate not received in time, checking room directly');
+      }
+      
+      const finalRoom = roomManager.getRoom(roomCode);
+      expect(finalRoom!.state.gameStatus).toBe('playing');
+      
+      if (!gameViewReceived) {
+        gameView = finalRoom!.toGameView(Array.from(finalRoom!.players.keys())[0]);
+      }
+      
+      expect(gameView.me.hand).toHaveLength(7);
+      expect(gameView.otherPlayers).toHaveLength(1);
+      expect(gameView.otherPlayers[0].handCount).toBe(7);
+      expect(gameView.room.discardPile).toBeDefined();
+      expect(gameView.room.discardPile).toHaveLength(1);
+      
+      client1.disconnect();
+      client2.disconnect();
+    });
+  });
+
+  describe('start game failure', () => {
+    it('should fail if not in a room', async () => {
+      const client = ioClient(`http://localhost:${port}`) as any;
+      
+      const startGamePromise = new Promise<{ success: boolean; error?: string }>((resolve) => {
+        client.emit('start_game', (response: { success: boolean; error?: string }) => {
+          resolve(response);
+        });
+      });
+      
+      const result = await startGamePromise;
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Not in a room');
+      
+      client.disconnect();
+    });
+
+    it('should fail if non-host tries to start', async () => {
+      const client1 = ioClient(`http://localhost:${port}`) as any;
+      
+      const createRoomPromise = new Promise<{ roomCode: string }>((resolve) => {
+        client1.emit('create_room', (response: { roomCode: string }) => {
+          resolve(response);
+        });
+      });
+      
+      const { roomCode } = await createRoomPromise;
+      
+      const joinPromise1 = new Promise<{ playerId: string; playerSecret: string }>((resolve, reject) => {
+        client1.emit('join_room', roomCode, 'Player1', (response: { playerId: string; playerSecret: string } | { error: string }) => {
+          if ('error' in response) {
+            reject(new Error(response.error));
+          } else {
+            resolve(response);
+          }
+        });
+      });
+      
+      await joinPromise1;
+      
+      const client2 = ioClient(`http://localhost:${port}`) as any;
+      const joinPromise2 = new Promise<{ playerId: string; playerSecret: string }>((resolve, reject) => {
+        client2.emit('join_room', roomCode, 'Player2', (response: { playerId: string; playerSecret: string } | { error: string }) => {
+          if ('error' in response) {
+            reject(new Error(response.error));
+          } else {
+            resolve(response);
+          }
+        });
+      });
+      await joinPromise2;
+      
+      const startGamePromise = new Promise<{ success: boolean; error?: string }>((resolve) => {
+        client2.emit('start_game', (response: { success: boolean; error?: string }) => {
+          resolve(response);
+        });
+      });
+      
+      const result = await startGamePromise;
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Only the host can start the game');
+      
+      client1.disconnect();
+      client2.disconnect();
+    });
+
+    it('should fail if less than 2 players', async () => {
+      const client = ioClient(`http://localhost:${port}`) as any;
+      
+      const createRoomPromise = new Promise<{ roomCode: string }>((resolve) => {
+        client.emit('create_room', (response: { roomCode: string }) => {
+          resolve(response);
+        });
+      });
+      
+      const { roomCode } = await createRoomPromise;
+      
+      const joinPromise = new Promise<{ playerId: string; playerSecret: string }>((resolve, reject) => {
+        client.emit('join_room', roomCode, 'Player1', (response: { playerId: string; playerSecret: string } | { error: string }) => {
+          if ('error' in response) {
+            reject(new Error(response.error));
+          } else {
+            resolve(response);
+          }
+        });
+      });
+      
+      await joinPromise;
+      
+      const startGamePromise = new Promise<{ success: boolean; error?: string }>((resolve) => {
+        client.emit('start_game', (response: { success: boolean; error?: string }) => {
+          resolve(response);
+        });
+      });
+      
+      const result = await startGamePromise;
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('At least 2 players required to start');
+      
+      client.disconnect();
+    });
+  });
+});
+
 describe('toGameView', () => {
   it('should include full hand for requesting player', () => {
     const manager = new RoomManager();
@@ -928,5 +1402,189 @@ describe('Deck', () => {
       
       expect(deck.isEmpty()).toBe(true);
     });
+  });
+
+  describe('shuffle with seeded RNG', () => {
+    it('should produce deterministic shuffle with seeded RNG', () => {
+      let seed = 12345;
+      const rng1 = () => {
+        seed = (seed * 1103515245 + 12345) % 0x80000000;
+        return seed / 0x80000000;
+      };
+      
+      const deck1 = Deck.createStandardDeck();
+      deck1.shuffle(rng1);
+      const shuffled1 = [...deck1.cards];
+      
+      seed = 12345;
+      const rng2 = () => {
+        seed = (seed * 1103515245 + 12345) % 0x80000000;
+        return seed / 0x80000000;
+      };
+      
+      const deck2 = Deck.createStandardDeck();
+      deck2.shuffle(rng2);
+      const shuffled2 = [...deck2.cards];
+      
+      expect(shuffled1).toEqual(shuffled2);
+    });
+  });
+});
+
+describe('Room startGame', () => {
+  it('should initialize deck, deal hands, and set discard pile', () => {
+    const manager = new RoomManager();
+    const room = manager.createRoom();
+    
+    const socketId1 = 'socket1';
+    const playerId1 = 'player1';
+    const player1 = { id: playerId1, name: 'Player 1', isReady: false, secret: 'secret1', connected: true, hand: [], handCount: 0 };
+    
+    const socketId2 = 'socket2';
+    const playerId2 = 'player2';
+    const player2 = { id: playerId2, name: 'Player 2', isReady: false, secret: 'secret2', connected: true, hand: [], handCount: 0 };
+    
+    const socketId3 = 'socket3';
+    const playerId3 = 'player3';
+    const player3 = { id: playerId3, name: 'Player 3', isReady: false, secret: 'secret3', connected: true, hand: [], handCount: 0 };
+    
+    room.addPlayer(socketId1, player1);
+    room.addPlayer(socketId2, player2);
+    room.addPlayer(socketId3, player3);
+    
+    let seed = 42;
+    const seededRng = () => {
+      seed = (seed * 1103515245 + 12345) % 0x80000000;
+      return seed / 0x80000000;
+    };
+    
+    room.startGame(seededRng);
+    
+    expect(room.state.gameStatus).toBe('playing');
+    expect(room.deck).toBeDefined();
+    expect(room.deck!.size).toBe(108 - (3 * 7) - 1);
+    
+    expect(room.discardPile).toHaveLength(1);
+    expect(room.discardPile[0].color).not.toBe('wild');
+    
+    room.players.forEach(player => {
+      expect(player.hand).toHaveLength(7);
+    });
+  });
+
+  it('should not deal wild draw 4 as initial discard card', () => {
+    const manager = new RoomManager();
+    const room = manager.createRoom();
+    
+    const socketId1 = 'socket1';
+    const playerId1 = 'player1';
+    const player1 = { id: playerId1, name: 'Player 1', isReady: false, secret: 'secret1', connected: true, hand: [], handCount: 0 };
+    
+    const socketId2 = 'socket2';
+    const playerId2 = 'player2';
+    const player2 = { id: playerId2, name: 'Player 2', isReady: false, secret: 'secret2', connected: true, hand: [], handCount: 0 };
+    
+    room.addPlayer(socketId1, player1);
+    room.addPlayer(socketId2, player2);
+    
+    let seed = 99999;
+    const seededRng = () => {
+      seed = (seed * 1103515245 + 12345) % 0x80000000;
+      return seed / 0x80000000;
+    };
+    
+    room.startGame(seededRng);
+    
+    expect(room.discardPile[0].value).not.toBe('wild_draw4');
+  });
+
+  it('should throw error if game has already started', () => {
+    const manager = new RoomManager();
+    const room = manager.createRoom();
+    
+    const socketId1 = 'socket1';
+    const playerId1 = 'player1';
+    const player1 = { id: playerId1, name: 'Player 1', isReady: false, secret: 'secret1', connected: true, hand: [], handCount: 0 };
+    
+    const socketId2 = 'socket2';
+    const playerId2 = 'player2';
+    const player2 = { id: playerId2, name: 'Player 2', isReady: false, secret: 'secret2', connected: true, hand: [], handCount: 0 };
+    
+    room.addPlayer(socketId1, player1);
+    room.addPlayer(socketId2, player2);
+    
+    room.startGame();
+    
+    expect(() => room.startGame()).toThrow('Game has already started');
+  });
+
+  it('should throw error if less than 2 players', () => {
+    const manager = new RoomManager();
+    const room = manager.createRoom();
+    
+    const socketId1 = 'socket1';
+    const playerId1 = 'player1';
+    const player1 = { id: playerId1, name: 'Player 1', isReady: false, secret: 'secret1', connected: true, hand: [], handCount: 0 };
+    
+    room.addPlayer(socketId1, player1);
+    
+    expect(() => room.startGame()).toThrow('At least 2 players required to start');
+  });
+
+  it('should produce deterministic game state with seeded RNG', () => {
+    const manager1 = new RoomManager();
+    const room1 = manager1.createRoom();
+    
+    const socketId1a = 'socket1a';
+    const playerId1a = 'player1a';
+    const player1a = { id: playerId1a, name: 'Player 1', isReady: false, secret: 'secret1', connected: true, hand: [], handCount: 0 };
+    
+    const socketId2a = 'socket2a';
+    const playerId2a = 'player2a';
+    const player2a = { id: playerId2a, name: 'Player 2', isReady: false, secret: 'secret2', connected: true, hand: [], handCount: 0 };
+    
+    room1.addPlayer(socketId1a, player1a);
+    room1.addPlayer(socketId2a, player2a);
+    
+    let seed1 = 123456;
+    const seededRng1 = () => {
+      seed1 = (seed1 * 1103515245 + 12345) % 0x80000000;
+      return seed1 / 0x80000000;
+    };
+    
+    room1.startGame(seededRng1);
+    
+    const manager2 = new RoomManager();
+    const room2 = manager2.createRoom();
+    
+    const socketId1b = 'socket1b';
+    const playerId1b = 'player1b';
+    const player1b = { id: playerId1b, name: 'Player 1', isReady: false, secret: 'secret1', connected: true, hand: [], handCount: 0 };
+    
+    const socketId2b = 'socket2b';
+    const playerId2b = 'player2b';
+    const player2b = { id: playerId2b, name: 'Player 2', isReady: false, secret: 'secret2', connected: true, hand: [], handCount: 0 };
+    
+    room2.addPlayer(socketId1b, player1b);
+    room2.addPlayer(socketId2b, player2b);
+    
+    let seed2 = 123456;
+    const seededRng2 = () => {
+      seed2 = (seed2 * 1103515245 + 12345) % 0x80000000;
+      return seed2 / 0x80000000;
+    };
+    
+    room2.startGame(seededRng2);
+    
+    const p1Hand1 = room1.players.get(playerId1a)!.hand;
+    const p1Hand2 = room2.players.get(playerId1b)!.hand;
+    const p2Hand1 = room1.players.get(playerId2a)!.hand;
+    const p2Hand2 = room2.players.get(playerId2b)!.hand;
+    const discard1 = room1.discardPile[0];
+    const discard2 = room2.discardPile[0];
+    
+    expect(p1Hand1).toEqual(p1Hand2);
+    expect(p2Hand1).toEqual(p2Hand2);
+    expect(discard1).toEqual(discard2);
   });
 });

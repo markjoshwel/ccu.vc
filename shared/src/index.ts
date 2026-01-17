@@ -4,6 +4,8 @@ export type RoomState = {
   players: PlayerPublic[];
   gameStatus: 'waiting' | 'playing' | 'finished';
   createdAt: number;
+  deckSize?: number;
+  discardPile?: Card[];
 };
 
 export type Card = {
@@ -44,6 +46,7 @@ export type ClientToServerEvents = {
   leaveRoom: () => void;
   updatePlayer: (data: Partial<PlayerPrivate>) => void;
   playerReady: () => void;
+  start_game: (callback: (response: { success: boolean; error?: string }) => void) => void;
 };
 
 export type ServerToClientEvents = {

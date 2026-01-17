@@ -131,6 +131,44 @@ io.on('connection', (socket) => {
     
     callback({ success: true });
   });
+  
+  (socket as any).on('start_game', (callback: (response: { success: boolean; error?: string }) => void) => {
+    const roomCode = socketRoomMap.get(socket.id);
+    
+    if (!roomCode) {
+      callback({ success: false, error: 'Not in a room' });
+      return;
+    }
+    
+    const room = roomManager.getRoom(roomCode);
+    
+    if (!room) {
+      callback({ success: false, error: 'Room not found' });
+      return;
+    }
+    
+    const playerData = socketPlayerMap.get(socket.id);
+    if (!playerData) {
+      callback({ success: false, error: 'Player not found' });
+      return;
+    }
+    
+    const firstPlayerId = Array.from(room.players.keys())[0];
+    if (playerData.playerId !== firstPlayerId) {
+      callback({ success: false, error: 'Only the host can start the game' });
+      return;
+    }
+    
+    try {
+      room.startGame();
+      io.to(roomCode).emit('roomUpdated', room.state);
+      io.to(roomCode).emit('gameStarted');
+      broadcastGameStateUpdate(roomCode);
+      callback({ success: true });
+    } catch (error) {
+      callback({ success: false, error: (error as Error).message });
+    }
+  });
 
   socket.on('leaveRoom', () => {
     const roomId = socketRoomMap.get(socket.id);
