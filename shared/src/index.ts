@@ -6,12 +6,18 @@ export type RoomState = {
   createdAt: number;
 };
 
+export type Card = {
+  color: 'red' | 'yellow' | 'green' | 'blue' | 'wild';
+  value: string;
+};
+
 export type PlayerPublic = {
   id: string;
   name: string;
   isReady: boolean;
   score?: number;
   connected: boolean;
+  handCount: number;
 };
 
 export type PlayerPrivate = {
@@ -21,6 +27,7 @@ export type PlayerPrivate = {
   score?: number;
   secret: string;
   connected: boolean;
+  hand: Card[];
 };
 
 export type GameView = {
@@ -44,5 +51,6 @@ export type ServerToClientEvents = {
   playerJoined: (player: PlayerPublic) => void;
   playerLeft: (playerId: string) => void;
   gameStarted: () => void;
+  gameStateUpdate: (view: GameView) => void;
   error: (message: string) => void;
 };

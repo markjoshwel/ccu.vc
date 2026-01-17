@@ -2,7 +2,7 @@ import { beforeAll, afterAll, describe, it, expect } from 'bun:test';
 import { createServer } from 'node:http';
 import { Server as SocketIOServer } from 'socket.io';
 import { io as ioClient } from 'socket.io-client';
-import type { ClientToServerEvents, ServerToClientEvents } from 'shared';
+import type { ClientToServerEvents, ServerToClientEvents, Card } from 'shared';
 import { RoomManager } from './src/RoomManager';
 
 describe('server', () => {
@@ -86,7 +86,7 @@ describe('RoomManager', () => {
       
       const socketId = 'socket1';
       const playerId = 'player1';
-      const player = { id: playerId, name: 'Player 1', isReady: false, secret: 'secret1', connected: true };
+      const player = { id: playerId, name: 'Player 1', isReady: false, secret: 'secret1', connected: true, hand: [], handCount: 0 };
       
       room.addPlayer(socketId, player);
       expect(room.connectedPlayerCount).toBe(1);
@@ -107,8 +107,8 @@ describe('RoomManager', () => {
       const socketId2 = 'socket2';
       const playerId1 = 'player1';
       const playerId2 = 'player2';
-      const player1 = { id: playerId1, name: 'Player 1', isReady: false, secret: 'secret1', connected: true };
-      const player2 = { id: playerId2, name: 'Player 2', isReady: false, secret: 'secret2', connected: true };
+      const player1 = { id: playerId1, name: 'Player 1', isReady: false, secret: 'secret1', connected: true, hand: [], handCount: 0 };
+      const player2 = { id: playerId2, name: 'Player 2', isReady: false, secret: 'secret2', connected: true, hand: [], handCount: 0 };
       
       room.addPlayer(socketId1, player1);
       room.addPlayer(socketId2, player2);
@@ -220,14 +220,16 @@ describe('join room functionality', () => {
           name: displayName.trim(),
           isReady: false,
           secret: playerSecret,
-          connected: true
+          connected: true,
+          hand: [],
+          handCount: 0
         };
         
         roomManager.handlePlayerConnection(roomCode, socket.id, player);
         socketRoomMap.set(socket.id, roomCode);
         socketPlayerMap.set(socket.id, { playerId, playerSecret });
         io.to(roomCode).emit('roomUpdated', room.state);
-        const playerPublic = { id: player.id, name: player.name, isReady: player.isReady, connected: player.connected };
+        const playerPublic = { id: player.id, name: player.name, isReady: player.isReady, connected: player.connected, handCount: player.hand.length };
         io.to(roomCode).emit('playerJoined', playerPublic as any);
         socket.join(roomCode);
         
@@ -634,5 +636,136 @@ describe('join room functionality', () => {
       client1.disconnect();
       client2.disconnect();
     });
+  });
+});
+
+describe('toGameView', () => {
+  it('should include full hand for requesting player', () => {
+    const manager = new RoomManager();
+    const room = manager.createRoom();
+    
+    const socketId1 = 'socket1';
+    const playerId1 = 'player1';
+    const cards1: Card[] = [
+      { color: 'red', value: '5' },
+      { color: 'blue', value: '7' }
+    ];
+    const player1 = { id: playerId1, name: 'Player 1', isReady: false, secret: 'secret1', connected: true, hand: cards1, handCount: 2 };
+    
+    const socketId2 = 'socket2';
+    const playerId2 = 'player2';
+    const cards2: Card[] = [
+      { color: 'green', value: '9' },
+      { color: 'yellow', value: '3' },
+      { color: 'wild', value: 'wild' }
+    ];
+    const player2 = { id: playerId2, name: 'Player 2', isReady: false, secret: 'secret2', connected: true, hand: cards2, handCount: 3 };
+    
+    room.addPlayer(socketId1, player1);
+    room.addPlayer(socketId2, player2);
+    
+    const gameView = room.toGameView(playerId1);
+    
+    expect(gameView.me.id).toBe(playerId1);
+    expect(gameView.me.hand).toEqual(cards1);
+    expect(gameView.me.hand).toHaveLength(2);
+  });
+
+  it('should not include opponent card objects', () => {
+    const manager = new RoomManager();
+    const room = manager.createRoom();
+    
+    const socketId1 = 'socket1';
+    const playerId1 = 'player1';
+    const cards1: Card[] = [
+      { color: 'red', value: '5' },
+      { color: 'blue', value: '7' }
+    ];
+    const player1 = { id: playerId1, name: 'Player 1', isReady: false, secret: 'secret1', connected: true, hand: cards1, handCount: 2 };
+    
+    const socketId2 = 'socket2';
+    const playerId2 = 'player2';
+    const cards2: Card[] = [
+      { color: 'green', value: '9' },
+      { color: 'yellow', value: '3' },
+      { color: 'wild', value: 'wild' }
+    ];
+    const player2 = { id: playerId2, name: 'Player 2', isReady: false, secret: 'secret2', connected: true, hand: cards2, handCount: 3 };
+    
+    room.addPlayer(socketId1, player1);
+    room.addPlayer(socketId2, player2);
+    
+    const gameView = room.toGameView(playerId1);
+    
+    expect(gameView.otherPlayers).toHaveLength(1);
+    const opponent = gameView.otherPlayers[0];
+    expect(opponent.id).toBe(playerId2);
+    expect(opponent.handCount).toBe(3);
+    expect(opponent as any).not.toHaveProperty('hand');
+  });
+
+  it('should include only handCount for opponent', () => {
+    const manager = new RoomManager();
+    const room = manager.createRoom();
+    
+    const socketId1 = 'socket1';
+    const playerId1 = 'player1';
+    const cards1: Card[] = [{ color: 'red', value: '5' }];
+    const player1 = { id: playerId1, name: 'Player 1', isReady: false, secret: 'secret1', connected: true, hand: cards1, handCount: 1 };
+    
+    const socketId2 = 'socket2';
+    const playerId2 = 'player2';
+    const cards2: Card[] = [
+      { color: 'green', value: '9' },
+      { color: 'yellow', value: '3' }
+    ];
+    const player2 = { id: playerId2, name: 'Player 2', isReady: false, secret: 'secret2', connected: true, hand: cards2, handCount: 2 };
+    
+    room.addPlayer(socketId1, player1);
+    room.addPlayer(socketId2, player2);
+    
+    const gameView = room.toGameView(playerId1);
+    
+    const opponent = gameView.otherPlayers[0];
+    expect(opponent.handCount).toBe(2);
+    
+    const serialized = JSON.stringify(gameView);
+    expect(serialized).not.toContain('"color":"green"');
+    expect(serialized).not.toContain('"value":"9"');
+  });
+
+  it('should include handCount in opponent info for serialized payload', () => {
+    const manager = new RoomManager();
+    const room = manager.createRoom();
+    
+    const socketId1 = 'socket1';
+    const playerId1 = 'player1';
+    const cards1: Card[] = [{ color: 'red', value: '5' }];
+    const player1 = { id: playerId1, name: 'Player 1', isReady: false, secret: 'secret1', connected: true, hand: cards1, handCount: 1 };
+    
+    const socketId2 = 'socket2';
+    const playerId2 = 'player2';
+    const cards2: Card[] = [
+      { color: 'green', value: '9' },
+      { color: 'yellow', value: '3' }
+    ];
+    const player2 = { id: playerId2, name: 'Player 2', isReady: false, secret: 'secret2', connected: true, hand: cards2, handCount: 2 };
+    
+    room.addPlayer(socketId1, player1);
+    room.addPlayer(socketId2, player2);
+    
+    const gameView = room.toGameView(playerId1);
+    
+    const serialized = JSON.stringify(gameView);
+    expect(serialized).toContain('"handCount":2');
+    expect(serialized).toContain('"handCount":1');
+    
+    expect(serialized).toContain('"color":"red"');
+    expect(serialized).toContain('"value":"5"');
+    
+    expect(serialized).not.toContain('"color":"green"');
+    expect(serialized).not.toContain('"value":"9"');
+    expect(serialized).not.toContain('"color":"yellow"');
+    expect(serialized).not.toContain('"value":"3"');
   });
 });

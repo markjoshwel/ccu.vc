@@ -1,8 +1,8 @@
-import type { RoomState, PlayerPublic, PlayerPrivate } from 'shared';
+import type { RoomState, PlayerPublic, PlayerPrivate, Card, GameView } from 'shared';
 
 type RoomCode = string;
 
-type StoredPlayer = PlayerPublic & { secret: string; connected: boolean };
+type StoredPlayer = PlayerPublic & { secret: string; connected: boolean; hand: Card[] };
 
 export class Room {
   code: RoomCode;
@@ -65,8 +65,43 @@ export class Room {
       name: p.name,
       isReady: p.isReady,
       score: p.score,
-      connected: p.connected
+      connected: p.connected,
+      handCount: p.hand.length
     }));
+  }
+
+  toGameView(playerId: string): GameView {
+    const requestingPlayer = this.players.get(playerId);
+    if (!requestingPlayer) {
+      throw new Error(`Player ${playerId} not found in room`);
+    }
+
+    const me: PlayerPrivate = {
+      id: requestingPlayer.id,
+      name: requestingPlayer.name,
+      isReady: requestingPlayer.isReady,
+      score: requestingPlayer.score,
+      secret: requestingPlayer.secret,
+      connected: requestingPlayer.connected,
+      hand: requestingPlayer.hand
+    };
+
+    const otherPlayers: PlayerPublic[] = Array.from(this.players.values())
+      .filter(p => p.id !== playerId)
+      .map(p => ({
+        id: p.id,
+        name: p.name,
+        isReady: p.isReady,
+        score: p.score,
+        connected: p.connected,
+        handCount: p.hand.length
+      }));
+
+    return {
+      room: this.state,
+      me,
+      otherPlayers
+    };
   }
 
   get connectedPlayerCount(): number {

@@ -27,6 +27,19 @@ const roomManager = new RoomManager();
 const socketRoomMap = new Map<string, string>();
 const socketPlayerMap = new Map<string, { playerId: string; playerSecret: string }>();
 
+function broadcastGameStateUpdate(roomCode: string): void {
+  const room = roomManager.getRoom(roomCode);
+  if (!room) return;
+
+  room.players.forEach((player, playerId) => {
+    const socketId = room.playerSocketMap.get(playerId);
+    if (socketId && player.connected) {
+      const gameView = room.toGameView(playerId);
+      io.to(socketId).emit('gameStateUpdate', gameView);
+    }
+  });
+}
+
 function validateDisplayName(displayName: string): { valid: boolean; error?: string } {
   const trimmed = displayName.trim();
   
@@ -85,16 +98,19 @@ io.on('connection', (socket) => {
       name: displayName.trim(),
       isReady: false,
       secret: playerSecret,
-      connected: true
+      connected: true,
+      hand: [],
+      handCount: 0
     };
     
     roomManager.handlePlayerConnection(roomCode, socket.id, player);
     socketRoomMap.set(socket.id, roomCode);
     socketPlayerMap.set(socket.id, { playerId, playerSecret });
     io.to(roomCode).emit('roomUpdated', room.state);
-    const playerPublic = { id: player.id, name: player.name, isReady: player.isReady, connected: player.connected };
+    const playerPublic = { id: player.id, name: player.name, isReady: player.isReady, connected: player.connected, handCount: player.hand.length };
     io.to(roomCode).emit('playerJoined', playerPublic as any);
     socket.join(roomCode);
+    broadcastGameStateUpdate(roomCode);
     
     callback({ playerId, playerSecret });
   });
@@ -111,6 +127,7 @@ io.on('connection', (socket) => {
     socketPlayerMap.set(socket.id, { playerId, playerSecret });
     io.to(roomCode).emit('roomUpdated', room.state);
     socket.join(roomCode);
+    broadcastGameStateUpdate(roomCode);
     
     callback({ success: true });
   });
@@ -124,6 +141,7 @@ io.on('connection', (socket) => {
       if (room) {
         io.to(roomId).emit('roomUpdated', room.state);
         io.to(roomId).emit('playerLeft', socket.id);
+        broadcastGameStateUpdate(roomId);
       }
     }
   });
@@ -139,6 +157,7 @@ io.on('connection', (socket) => {
       socketPlayerMap.delete(socket.id);
       if (room) {
         io.to(roomId).emit('roomUpdated', room.state);
+        broadcastGameStateUpdate(roomId);
       }
     }
   });
