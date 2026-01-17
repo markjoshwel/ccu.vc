@@ -1,0 +1,521 @@
+{
+  "project": "ccu.vc",
+  "branchName": "ralph/chess-clock-uno",
+  "description": "Implement a Bun-powered, server-authoritative Chess Clock UNO web game with ephemeral rooms (short codes), ephemeral identities (name + avatar), room-wide chat, and a responsive React UI.",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Scaffold Bun monorepo with client/server/shared workspaces",
+      "description": "Create the baseline repo structure and Bun scripts so all later work can compile and run consistently.",
+      "acceptanceCriteria": [
+        "specific behavior: `bun install` succeeds from repo root",
+        "specific behavior: repo contains `client/`, `server/`, and `shared/` packages configured as Bun workspaces",
+        "quality gate: `bun --filter client run build` exits with code 0",
+        "quality gate: `bun --filter server run typecheck` exits with code 0"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "Assumes TypeScript is used for server/client/shared to enable typecheck quality gates."
+    },
+    {
+      "id": "US-002",
+      "title": "Define shared TypeScript types for rooms, players, and socket events",
+      "description": "Prevent client/server mismatches by sharing an explicit event contract and core state types.",
+      "acceptanceCriteria": [
+        "specific behavior: `shared/` exports `RoomState`, `PlayerPublic`, `PlayerPrivate`, `GameView`, `ClientToServerEvents`, and `ServerToClientEvents` types",
+        "specific behavior: server and client import at least one type from `shared/` (verified by TypeScript compilation)",
+        "quality gate: `bun --filter shared run typecheck` exits with code 0",
+        "quality gate: `bun --filter server run typecheck` exits with code 0",
+        "quality gate: `bun --filter client run typecheck` exits with code 0"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "If client does not have typecheck script yet, add it as part of this story."
+    },
+    {
+      "id": "US-003",
+      "title": "Implement Bun Socket.io server bootstrap with health endpoint",
+      "description": "Provide a running authoritative backend process to attach room and game logic to.",
+      "acceptanceCriteria": [
+        "specific behavior: `bun --filter server run dev` starts a server that listens on a configured port",
+        "specific behavior: `GET /health` returns HTTP 200 with a JSON body that includes `status: \"ok\"`",
+        "quality gate: `bun --filter server run typecheck` exits with code 0",
+        "quality gate: `bun --filter server test` exits with code 0"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "Server may use Bun's HTTP server or Express-style framework; must remain Bun-compatible."
+    },
+    {
+      "id": "US-004",
+      "title": "Create in-memory RoomManager with short room codes and TTL-free lifecycle",
+      "description": "Rooms must be easy to share and exist only while at least one player is connected.",
+      "acceptanceCriteria": [
+        "specific behavior: server can create a room with a short code (6-8 chars) containing only A-Z and 0-9",
+        "specific behavior: room is deleted when connected player count transitions to 0",
+        "specific behavior: RoomManager uses an in-memory `Map` keyed by room code",
+        "quality gate: `bun --filter server test` includes tests that verify room code format and deletion-on-zero-connected behavior",
+        "quality gate: `bun --filter server run typecheck` exits with code 0"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": "Assumes a short-code generator spec: uppercase base32-like alphabet without ambiguous chars is acceptable."
+    },
+    {
+      "id": "US-005",
+      "title": "Add socket events to create room and join room with display name",
+      "description": "Enable basic multiplayer session creation and joining, with ephemeral naming.",
+      "acceptanceCriteria": [
+        "specific behavior: client can request room creation and receives the new room code",
+        "specific behavior: client can join a room by code with `displayName` and receives a `playerId` and `playerSecret`",
+        "specific behavior: server rejects join when room does not exist",
+        "quality gate: `bun --filter server test` verifies join success and join failure cases",
+        "quality gate: `bun --filter server run typecheck` exits with code 0"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": "Validation rules for `displayName`: 1-24 chars after trimming; reject control characters."
+    },
+    {
+      "id": "US-006",
+      "title": "Implement reconnect using playerSecret to reclaim seat",
+      "description": "Allow disconnected players to rejoin indefinitely as long as someone remains connected in the room.",
+      "acceptanceCriteria": [
+        "specific behavior: when a player disconnects, server marks them as `connected=false` but retains their seat in the room state",
+        "specific behavior: a client providing the correct `playerSecret` reclaims the same `playerId` and seat order",
+        "specific behavior: a client providing an incorrect `playerSecret` cannot hijack an existing seat",
+        "quality gate: `bun --filter server test` verifies seat reclaim success and hijack prevention",
+        "quality gate: `bun --filter server run typecheck` exits with code 0"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": "Room deletion on zero-connected makes reconnect impossible once everyone leaves, per requirements."
+    },
+    {
+      "id": "US-007",
+      "title": "Build minimal React lobby to create/join rooms and store reconnect secret",
+      "description": "Provide a working UI path into the multiplayer session model.",
+      "acceptanceCriteria": [
+        "specific behavior: lobby page lets user enter display name and create a room, then shows the room code",
+        "specific behavior: lobby page lets user enter room code and join a room",
+        "specific behavior: client stores `playerSecret` locally and reuses it on refresh to reconnect when room still exists",
+        "quality gate: `bun --filter client run build` exits with code 0",
+        "quality gate: `bun --filter client run typecheck` exits with code 0"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": "No gameplay UI required yet; only lobby + basic room screen acceptable."
+    },
+    {
+      "id": "US-008",
+      "title": "Implement server public game view that hides opponent hands",
+      "description": "Prevent cheating by ensuring clients only see allowed information.",
+      "acceptanceCriteria": [
+        "specific behavior: server emits `gameStateUpdate` containing full hand only for the requesting player",
+        "specific behavior: server emits opponent info with `handCount` but not card objects",
+        "quality gate: `bun --filter server test` verifies opponent card data is not present in serialized payload",
+        "quality gate: `bun --filter server run typecheck` exits with code 0"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": "Assumes server uses a per-socket view builder `toGameView(playerId)`."
+    },
+    {
+      "id": "US-009",
+      "title": "Implement UNO deck generation and shuffle (server)",
+      "description": "Create the canonical card source for dealing and drawing.",
+      "acceptanceCriteria": [
+        "specific behavior: server can generate a standard UNO deck with correct counts for colors, numbers, and action cards",
+        "specific behavior: shuffle produces a permutation of the full deck length",
+        "quality gate: `bun --filter server test` includes tests that validate deck size and card count breakdown",
+        "quality gate: `bun --filter server run typecheck` exits with code 0"
+      ],
+      "priority": 9,
+      "passes": false,
+      "notes": "Assumes 1 deck for v1; deckCount configurability can come later."
+    },
+    {
+      "id": "US-010",
+      "title": "Add start game flow: deal hands and initialize discard pile (server)",
+      "description": "Allow a created room to transition from lobby state to playable state.",
+      "acceptanceCriteria": [
+        "specific behavior: host can start the game and server deals initial hands to all players and sets an initial discard card",
+        "specific behavior: after start, `gameStateUpdate` reflects each player's hand size and a non-empty discard pile",
+        "quality gate: `bun --filter server test` verifies start game initializes deck, hands, and discard pile deterministically using a seeded RNG in tests",
+        "quality gate: `bun --filter server run typecheck` exits with code 0"
+      ],
+      "priority": 10,
+      "passes": false,
+      "notes": "Assumes a host concept exists; if not, first joiner is host."
+    },
+    {
+      "id": "US-011",
+      "title": "Implement turn order logic with direction and skipping disconnected players",
+      "description": "Ensure correct multi-player turn progression and resilience to disconnects.",
+      "acceptanceCriteria": [
+        "specific behavior: `nextConnectedPlayerIndex()` skips players marked `connected=false`",
+        "specific behavior: if only one connected player remains during playing state, server ends the game with reason `last-player-connected`",
+        "quality gate: `bun --filter server test` verifies turn advancement with direction forward/backward and skipping disconnected players",
+        "quality gate: `bun --filter server run typecheck` exits with code 0"
+      ],
+      "priority": 11,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-012",
+      "title": "Implement play card validation for number and color matches (server)",
+      "description": "Create the core UNO legality checks before special cards.",
+      "acceptanceCriteria": [
+        "specific behavior: server accepts `playCard` only if played card matches top discard by color or number (or is wild, if supported later)",
+        "specific behavior: server rejects `playCard` when it is not the player's turn",
+        "quality gate: `bun --filter server test` verifies valid and invalid play cases",
+        "quality gate: `bun --filter server run typecheck` exits with code 0"
+      ],
+      "priority": 12,
+      "passes": false,
+      "notes": "Special cards handled in subsequent stories."
+    },
+    {
+      "id": "US-013",
+      "title": "Implement draw card action and end-turn behavior (server)",
+      "description": "Allow players to draw when they cannot or choose not to play.",
+      "acceptanceCriteria": [
+        "specific behavior: when current player calls `drawCard`, server transfers one card from deck to that player's hand",
+        "specific behavior: after drawing, server ends the player's turn (v1 behavior) and advances to next connected player",
+        "quality gate: `bun --filter server test` verifies draw reduces deck size, increases hand size, and advances turn",
+        "quality gate: `bun --filter server run typecheck` exits with code 0"
+      ],
+      "priority": 13,
+      "passes": false,
+      "notes": "Later rules can make draw-and-play optional/configurable."
+    },
+    {
+      "id": "US-014",
+      "title": "Implement actionId-based actionAck responses (server) and pending UX hooks (client)",
+      "description": "Enable responsive client feedback while keeping server authority.",
+      "acceptanceCriteria": [
+        "specific behavior: server emits `actionAck` with `{actionId, ok}` for every action request",
+        "specific behavior: client marks the triggering UI element as pending until `actionAck` is received, then clears pending",
+        "quality gate: `bun --filter server run typecheck` exits with code 0",
+        "quality gate: `bun --filter client run build` exits with code 0",
+        "quality gate: `bun --filter client run typecheck` exits with code 0"
+      ],
+      "priority": 14,
+      "passes": false,
+      "notes": "Client-side pending state can be minimal (e.g. data attribute and spinner)."
+    },
+    {
+      "id": "US-015",
+      "title": "Create basic gameplay UI: show hand, discard top card, and current turn",
+      "description": "Make the game playable end-to-end for basic number cards with draw/pass.",
+      "acceptanceCriteria": [
+        "specific behavior: client renders the user's hand as a list/grid of cards",
+        "specific behavior: client renders current discard top card and highlights the active player",
+        "specific behavior: clicking a card sends `playCard` and clicking draw sends `drawCard`",
+        "quality gate: `bun --filter client run build` exits with code 0",
+        "quality gate: `bun --filter client run typecheck` exits with code 0"
+      ],
+      "priority": 15,
+      "passes": false,
+      "notes": "No special card effects required yet."
+    },
+    {
+      "id": "US-016",
+      "title": "Implement special cards: Skip and Reverse (server)",
+      "description": "Add core turn-manipulation effects needed for real UNO games.",
+      "acceptanceCriteria": [
+        "specific behavior: playing Skip advances turn by one additional step (skips next connected player)",
+        "specific behavior: playing Reverse flips direction when player count >= 3 and acts like Skip when player count == 2",
+        "quality gate: `bun --filter server test` verifies skip/reverse effects for 2-player and 3-player scenarios",
+        "quality gate: `bun --filter server run typecheck` exits with code 0"
+      ],
+      "priority": 16,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-017",
+      "title": "Implement special cards: Draw Two effect (server)",
+      "description": "Support forced drawing as a core UNO interaction.",
+      "acceptanceCriteria": [
+        "specific behavior: when Draw Two is played, the next connected player draws 2 cards and loses their turn",
+        "specific behavior: turn advances to the player after the one who drew 2 (respecting direction)",
+        "quality gate: `bun --filter server test` verifies card counts and turn index changes after Draw Two",
+        "quality gate: `bun --filter server run typecheck` exits with code 0"
+      ],
+      "priority": 17,
+      "passes": false,
+      "notes": "Stacking rules are not included in v1 unless later configured."
+    },
+    {
+      "id": "US-018",
+      "title": "Implement Wild card and active color selection (server + client)",
+      "description": "Enable color changes via Wild cards and enforce active color for subsequent plays.",
+      "acceptanceCriteria": [
+        "specific behavior: when Wild is played, server requires a chosen color and sets `activeColor` for subsequent validations",
+        "specific behavior: after a Wild, server validates plays against `activeColor` until another color-setting card is played",
+        "quality gate: `bun --filter server test` verifies activeColor is set and used in validation",
+        "quality gate: `bun --filter client run build` exits with code 0",
+        "quality gate: `bun --filter server run typecheck` exits with code 0"
+      ],
+      "priority": 18,
+      "passes": false,
+      "notes": "Client can use a simple modal/bottom sheet to choose color."
+    },
+    {
+      "id": "US-019",
+      "title": "Implement Wild Draw Four effect (server)",
+      "description": "Complete the standard UNO action set for v1 default rules.",
+      "acceptanceCriteria": [
+        "specific behavior: when Wild Draw Four is played, next connected player draws 4 cards and loses their turn",
+        "specific behavior: server sets activeColor based on the chosen color at play time",
+        "quality gate: `bun --filter server test` verifies +4 draw and turn skipping",
+        "quality gate: `bun --filter server run typecheck` exits with code 0"
+      ],
+      "priority": 19,
+      "passes": false,
+      "notes": "Challenge rules are excluded in v1 unless added later."
+    },
+    {
+      "id": "US-020",
+      "title": "Implement win condition: first player to 0 cards ends game",
+      "description": "Allow games to conclude normally without relying on disconnect win.",
+      "acceptanceCriteria": [
+        "specific behavior: if a play results in a player's hand size becoming 0, server ends the game and announces that player as winner",
+        "specific behavior: after game ends, further play/draw actions are rejected",
+        "quality gate: `bun --filter server test` verifies game end and rejection of actions post-finish",
+        "quality gate: `bun --filter server run typecheck` exits with code 0"
+      ],
+      "priority": 20,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-021",
+      "title": "Add server chess clock state and clockSync broadcast (no timeout yet)",
+      "description": "Establish authoritative timekeeping and client display synchronization.",
+      "acceptanceCriteria": [
+        "specific behavior: server maintains `timeRemainingMs` per player and emits `clockSync` every 500ms for active rooms",
+        "specific behavior: `clockSync` includes activePlayerId and remaining time values",
+        "quality gate: `bun --filter server test` verifies a clockSync scheduler runs only when game is playing",
+        "quality gate: `bun --filter server run typecheck` exits with code 0"
+      ],
+      "priority": 21,
+      "passes": false,
+      "notes": "Client interpolation is added in a separate story."
+    },
+    {
+      "id": "US-022",
+      "title": "Implement client clock interpolation and reduced-motion friendly rendering",
+      "description": "Make the clock feel smooth and responsive without excessive network traffic.",
+      "acceptanceCriteria": [
+        "specific behavior: client displays a smoothly decreasing remaining time for the active player between `clockSync` updates",
+        "specific behavior: when `prefers-reduced-motion` is enabled, client reduces animation intensity for clock effects",
+        "quality gate: `bun --filter client run build` exits with code 0",
+        "quality gate: `bun --filter client run typecheck` exits with code 0"
+      ],
+      "priority": 22,
+      "passes": false,
+      "notes": "Objective validation is via deterministic interpolation logic unit tests if client test setup exists; otherwise rely on typecheck/build gates."
+    },
+    {
+      "id": "US-023",
+      "title": "Implement timeout detection and autoDrawAndSkip policy (server)",
+      "description": "Enforce the chess clock by applying the agreed UNO-flavored timeout behavior.",
+      "acceptanceCriteria": [
+        "specific behavior: when active player's time reaches 0, server draws exactly 1 card for them and ends their turn immediately",
+        "specific behavior: server emits a `timeOut` event with `{ playerId, policy: \"autoDrawAndSkip\" }`",
+        "quality gate: `bun --filter server test` simulates elapsed time and verifies forced draw + turn advance",
+        "quality gate: `bun --filter server run typecheck` exits with code 0"
+      ],
+      "priority": 23,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-024",
+      "title": "Implement UNO window and callUno event (server)",
+      "description": "Track required UNO calls when a player reaches one card.",
+      "acceptanceCriteria": [
+        "specific behavior: when a player plays down to 1 card, server opens an UNO window for that player",
+        "specific behavior: server accepts `callUno` during the open window and marks the incident as called",
+        "quality gate: `bun --filter server test` verifies UNO window opens and callUno closes it logically",
+        "quality gate: `bun --filter server run typecheck` exits with code 0"
+      ],
+      "priority": 24,
+      "passes": false,
+      "notes": "Window close timing (next player's first action) and catching are handled in separate stories."
+    },
+    {
+      "id": "US-025",
+      "title": "Close UNO window on next player's first action (server)",
+      "description": "Implement the 'until next action' timing rule for calling UNO out of turn.",
+      "acceptanceCriteria": [
+        "specific behavior: if an UNO window is open, the next player's first `playCard` or `drawCard` closes the window",
+        "specific behavior: closing the window does not automatically apply any penalty",
+        "quality gate: `bun --filter server test` verifies window closes on the next player's first action",
+        "quality gate: `bun --filter server run typecheck` exits with code 0"
+      ],
+      "priority": 25,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-026",
+      "title": "Implement catchUno event and draw-2 penalty (server)",
+      "description": "Allow opponents to catch missed UNO calls during the open window.",
+      "acceptanceCriteria": [
+        "specific behavior: if target player's UNO window is open and they have not called UNO, `catchUno` causes them to draw 2 cards",
+        "specific behavior: if target player's UNO window is closed or already called, `catchUno` is rejected",
+        "quality gate: `bun --filter server test` verifies penalty draw and invalid catch behavior",
+        "quality gate: `bun --filter server run typecheck` exits with code 0"
+      ],
+      "priority": 26,
+      "passes": false,
+      "notes": "Catching does not affect clocks; it is a side action."
+    },
+    {
+      "id": "US-027",
+      "title": "Add client UNO and Catch UI controls wired to socket events",
+      "description": "Expose UNO call and catch interactions to players in a usable way.",
+      "acceptanceCriteria": [
+        "specific behavior: when the local player drops to 1 card and UNO window is open, client shows an UNO button that sends `callUno`",
+        "specific behavior: when an opponent has an open UNO window, client shows a Catch control that sends `catchUno` with their playerId",
+        "quality gate: `bun --filter client run build` exits with code 0",
+        "quality gate: `bun --filter client run typecheck` exits with code 0"
+      ],
+      "priority": 27,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-028",
+      "title": "Implement room-wide chat events and server-side rate limiting",
+      "description": "Provide lightweight communication within a room without risking spam.",
+      "acceptanceCriteria": [
+        "specific behavior: `sendChat` broadcasts `chatMessage` to all sockets in the room",
+        "specific behavior: server enforces message length <= 280 and rate limit of at most 1 message per second per player (with burst <= 3)",
+        "quality gate: `bun --filter server test` verifies rate limiting triggers and valid messages broadcast",
+        "quality gate: `bun --filter server run typecheck` exits with code 0"
+      ],
+      "priority": 28,
+      "passes": false,
+      "notes": "Rate limiter can be simple token bucket in memory."
+    },
+    {
+      "id": "US-029",
+      "title": "Build client chat drawer UI with unread badge",
+      "description": "Make room-wide chat usable on desktop and mobile while not blocking gameplay.",
+      "acceptanceCriteria": [
+        "specific behavior: client renders a collapsible chat panel that displays messages in chronological order",
+        "specific behavior: client can send a chat message and sees it appear after server broadcast",
+        "specific behavior: when chat panel is closed, incoming messages increment an unread badge counter",
+        "quality gate: `bun --filter client run build` exits with code 0",
+        "quality gate: `bun --filter client run typecheck` exits with code 0"
+      ],
+      "priority": 29,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-030",
+      "title": "Add avatar upload endpoint with validate + re-encode + center-crop",
+      "description": "Safely accept user-provided profile images in an ephemeral system.",
+      "acceptanceCriteria": [
+        "specific behavior: `POST /avatar/upload` accepts png/jpeg/webp <= 2MB and returns `{ avatarId }`",
+        "specific behavior: server re-encodes and stores a square center-cropped avatar image (e.g. 256x256) under the returned avatarId",
+        "quality gate: `bun --filter server test` verifies large files are rejected and successful uploads return an avatarId",
+        "quality gate: `bun --filter server run typecheck` exits with code 0"
+      ],
+      "priority": 30,
+      "passes": false,
+      "notes": "Exact image library is implementation-specific; tests can validate by checking stored metadata/dimensions if the library exposes it."
+    },
+    {
+      "id": "US-031",
+      "title": "Add avatar from-url endpoint with SSRF protections and re-encode pipeline",
+      "description": "Allow avatar selection by URL while preventing SSRF and unsafe image formats.",
+      "acceptanceCriteria": [
+        "specific behavior: `POST /avatar/from-url` accepts only https URLs and rejects localhost/private IP destinations and oversized downloads",
+        "specific behavior: server downloads the image (<= 2MB), validates it is png/jpeg/webp by sniffing bytes, then re-encodes and stores it, returning `{ avatarId }`",
+        "quality gate: `bun --filter server test` verifies rejection of http URLs and private IPs, and acceptance of a valid https URL (mocked fetch)",
+        "quality gate: `bun --filter server run typecheck` exits with code 0"
+      ],
+      "priority": 31,
+      "passes": false,
+      "notes": "Tests should mock fetch; avoid live network."
+    },
+    {
+      "id": "US-032",
+      "title": "Serve avatars publicly via GET /avatars/:avatarId",
+      "description": "Make avatars available to clients without embedding third-party URLs.",
+      "acceptanceCriteria": [
+        "specific behavior: `GET /avatars/:avatarId` returns HTTP 200 and image bytes with a correct `Content-Type` for an existing avatarId",
+        "specific behavior: `GET /avatars/:avatarId` returns HTTP 404 for unknown avatarId",
+        "quality gate: `bun --filter server test` verifies 200 and 404 behavior",
+        "quality gate: `bun --filter server run typecheck` exits with code 0"
+      ],
+      "priority": 32,
+      "passes": false,
+      "notes": "Avatars are public as requested; ensure avatarId is unguessable (UUID)."
+    },
+    {
+      "id": "US-033",
+      "title": "Add client avatar selection UI (upload or URL) on join screen",
+      "description": "Let players choose a profile picture as part of ephemeral identity setup.",
+      "acceptanceCriteria": [
+        "specific behavior: join UI allows selecting an avatar by uploading a file and uses server response avatarId in subsequent join payload",
+        "specific behavior: join UI allows selecting an avatar by URL and uses server response avatarId in subsequent join payload",
+        "quality gate: `bun --filter client run build` exits with code 0",
+        "quality gate: `bun --filter client run typecheck` exits with code 0"
+      ],
+      "priority": 33,
+      "passes": false,
+      "notes": "UI can be minimal; no cropping UI required (server center-crops)."
+    },
+    {
+      "id": "US-034",
+      "title": "Add player rail UI showing avatars, card counts, connection and active turn",
+      "description": "Support readability for 2-10 players and reflect disconnect/turn state clearly.",
+      "acceptanceCriteria": [
+        "specific behavior: client renders an ordered player list with each player's name, avatar (if set), and card count",
+        "specific behavior: active player is visually distinguished via a dedicated CSS class on their row/container",
+        "specific behavior: disconnected players are visually marked via a dedicated CSS class on their row/container",
+        "quality gate: `bun --filter client run build` exits with code 0",
+        "quality gate: `bun --filter client run typecheck` exits with code 0"
+      ],
+      "priority": 34,
+      "passes": false,
+      "notes": "Objective criteria use presence of stable CSS classes, not subjective design."
+    },
+    {
+      "id": "US-035",
+      "title": "Add tap-to-select primary interaction with explicit play affordance (client)",
+      "description": "Ensure mobile-friendly play with immediate feedback, while keeping server authority.",
+      "acceptanceCriteria": [
+        "specific behavior: tapping a card marks it selected (tracked in client state) and shows a Play control when selected",
+        "specific behavior: activating Play sends `playCard` for the selected card and clears selection after server ack ok",
+        "quality gate: `bun --filter client run build` exits with code 0",
+        "quality gate: `bun --filter client run typecheck` exits with code 0"
+      ],
+      "priority": 35,
+      "passes": false,
+      "notes": "Since no E2E harness specified, selection can be validated via component unit tests if set up; otherwise typecheck/build."
+    },
+    {
+      "id": "US-036",
+      "title": "Add drag-and-drop card play (pointer events) with drop target validation (client)",
+      "description": "Provide optional game-feel drag interactions for mouse and touch without breaking tap-to-select.",
+      "acceptanceCriteria": [
+        "specific behavior: pointer drag beyond a threshold initiates drag mode for a card and applies a transform style during drag",
+        "specific behavior: dropping over discard target triggers `playCard`, dropping elsewhere cancels and restores card position",
+        "quality gate: `bun --filter client run build` exits with code 0",
+        "quality gate: `bun --filter client run typecheck` exits with code 0"
+      ],
+      "priority": 36,
+      "passes": false,
+      "notes": "Implementation can use `@use-gesture/react` and `react-spring`."
+    }
+  ]
+}
