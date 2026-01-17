@@ -1,0 +1,517 @@
+# Iteration 8 Log
+
+## Metadata
+
+- **Task ID**: US-008
+- **Task Title**: Implement server public game view that hides opponent hands
+- **Description**: Prevent cheating by ensuring clients only see allowed information.
+- **Status**: completed
+- **Task Completed**: Yes
+- **Promise Detected**: Yes
+- **Started At**: 2026-01-17T19:26:09.164Z
+- **Ended At**: 2026-01-17T19:36:54.220Z
+- **Duration**: 10m 45s
+- **Agent**: opencode
+- **Model**: opencode/glm-4.7-free
+--- RAW OUTPUT ---
+I'll implement US-008 to add a server-side view builder that hides opponent hands. Let me first explore the current codebase structure.
+<promise>COMPLETE</promise>
+
+--- STDERR ---
+[94m[1m| [0m[90m task     [0mExplore server game structure
+[96m[1m| [0m[90m Read     [0mshared\src\index.ts
+[96m[1m| [0m[90m Read     [0mserver\src\RoomManager.ts
+[96m[1m| [0m[90m Read     [0mserver\src\index.ts
+[96m[1m| [0m[90m Read     [0mserver\server.test.ts
+[96m[1m| [0m[90m Read     [0mIMPLEMENTATION.md
+[93m[1m| [0m[90m Todo     [0m10 todos
+[93m[1m| [0m[90m Todo     [0m10 todos
+[92m[1m| [0m[90m Edit     [0mshared\src\index.ts
+[92m[1m| [0m[90m Edit     [0mshared\src\index.ts
+[93m[1m| [0m[90m Todo     [0m8 todos
+[92m[1m| [0m[90m Edit     [0mshared\src\index.ts
+[93m[1m| [0m[90m Todo     [0m7 todos
+[92m[1m| [0m[90m Edit     [0mserver\src\RoomManager.ts
+[92m[1m| [0m[90m Edit     [0mshared\src\index.ts
+[96m[1m| [0m[90m Read     [0mshared\src\index.ts
+[92m[1m| [0m[90m Edit     [0mshared\src\index.ts
+[92m[1m| [0m[90m Edit     [0mserver\src\RoomManager.ts
+[91m[1m| [0m[90m Bash     [0mBuild shared package
+
+error: No packages matched the filter
+
+[96m[1m| [0m[90m Read     [0mpackage.json
+[94m[1m| [0m[90m Glob     [0m{"pattern":"**/shared/**"}
+[91m[1m| [0m[90m Bash     [0mBuild shared package
+
+
+$ tsc --outDir dist
+[96m[1m| [0m[90m Read     [0mshared\dist\index.d.ts
+[91m[1m| [0m[90m Bash     [0mBuild server package
+
+$ tsc --outDir dist
+src/index.ts(91,61): error TS2345: Argument of type '{ id: string; name: string; isReady: boolean; secret: string; connected: boolean; }' is not assignable to parameter of type 'StoredPlayer'.
+  Property 'handCount' is missing in type '{ id: string; name: string; isReady: boolean; secret: string; connected: boolean; }' but required in type 'PlayerPublic'.
+src/RoomManager.ts(63,5): error TS2322: Type '{ id: string; name: string; isReady: boolean; score: number | undefined; connected: boolean; }[]' is not assignable to type 'PlayerPublic[]'.
+  Property 'handCount' is missing in type '{ id: string; name: string; isReady: boolean; score: number | undefined; connected: boolean; }' but required in type 'PlayerPublic'.
+
+[92m[1m| [0m[90m Edit     [0mserver\src\index.ts
+[92m[1m| [0m[90m Edit     [0mserver\src\RoomManager.ts
+[91m[1m| [0m[90m Bash     [0mBuild server package
+
+$ tsc --outDir dist
+
+[93m[1m| [0m[90m Todo     [0m5 todos
+[92m[1m| [0m[90m Edit     [0mserver\src\RoomManager.ts
+[93m[1m| [0m[90m Todo     [0m4 todos
+[92m[1m| [0m[90m Edit     [0mserver\src\index.ts
+[92m[1m| [0m[90m Edit     [0mserver\src\index.ts
+[92m[1m| [0m[90m Edit     [0mserver\src\index.ts
+[92m[1m| [0m[90m Edit     [0mserver\src\index.ts
+[92m[1m| [0m[90m Edit     [0mserver\src\index.ts
+[91m[1m| [0m[90m Bash     [0mBuild server package
+
+$ tsc --outDir dist
+
+[93m[1m| [0m[90m Todo     [0m3 todos
+[92m[1m| [0m[90m Edit     [0mserver\server.test.ts
+[96m[1m| [0m[90m Read     [0mserver\server.test.ts
+[92m[1m| [0m[90m Edit     [0mserver\server.test.ts
+[92m[1m| [0m[90m Edit     [0mserver\server.test.ts
+[96m[1m| [0m[90m Read     [0mserver\server.test.ts
+[96m[1m| [0m[90m Read     [0mserver\server.test.ts
+[92m[1m| [0m[90m Edit     [0mserver\server.test.ts
+[96m[1m| [0m[90m Read     [0mserver\server.test.ts
+[92m[1m| [0m[90m Edit     [0mserver\server.test.ts
+[96m[1m| [0m[90m Read     [0mserver\server.test.ts
+[92m[1m| [0m[90m Edit     [0mserver\server.test.ts
+[93m[1m| [0m[90m Todo     [0m2 todos
+[91m[1m| [0m[90m Bash     [0mRun server typecheck
+
+$ tsc --noEmit
+
+[93m[1m| [0m[90m Todo     [0m1 todos
+[91m[1m| [0m[90m Bash     [0mRun server tests
+
+bun test v1.3.6 (d530ed99)
+
+ 22 pass
+ 0 fail
+ 57 expect() calls
+Ran 22 tests across 1 file. [837.00ms]
+
+[93m[1m| [0m[90m Todo     [0m0 todos
+[91m[1m| [0m[90m Bash     [0mShow git status
+
+On branch main
+Your branch is ahead of 'origin/main' by 4 commits.
+  (use "git push" to publish your local commits)
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   .ralph-tui/config.toml
+	modified:   bun.lock
+	modified:   prd.json
+	modified:   server/package.json
+	modified:   server/server.test.ts
+	modified:   server/src/RoomManager.ts
+	modified:   server/src/index.ts
+	modified:   shared/src/index.ts
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	.ralph-tui/iterations/
+	.ralph-tui/progress.md
+	.ralph-tui/ralph.lock
+	.ralph-tui/session.json
+
+no changes added to commit (use "git add" and/or "git commit -a")
+
+
+[91m[1m| [0m[90m Bash     [0mShow git diff for modified files
+
+warning: in the working copy of 'server/server.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'server/src/RoomManager.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'server/src/index.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'shared/src/index.ts', LF will be replaced by CRLF the next time Git touches it
+diff --git a/server/server.test.ts b/server/server.test.ts
+index 5c340ac..903cd7a 100644
+--- a/server/server.test.ts
++++ b/server/server.test.ts
+@@ -2,7 +2,7 @@ import { beforeAll, afterAll, describe, it, expect } from 'bun:test';
+ import { createServer } from 'node:http';
+ import { Server as SocketIOServer } from 'socket.io';
+ import { io as ioClient } from 'socket.io-client';
+-import type { ClientToServerEvents, ServerToClientEvents } from 'shared';
++import type { ClientToServerEvents, ServerToClientEvents, Card } from 'shared';
+ import { RoomManager } from './src/RoomManager';
+ 
+ describe('server', () => {
+@@ -86,7 +86,7 @@ describe('RoomManager', () => {
+       
+       const socketId = 'socket1';
+       const playerId = 'player1';
+-      const player = { id: playerId, name: 'Player 1', isReady: false, secret: 'secret1', connected: true };
++      const player = { id: playerId, name: 'Player 1', isReady: false, secret: 'secret1', connected: true, hand: [], handCount: 0 };
+       
+       room.addPlayer(socketId, player);
+       expect(room.connectedPlayerCount).toBe(1);
+@@ -107,8 +107,8 @@ describe('RoomManager', () => {
+       const socketId2 = 'socket2';
+       const playerId1 = 'player1';
+       const playerId2 = 'player2';
+-      const player1 = { id: playerId1, name: 'Player 1', isReady: false, secret: 'secret1', connected: true };
+-      const player2 = { id: playerId2, name: 'Player 2', isReady: false, secret: 'secret2', connected: true };
++      const player1 = { id: playerId1, name: 'Player 1', isReady: false, secret: 'secret1', connected: true, hand: [], handCount: 0 };
++      const player2 = { id: playerId2, name: 'Player 2', isReady: false, secret: 'secret2', connected: true, hand: [], handCount: 0 };
+       
+       room.addPlayer(socketId1, player1);
+       room.addPlayer(socketId2, player2);
+@@ -220,14 +220,16 @@ describe('join room functionality', () => {
+           name: displayName.trim(),
+           isReady: false,
+           secret: playerSecret,
+-          connected: true
++          connected: true,
++          hand: [],
++          handCount: 0
+         };
+         
+         roomManager.handlePlayerConnection(roomCode, socket.id, player);
+         socketRoomMap.set(socket.id, roomCode);
+         socketPlayerMap.set(socket.id, { playerId, playerSecret });
+         io.to(roomCode).emit('roomUpdated', room.state);
+-        const playerPublic = { id: player.id, name: player.name, isReady: player.isReady, connected: player.connected };
++        const playerPublic = { id: player.id, name: player.name, isReady: player.isReady, connected: player.connected, handCount: player.hand.length };
+         io.to(roomCode).emit('playerJoined', playerPublic as any);
+         socket.join(roomCode);
+         
+@@ -636,3 +638,134 @@ describe('join room functionality', () => {
+     });
+   });
+ });
++
++describe('toGameView', () => {
++  it('should include full hand for requesting player', () => {
++    const manager = new RoomManager();
++    const room = manager.createRoom();
++    
++    const socketId1 = 'socket1';
++    const playerId1 = 'player1';
++    const cards1: Card[] = [
++      { color: 'red', value: '5' },
++      { color: 'blue', value: '7' }
++    ];
++    const player1 = { id: playerId1, name: 'Player 1', isReady: false, secret: 'secret1', connected: true, hand: cards1, handCount: 2 };
++    
++    const socketId2 = 'socket2';
++    const playerId2 = 'player2';
++    const cards2: Card[] = [
++      { color: 'green', value: '9' },
++      { color: 'yellow', value: '3' },
++      { color: 'wild', value: 'wild' }
++    ];
++    const player2 = { id: playerId2, name: 'Player 2', isReady: false, secret: 'secret2', connected: true, hand: cards2, handCount: 3 };
++    
++    room.addPlayer(socketId1, player1);
++    room.addPlayer(socketId2, player2);
++    
++    const gameView = room.toGameView(playerId1);
++    
++    expect(gameView.me.id).toBe(playerId1);
++    expect(gameView.me.hand).toEqual(cards1);
++    expect(gameView.me.hand).toHaveLength(2);
++  });
++
++  it('should not include opponent card objects', () => {
++    const manager = new RoomManager();
++    const room = manager.createRoom();
++    
++    const socketId1 = 'socket1';
++    const playerId1 = 'player1';
++    const cards1: Card[] = [
++      { color: 'red', value: '5' },
++      { color: 'blue', value: '7' }
++    ];
++    const player1 = { id: playerId1, name: 'Player 1', isReady: false, secret: 'secret1', connected: true, hand: cards1, handCount: 2 };
++    
++    const socketId2 = 'socket2';
++    const playerId2 = 'player2';
++    const cards2: Card[] = [
++      { color: 'green', value: '9' },
++      { color: 'yellow', value: '3' },
++      { color: 'wild', value: 'wild' }
++    ];
++    const player2 = { id: playerId2, name: 'Player 2', isReady: false, secret: 'secret2', connected: true, hand: cards2, handCount: 3 };
++    
++    room.addPlayer(socketId1, player1);
++    room.addPlayer(socketId2, player2);
++    
++    const gameView = room.toGameView(playerId1);
++    
++    expect(gameView.otherPlayers).toHaveLength(1);
++    const opponent = gameView.otherPlayers[0];
++    expect(opponent.id).toBe(playerId2);
++    expect(opponent.handCount).toBe(3);
++    expect(opponent as any).not.toHaveProperty('hand');
++  });
++
++  it('should include only handCount for opponent', () => {
++    const manager = new RoomManager();
++    const room = manager.createRoom();
++    
++    const socketId1 = 'socket1';
++    const playerId1 = 'player1';
++    const cards1: Card[] = [{ color: 'red', value: '5' }];
++    const player1 = { id: playerId1, name: 'Player 1', isReady: false, secret: 'secret1', connected: true, hand: cards1, handCount: 1 };
++    
++    const socketId2 = 'socket2';
++    const playerId2 = 'player2';
++    const cards2: Card[] = [
++      { color: 'green', value: '9' },
++      { color: 'yellow', value: '3' }
++    ];
++    const player2 = { id: playerId2, name: 'Player 2', isReady: false, secret: 'secret2', connected: true, hand: cards2, handCount: 2 };
++    
++    room.addPlayer(socketId1, player1);
++    room.addPlayer(socketId2, player2);
++    
++    const gameView = room.toGameView(playerId1);
++    
++    const opponent = gameView.otherPlayers[0];
++    expect(opponent.handCount).toBe(2);
++    
++    const serialized = JSON.stringify(gameView);
++    expect(serialized).not.toContain('"color":"green"');
++    expect(serialized).not.toContain('"value":"9"');
++  });
++
++  it('should include handCount in opponent info for serialized payload', () => {
++    const manager = new RoomManager();
++    const room = manager.createRoom();
++    
++    const socketId1 = 'socket1';
++    const playerId1 = 'player1';
++    const cards1: Card[] = [{ color: 'red', value: '5' }];
++    const player1 = { id: playerId1, name: 'Player 1', isReady: false, secret: 'secret1', connected: true, hand: cards1, handCount: 1 };
++    
++    const socketId2 = 'socket2';
++    const playerId2 = 'player2';
++    const cards2: Card[] = [
++      { color: 'green', value: '9' },
++      { color: 'yellow', value: '3' }
++    ];
++    const player2 = { id: playerId2, name: 'Player 2', isReady: false, secret: 'secret2', connected: true, hand: cards2, handCount: 2 };
++    
++    room.addPlayer(socketId1, player1);
++    room.addPlayer(socketId2, player2);
++    
++    const gameView = room.toGameView(playerId1);
++    
++    const serialized = JSON.stringify(gameView);
++    expect(serialized).toContain('"handCount":2');
++    expect(serialized).toContain('"handCount":1');
++    
++    expect(serialized).toContain('"color":"red"');
++    expect(serialized).toContain('"value":"5"');
++    
++    expect(serialized).not.toContain('"color":"green"');
++    expect(serialized).not.toContain('"value":"9"');
++    expect(serialized).not.toContain('"color":"yellow"');
++    expect(serialized).not.toContain('"value":"3"');
++  });
++});
+diff --git a/server/src/RoomManager.ts b/server/src/RoomManager.ts
+index 244bb55..43d97bc 100644
+--- a/server/src/RoomManager.ts
++++ b/server/src/RoomManager.ts
+@@ -1,8 +1,8 @@
+-import type { RoomState, PlayerPublic, PlayerPrivate } from 'shared';
++import type { RoomState, PlayerPublic, PlayerPrivate, Card, GameView } from 'shared';
+ 
+ type RoomCode = string;
+ 
+-type StoredPlayer = PlayerPublic & { secret: string; connected: boolean };
++type StoredPlayer = PlayerPublic & { secret: string; connected: boolean; hand: Card[] };
+ 
+ export class Room {
+   code: RoomCode;
+@@ -65,10 +65,45 @@ export class Room {
+       name: p.name,
+       isReady: p.isReady,
+       score: p.score,
+-      connected: p.connected
++      connected: p.connected,
++      handCount: p.hand.length
+     }));
+   }
+ 
++  toGameView(playerId: string): GameView {
++    const requestingPlayer = this.players.get(playerId);
++    if (!requestingPlayer) {
++      throw new Error(`Player ${playerId} not found in room`);
++    }
++
++    const me: PlayerPrivate = {
++      id: requestingPlayer.id,
++      name: requestingPlayer.name,
++      isReady: requestingPlayer.isReady,
++      score: requestingPlayer.score,
++      secret: requestingPlayer.secret,
++      connected: requestingPlayer.connected,
++      hand: requestingPlayer.hand
++    };
++
++    const otherPlayers: PlayerPublic[] = Array.from(this.players.values())
++      .filter(p => p.id !== playerId)
++      .map(p => ({
++        id: p.id,
++        name: p.name,
++        isReady: p.isReady,
++        score: p.score,
++        connected: p.connected,
++        handCount: p.hand.length
++      }));
++
++    return {
++      room: this.state,
++      me,
++      otherPlayers
++    };
++  }
++
+   get connectedPlayerCount(): number {
+     return this.connectedPlayerIds.size;
+   }
+diff --git a/server/src/index.ts b/server/src/index.ts
+index c062624..1a90301 100644
+--- a/server/src/index.ts
++++ b/server/src/index.ts
+@@ -27,6 +27,19 @@ const roomManager = new RoomManager();
+ const socketRoomMap = new Map<string, string>();
+ const socketPlayerMap = new Map<string, { playerId: string; playerSecret: string }>();
+ 
++function broadcastGameStateUpdate(roomCode: string): void {
++  const room = roomManager.getRoom(roomCode);
++  if (!room) return;
++
++  room.players.forEach((player, playerId) => {
++    const socketId = room.playerSocketMap.get(playerId);
++    if (socketId && player.connected) {
++      const gameView = room.toGameView(playerId);
++      io.to(socketId).emit('gameStateUpdate', gameView);
++    }
++  });
++}
++
+ function validateDisplayName(displayName: string): { valid: boolean; error?: string } {
+   const trimmed = displayName.trim();
+   
+@@ -85,16 +98,19 @@ io.on('connection', (socket) => {
+       name: displayName.trim(),
+       isReady: false,
+       secret: playerSecret,
+-      connected: true
++      connected: true,
++      hand: [],
++      handCount: 0
+     };
+     
+     roomManager.handlePlayerConnection(roomCode, socket.id, player);
+     socketRoomMap.set(socket.id, roomCode);
+     socketPlayerMap.set(socket.id, { playerId, playerSecret });
+     io.to(roomCode).emit('roomUpdated', room.state);
+-    const playerPublic = { id: player.id, name: player.name, isReady: player.isReady, connected: player.connected };
++    const playerPublic = { id: player.id, name: player.name, isReady: player.isReady, connected: player.connected, handCount: player.hand.length };
+     io.to(roomCode).emit('playerJoined', playerPublic as any);
+     socket.join(roomCode);
++    broadcastGameStateUpdate(roomCode);
+     
+     callback({ playerId, playerSecret });
+   });
+@@ -111,6 +127,7 @@ io.on('connection', (socket) => {
+     socketPlayerMap.set(socket.id, { playerId, playerSecret });
+     io.to(roomCode).emit('roomUpdated', room.state);
+     socket.join(roomCode);
++    broadcastGameStateUpdate(roomCode);
+     
+     callback({ success: true });
+   });
+@@ -124,6 +141,7 @@ io.on('connection', (socket) => {
+       if (room) {
+         io.to(roomId).emit('roomUpdated', room.state);
+         io.to(roomId).emit('playerLeft', socket.id);
++        broadcastGameStateUpdate(roomId);
+       }
+     }
+   });
+@@ -139,6 +157,7 @@ io.on('connection', (socket) => {
+       socketPlayerMap.delete(socket.id);
+       if (room) {
+         io.to(roomId).emit('roomUpdated', room.state);
++        broadcastGameStateUpdate(roomId);
+       }
+     }
+   });
+diff --git a/shared/src/index.ts b/shared/src/index.ts
+index eb16fba..b3c2dc9 100644
+--- a/shared/src/index.ts
++++ b/shared/src/index.ts
+@@ -6,12 +6,18 @@ export type RoomState = {
+   createdAt: number;
+ };
+ 
++export type Card = {
++  color: 'red' | 'yellow' | 'green' | 'blue' | 'wild';
++  value: string;
++};
++
+ export type PlayerPublic = {
+   id: string;
+   name: string;
+   isReady: boolean;
+   score?: number;
+   connected: boolean;
++  handCount: number;
+ };
+ 
+ export type PlayerPrivate = {
+@@ -21,6 +27,7 @@ export type PlayerPrivate = {
+   score?: number;
+   secret: string;
+   connected: boolean;
++  hand: Card[];
+ };
+ 
+ export type GameView = {
+@@ -44,5 +51,6 @@ export type ServerToClientEvents = {
+   playerJoined: (player: PlayerPublic) => void;
+   playerLeft: (playerId: string) => void;
+   gameStarted: () => void;
++  gameStateUpdate: (view: GameView) => void;
+   error: (message: string) => void;
+ };
+[91m[1m| [0m[90m Bash     [0mAdd modified files to staging
+
+warning: in the working copy of 'server/server.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'server/src/RoomManager.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'server/src/index.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'shared/src/index.ts', LF will be replaced by CRLF the next time Git touches it
+
+[91m[1m| [0m[90m Bash     [0mCommit changes for US-008
+[main 8abec3c] $(cat <<'EOF'
+ 4 files changed, 206 insertions(+), 11 deletions(-)
+
+
+[91m[1m| [0m[90m Bash     [0mShow last commit message
+
+$(cat <<'EOF'
+
+
+[91m[1m| [0m[90m Bash     [0mAmend commit with proper message
+
+[main 3a3a782] Implement server public game view that hides opponent hands (US-008)
+ Date: Sun Jan 18 03:36:36 2026 +0800
+ 4 files changed, 206 insertions(+), 11 deletions(-)
+

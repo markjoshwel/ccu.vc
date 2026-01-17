@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
-import type { RoomState, PlayerPublic, ServerToClientEvents, ClientToServerEvents } from 'shared';
+import type { RoomState, PlayerPublic, ServerToClientEvents, ClientToServerEvents, Card, GameView } from 'shared';
 
 const STORAGE_KEYS = {
   PLAYER_SECRET: 'playerSecret',
@@ -26,6 +26,7 @@ function App() {
   const [error, setError] = useState('');
   const [socket, setSocket] = useState<Socket<ServerToClientEvents, ClientToServerEvents> | null>(null);
   const [pendingActions, setPendingActions] = useState<Set<string>>(new Set());
+  const [gameView, setGameView] = useState<GameView | null>(null);
 
   useEffect(() => {
     const storedSecret = localStorage.getItem(STORAGE_KEYS.PLAYER_SECRET);
@@ -68,6 +69,11 @@ function App() {
         setPlayers(updatedRoom.players);
         setView('room');
         setLoading(false);
+      });
+
+      newSocket.on('gameStateUpdate', (updatedGameView) => {
+        setGameView(updatedGameView);
+        setRoom(updatedGameView.room);
       });
 
       newSocket.on('error', (message) => {
@@ -123,6 +129,11 @@ function App() {
       setPlayers(updatedRoom.players);
       setView('room');
       setLoading(false);
+    });
+
+    newSocket.on('gameStateUpdate', (updatedGameView) => {
+      setGameView(updatedGameView);
+      setRoom(updatedGameView.room);
     });
 
     newSocket.on('error', (message) => {
@@ -181,6 +192,11 @@ function App() {
       setLoading(false);
     });
 
+    newSocket.on('gameStateUpdate', (updatedGameView) => {
+      setGameView(updatedGameView);
+      setRoom(updatedGameView.room);
+    });
+
     newSocket.on('error', (message) => {
       setError(message);
       setLoading(false);
@@ -197,9 +213,36 @@ function App() {
     setSocket(null);
     setRoom(null);
     setPlayers([]);
+    setGameView(null);
     setView('lobby');
     setLoading(false);
     setError('');
+  };
+
+  const handlePlayCard = (card: Card) => {
+    if (!socket) return;
+    
+    const actionId = generateActionId();
+    setPendingActions((prev) => new Set(prev).add(actionId));
+    
+    socket.emit('playCard', actionId, card, (response) => {
+      if (!response.success) {
+        setError(response.error || 'Failed to play card');
+      }
+    });
+  };
+
+  const handleDrawCard = () => {
+    if (!socket) return;
+    
+    const actionId = generateActionId();
+    setPendingActions((prev) => new Set(prev).add(actionId));
+    
+    socket.emit('drawCard', actionId, (response) => {
+      if (!response.success) {
+        setError(response.error || 'Failed to draw card');
+      }
+    });
   };
 
   const isCreatePending = pendingActions.size > 0;
@@ -216,20 +259,90 @@ function App() {
   }
 
   if (view === 'room' && room) {
+    const myPlayerId = localStorage.getItem(STORAGE_KEYS.PLAYER_ID);
+    const allPlayers = gameView ? [...gameView.otherPlayers, gameView.me] : players;
+    const topCard = room.discardPile && room.discardPile.length > 0 ? room.discardPile[room.discardPile.length - 1] : null;
+    const myTurn = myPlayerId && room.currentPlayerIndex !== undefined && allPlayers[room.currentPlayerIndex]?.id === myPlayerId;
+    const isPlayPending = pendingActions.size > 0;
+    const isPlayerPrivate = (player: any): player is { hand: Card[] } => 'hand' in player;
+    const getPlayerHandCount = (player: any): number => {
+      if (isPlayerPrivate(player)) {
+        return player.hand?.length || 0;
+      }
+      return player.handCount || 0;
+    };
+
     return (
       <div className="container">
         <div className="card">
           <h1>Room {room.id}</h1>
           <div className="room-code">{roomCode || joinRoomCode}</div>
-          <div className="players-list">
-            <h2>Players ({players.length})</h2>
-            {players.map((player) => (
-              <div key={player.id} className={`player ${player.connected ? 'connected' : 'disconnected'}`}>
-                <span className="name">{player.name}</span>
-                <span className="status">{player.connected ? 'Online' : 'Offline'}</span>
+          
+          {room.gameStatus === 'playing' && topCard && (
+            <div className="game-area">
+              <div className="discard-area">
+                <h2>Discard Pile</h2>
+                <div className={`card-display color-${topCard.color}`}>
+                  <span className="card-value">{topCard.value}</span>
+                </div>
               </div>
-            ))}
-          </div>
+
+              <div className="players-list">
+                <h2>Players</h2>
+                {allPlayers.map((player, index) => (
+                  <div 
+                    key={player.id} 
+                    className={`player ${player.connected ? 'connected' : 'disconnected'} ${room.currentPlayerIndex === index ? 'active' : ''}`}
+                  >
+                    <span className="name">{player.name}</span>
+                    <span className="status">{player.connected ? 'Online' : 'Offline'}</span>
+                    <span className="hand-count">{getPlayerHandCount(player)} cards</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {gameView && gameView.me.hand && gameView.me.hand.length > 0 && (
+            <div className="hand-area">
+              <h2>Your Hand</h2>
+              <div className="hand-grid">
+                {gameView.me.hand.map((card, index) => (
+                  <button
+                    key={index}
+                    className={`card-display color-${card.color} ${!myTurn || isPlayPending ? 'disabled' : ''}`}
+                    onClick={() => myTurn && !isPlayPending && handlePlayCard(card)}
+                    disabled={!myTurn || isPlayPending}
+                  >
+                    <span className="card-value">{card.value}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {room.gameStatus === 'playing' && myTurn && (
+            <button 
+              onClick={handleDrawCard} 
+              disabled={isPlayPending}
+              style={{ marginTop: '16px' }}
+            >
+              {isPlayPending ? 'Drawing...' : 'Draw Card'}
+            </button>
+          )}
+
+          {room.gameStatus === 'waiting' && (
+            <div className="players-list">
+              <h2>Players ({players.length})</h2>
+              {players.map((player) => (
+                <div key={player.id} className={`player ${player.connected ? 'connected' : 'disconnected'}`}>
+                  <span className="name">{player.name}</span>
+                  <span className="status">{player.connected ? 'Online' : 'Offline'}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
           <button onClick={handleLeave} style={{ marginTop: '24px' }}>
             Leave Room
           </button>

@@ -1,0 +1,98 @@
+# Iteration 2 Log
+
+## Metadata
+
+- **Task ID**: US-002
+- **Task Title**: Define shared TypeScript types for rooms, players, and socket events
+- **Description**: Prevent client/server mismatches by sharing an explicit event contract and core state types.
+- **Status**: completed
+- **Task Completed**: Yes
+- **Promise Detected**: Yes
+- **Started At**: 2026-01-17T18:38:00.083Z
+- **Ended At**: 2026-01-17T18:39:52.328Z
+- **Duration**: 1m 52s
+- **Agent**: opencode
+- **Model**: opencode/glm-4.7-free
+--- RAW OUTPUT ---
+I'll implement the shared TypeScript types for rooms, players, and socket events. Let me first check the current state of the repository.
+All acceptance criteria met:
+- `shared/` exports `RoomState`, `PlayerPublic`, `PlayerPrivate`, `GameView`, `ClientToServerEvents`, and `ServerToClientEvents` types
+- Server and client import types from `shared/`
+- All three typechecks pass with code 0
+
+<promise>COMPLETE</promise>
+
+--- STDERR ---
+[96m[1m| [0m[90m Read     [0mpackage.json
+[94m[1m| [0m[90m Glob     [0m{"pattern":"**/package.json"}
+[96m[1m| [0m[90m Read     [0mshared\package.json
+[96m[1m| [0m[90m Read     [0mserver\package.json
+[96m[1m| [0m[90m Read     [0mclient\package.json
+[94m[1m| [0m[90m Glob     [0m{"pattern":"shared/**/*.ts"}
+[94m[1m| [0m[90m Glob     [0m{"pattern":"server/**/*.ts"}
+[94m[1m| [0m[90m Glob     [0m{"pattern":"client/**/*.ts"}
+[96m[1m| [0m[90m Read     [0mshared\src\index.ts
+[96m[1m| [0m[90m Read     [0mserver\src\index.ts
+[96m[1m| [0m[90m Read     [0mclient\src\index.ts
+[94m[1m| [0m[90m Glob     [0m{"pattern":"**/tsconfig.json"}
+[92m[1m| [0m[90m Write    [0mshared\src\index.ts
+[92m[1m| [0m[90m Write    [0mserver\src\index.ts
+[92m[1m| [0m[90m Write    [0mclient\src\index.ts
+[96m[1m| [0m[90m Read     [0mshared\tsconfig.json
+[96m[1m| [0m[90m Read     [0mserver\tsconfig.json
+[96m[1m| [0m[90m Read     [0mclient\tsconfig.json
+[91m[1m| [0m[90m Bash     [0mRun typecheck on shared workspace
+
+error: No packages matched the filter
+
+[91m[1m| [0m[90m Bash     [0mRun typecheck on server workspace
+
+error: No packages matched the filter
+
+[91m[1m| [0m[90m Bash     [0mRun typecheck on client workspace
+
+error: No packages matched the filter
+
+[91m[1m| [0m[90m Bash     [0mInstall all workspace dependencies
+
+bun install v1.3.6 (d530ed99)
+
+Checked 10 installs across 9 packages (no changes) [34.00ms]
+
+[91m[1m| [0m[90m Bash     [0mRun typecheck on shared workspace
+
+error: No packages matched the filter
+
+[91m[1m| [0m[90m Bash     [0mRun typecheck on server workspace
+
+error: No packages matched the filter
+
+[91m[1m| [0m[90m Bash     [0mRun typecheck on client workspace
+
+error: No packages matched the filter
+
+[91m[1m| [0m[90m Bash     [0mRun typecheck on shared workspace
+
+$ tsc --noEmit
+
+[91m[1m| [0m[90m Bash     [0mRun typecheck on server workspace
+
+$ tsc --noEmit
+
+[91m[1m| [0m[90m Bash     [0mRun typecheck on client workspace
+
+$ tsc --noEmit
+
+[91m[1m| [0m[90m Bash     [0mRun typecheck on shared workspace with correct filter syntax
+
+shared typecheck: Exited with code 0
+
+[91m[1m| [0m[90m Bash     [0mRun typecheck on client workspace with correct filter syntax
+
+client typecheck: Exited with code 0
+
+[91m[1m| [0m[90m Bash     [0mRun typecheck on server workspace with correct filter syntax
+
+server typecheck: Exited with code 0
+
+[96m[1m| [0m[90m Read     [0mshared\src\index.ts

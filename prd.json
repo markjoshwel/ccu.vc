@@ -1,7 +1,7 @@
 {
-  "project": "ccu.vc",
-  "branchName": "ralph/chess-clock-uno",
+  "name": "ccu.vc",
   "description": "Implement a Bun-powered, server-authoritative Chess Clock UNO web game with ephemeral rooms (short codes), ephemeral identities (name + avatar), room-wide chat, and a responsive React UI.",
+  "branchName": "ralph/chess-clock-uno",
   "userStories": [
     {
       "id": "US-001",
@@ -14,8 +14,9 @@
         "quality gate: `bun --filter server run typecheck` exits with code 0"
       ],
       "priority": 1,
-      "passes": false,
-      "notes": "Assumes TypeScript is used for server/client/shared to enable typecheck quality gates."
+      "passes": true,
+      "notes": "Assumes TypeScript is used for server/client/shared to enable typecheck quality gates.",
+      "completionNotes": "Completed by agent"
     },
     {
       "id": "US-002",
@@ -29,8 +30,9 @@
         "quality gate: `bun --filter client run typecheck` exits with code 0"
       ],
       "priority": 2,
-      "passes": false,
-      "notes": "If client does not have typecheck script yet, add it as part of this story."
+      "passes": true,
+      "notes": "If client does not have typecheck script yet, add it as part of this story.",
+      "completionNotes": "Completed by agent"
     },
     {
       "id": "US-003",
@@ -43,8 +45,9 @@
         "quality gate: `bun --filter server test` exits with code 0"
       ],
       "priority": 3,
-      "passes": false,
-      "notes": "Server may use Bun's HTTP server or Express-style framework; must remain Bun-compatible."
+      "passes": true,
+      "notes": "Server may use Bun's HTTP server or Express-style framework; must remain Bun-compatible.",
+      "completionNotes": "Completed by agent"
     },
     {
       "id": "US-004",
@@ -58,8 +61,9 @@
         "quality gate: `bun --filter server run typecheck` exits with code 0"
       ],
       "priority": 4,
-      "passes": false,
-      "notes": "Assumes a short-code generator spec: uppercase base32-like alphabet without ambiguous chars is acceptable."
+      "passes": true,
+      "notes": "Assumes a short-code generator spec: uppercase base32-like alphabet without ambiguous chars is acceptable.",
+      "completionNotes": "Completed by agent"
     },
     {
       "id": "US-005",
@@ -73,8 +77,9 @@
         "quality gate: `bun --filter server run typecheck` exits with code 0"
       ],
       "priority": 5,
-      "passes": false,
-      "notes": "Validation rules for `displayName`: 1-24 chars after trimming; reject control characters."
+      "passes": true,
+      "notes": "Validation rules for `displayName`: 1-24 chars after trimming; reject control characters.",
+      "completionNotes": "Completed by agent"
     },
     {
       "id": "US-006",
@@ -88,8 +93,9 @@
         "quality gate: `bun --filter server run typecheck` exits with code 0"
       ],
       "priority": 6,
-      "passes": false,
-      "notes": "Room deletion on zero-connected makes reconnect impossible once everyone leaves, per requirements."
+      "passes": true,
+      "notes": "Room deletion on zero-connected makes reconnect impossible once everyone leaves, per requirements.",
+      "completionNotes": "Completed by agent"
     },
     {
       "id": "US-007",
@@ -103,8 +109,9 @@
         "quality gate: `bun --filter client run typecheck` exits with code 0"
       ],
       "priority": 7,
-      "passes": false,
-      "notes": "No gameplay UI required yet; only lobby + basic room screen acceptable."
+      "passes": true,
+      "notes": "No gameplay UI required yet; only lobby + basic room screen acceptable.",
+      "completionNotes": "Completed by agent"
     },
     {
       "id": "US-008",
@@ -117,8 +124,9 @@
         "quality gate: `bun --filter server run typecheck` exits with code 0"
       ],
       "priority": 8,
-      "passes": false,
-      "notes": "Assumes server uses a per-socket view builder `toGameView(playerId)`."
+      "passes": true,
+      "notes": "Assumes server uses a per-socket view builder `toGameView(playerId)`.",
+      "completionNotes": "Completed by agent"
     },
     {
       "id": "US-009",
@@ -131,8 +139,9 @@
         "quality gate: `bun --filter server run typecheck` exits with code 0"
       ],
       "priority": 9,
-      "passes": false,
-      "notes": "Assumes 1 deck for v1; deckCount configurability can come later."
+      "passes": true,
+      "notes": "Assumes 1 deck for v1; deckCount configurability can come later.",
+      "completionNotes": "Completed by agent"
     },
     {
       "id": "US-010",
@@ -145,8 +154,9 @@
         "quality gate: `bun --filter server run typecheck` exits with code 0"
       ],
       "priority": 10,
-      "passes": false,
-      "notes": "Assumes a host concept exists; if not, first joiner is host."
+      "passes": true,
+      "notes": "Assumes a host concept exists; if not, first joiner is host.",
+      "completionNotes": "Completed by agent"
     },
     {
       "id": "US-011",
@@ -159,8 +169,9 @@
         "quality gate: `bun --filter server run typecheck` exits with code 0"
       ],
       "priority": 11,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "",
+      "completionNotes": "Completed by agent"
     },
     {
       "id": "US-012",
@@ -173,8 +184,9 @@
         "quality gate: `bun --filter server run typecheck` exits with code 0"
       ],
       "priority": 12,
-      "passes": false,
-      "notes": "Special cards handled in subsequent stories."
+      "passes": true,
+      "notes": "Special cards handled in subsequent stories.",
+      "completionNotes": "Completed by agent"
     },
     {
       "id": "US-013",
@@ -187,8 +199,9 @@
         "quality gate: `bun --filter server run typecheck` exits with code 0"
       ],
       "priority": 13,
-      "passes": false,
-      "notes": "Later rules can make draw-and-play optional/configurable."
+      "passes": true,
+      "notes": "Later rules can make draw-and-play optional/configurable.",
+      "completionNotes": "Completed by agent"
     },
     {
       "id": "US-014",
@@ -202,8 +215,9 @@
         "quality gate: `bun --filter client run typecheck` exits with code 0"
       ],
       "priority": 14,
-      "passes": false,
-      "notes": "Client-side pending state can be minimal (e.g. data attribute and spinner)."
+      "passes": true,
+      "notes": "Client-side pending state can be minimal (e.g. data attribute and spinner).",
+      "completionNotes": "Completed by agent"
     },
     {
       "id": "US-015",
@@ -517,5 +531,8 @@
       "passes": false,
       "notes": "Implementation can use `@use-gesture/react` and `react-spring`."
     }
-  ]
+  ],
+  "metadata": {
+    "updatedAt": "2026-01-17T20:03:20.277Z"
+  }
 }

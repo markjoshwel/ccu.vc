@@ -9,8 +9,9 @@
     "test": "bun test"
   },
   "devDependencies": {
-    "typescript": "^5.0.0",
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "socket.io-client": "^4.8.3",
+    "typescript": "^5.0.0"
   },
   "dependencies": {
     "shared": "workspace:*",

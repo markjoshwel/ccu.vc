@@ -182,6 +182,78 @@ io.on('connection', (socket) => {
     }
   });
 
+  socket.on('playCard', (actionId: string, card: any, callback: (response: { success: boolean; error?: string }) => void) => {
+    const roomCode = socketRoomMap.get(socket.id);
+    
+    if (!roomCode) {
+      socket.emit('actionAck', { actionId, ok: false });
+      callback({ success: false, error: 'Not in a room' });
+      return;
+    }
+    
+    const room = roomManager.getRoom(roomCode);
+    
+    if (!room) {
+      socket.emit('actionAck', { actionId, ok: false });
+      callback({ success: false, error: 'Room not found' });
+      return;
+    }
+    
+    const playerData = socketPlayerMap.get(socket.id);
+    if (!playerData) {
+      socket.emit('actionAck', { actionId, ok: false });
+      callback({ success: false, error: 'Player not found' });
+      return;
+    }
+    
+    try {
+      room.playCard(playerData.playerId, card);
+      io.to(roomCode).emit('roomUpdated', room.state);
+      broadcastGameStateUpdate(roomCode);
+      socket.emit('actionAck', { actionId, ok: true });
+      callback({ success: true });
+    } catch (error) {
+      socket.emit('actionAck', { actionId, ok: false });
+      callback({ success: false, error: (error as Error).message });
+    }
+  });
+
+  socket.on('drawCard', (actionId: string, callback: (response: { success: boolean; error?: string }) => void) => {
+    const roomCode = socketRoomMap.get(socket.id);
+    
+    if (!roomCode) {
+      socket.emit('actionAck', { actionId, ok: false });
+      callback({ success: false, error: 'Not in a room' });
+      return;
+    }
+    
+    const room = roomManager.getRoom(roomCode);
+    
+    if (!room) {
+      socket.emit('actionAck', { actionId, ok: false });
+      callback({ success: false, error: 'Room not found' });
+      return;
+    }
+    
+    const playerData = socketPlayerMap.get(socket.id);
+    if (!playerData) {
+      socket.emit('actionAck', { actionId, ok: false });
+      callback({ success: false, error: 'Player not found' });
+      return;
+    }
+    
+    try {
+      room.drawCard(playerData.playerId);
+      io.to(roomCode).emit('roomUpdated', room.state);
+      broadcastGameStateUpdate(roomCode);
+      socket.emit('actionAck', { actionId, ok: true });
+      callback({ success: true });
+    } catch (error) {
+      socket.emit('actionAck', { actionId, ok: false });
+      callback({ success: false, error: (error as Error).message });
+    }
+  });
+
   socket.on('leaveRoom', () => {
     const roomId = socketRoomMap.get(socket.id);
     if (roomId) {

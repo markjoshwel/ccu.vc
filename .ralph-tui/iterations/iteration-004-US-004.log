@@ -1,0 +1,92 @@
+# Iteration 4 Log
+
+## Metadata
+
+- **Task ID**: US-004
+- **Task Title**: Create in-memory RoomManager with short room codes and TTL-free lifecycle
+- **Description**: Rooms must be easy to share and exist only while at least one player is connected.
+- **Status**: completed
+- **Task Completed**: Yes
+- **Promise Detected**: Yes
+- **Started At**: 2026-01-17T18:44:52.271Z
+- **Ended At**: 2026-01-17T18:46:26.874Z
+- **Duration**: 1m 34s
+- **Agent**: opencode
+- **Model**: opencode/glm-4.7-free
+--- RAW OUTPUT ---
+I'll implement the in-memory RoomManager with short room codes. Let me first check the current state of the codebase.
+<promise>COMPLETE</promise>
+
+--- STDERR ---
+[94m[1m| [0m[90m Glob     [0m{"pattern":"**/*.ts"}
+[96m[1m| [0m[90m Read     [0mpackage.json
+[96m[1m| [0m[90m Read     [0mserver\src\index.ts
+[96m[1m| [0m[90m Read     [0mshared\src\index.ts
+[96m[1m| [0m[90m Read     [0mserver\package.json
+[96m[1m| [0m[90m Read     [0mserver\server.test.ts
+[91m[1m| [0m[90m Bash     [0mList server directory contents
+
+'ls' is not recognized as an internal or external command,
+operable program or batch file.
+
+[91m[1m| [0m[90m Bash     [0mList server directory contents
+
+ Volume in drive C is root
+ Volume Serial Number is 2116-A032
+
+ Directory of C:\Users\mark\Works\ccu.vc\server
+
+18/01/2026  02:41 am    <DIR>          .
+18/01/2026  02:40 am    <DIR>          ..
+18/01/2026  02:36 am    <DIR>          dist
+18/01/2026  02:40 am    <DIR>          node_modules
+18/01/2026  02:41 am               373 package.json
+18/01/2026  02:41 am             1,455 server.test.ts
+18/01/2026  02:29 am    <DIR>          src
+18/01/2026  02:36 am               164 tsconfig.json
+               3 File(s)          1,992 bytes
+               5 Dir(s)  26,665,259,008 bytes free
+
+[92m[1m| [0m[90m Write    [0mserver\src\RoomManager.ts
+[96m[1m| [0m[90m Read     [0mserver\server.test.ts
+[92m[1m| [0m[90m Edit     [0mserver\server.test.ts
+[92m[1m| [0m[90m Edit     [0mserver\server.test.ts
+[92m[1m| [0m[90m Edit     [0mserver\src\index.ts
+[92m[1m| [0m[90m Edit     [0mserver\src\index.ts
+[91m[1m| [0m[90m Bash     [0mRun server tests
+
+bun test v1.3.6 (d530ed99)
+
+ 7 pass
+ 0 fail
+ 20 expect() calls
+Ran 7 tests across 1 file. [242.00ms]
+
+[91m[1m| [0m[90m Bash     [0mRun server typecheck
+
+$ tsc --noEmit
+
+[91m[1m| [0m[90m Bash     [0mRun server typecheck with filter
+
+error: No packages matched the filter
+
+[91m[1m| [0m[90m Bash     [0mRun server tests with filter
+
+server test: bun test v1.3.6 (d530ed99)
+server test: 
+server test:  7 pass
+server test:  0 fail
+server test:  20 expect() calls
+server test: Ran 7 tests across 1 file. [240.00ms]
+server test: Exited with code 0
+
+[91m[1m| [0m[90m Bash     [0mRun server typecheck
+
+'tsc' is not recognized as an internal or external command,
+operable program or batch file.
+
+[91m[1m| [0m[90m Bash     [0mRun server typecheck
+
+$ tsc --noEmit
+
+[93m[1m| [0m[90m Todo     [0m0 todos

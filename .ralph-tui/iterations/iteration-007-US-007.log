@@ -1,0 +1,695 @@
+# Iteration 7 Log
+
+## Metadata
+
+- **Task ID**: US-007
+- **Task Title**: Build minimal React lobby to create/join rooms and store reconnect secret
+- **Description**: Provide a working UI path into the multiplayer session model.
+- **Status**: completed
+- **Task Completed**: Yes
+- **Promise Detected**: Yes
+- **Started At**: 2026-01-17T19:21:04.954Z
+- **Ended At**: 2026-01-17T19:26:08.099Z
+- **Duration**: 5m 3s
+- **Agent**: opencode
+- **Model**: opencode/glm-4.7-free
+--- RAW OUTPUT ---
+I'll implement US-007 to build the React lobby for creating/joining rooms and storing the reconnect secret. Let me start by exploring the current codebase structure.
+All acceptance criteria are met:
+- ✅ Lobby page allows creating rooms with display name and shows room code
+- ✅ Lobby page allows joining rooms with room code and display name
+- ✅ Client stores playerSecret locally and reuses on refresh for reconnection
+- ✅ `bun --filter client run build` exits with code 0
+- ✅ `bun --filter client run typecheck` exits with code 0
+<promise>COMPLETE</promise>
+
+--- STDERR ---
+[91m[1m| [0m[90m Bash     [0mList files in root directory
+
+'ls' is not recognized as an internal or external command,
+operable program or batch file.
+
+[94m[1m| [0m[90m Glob     [0m{"pattern":"**/*.{tsx,ts,jsx,js}"}
+[91m[1m| [0m[90m Bash     [0mList directory contents
+
+ Volume in drive C is root
+ Volume Serial Number is 2116-A032
+
+ Directory of C:\Users\mark\Works\ccu.vc
+
+18/01/2026  02:52 am    <DIR>          .
+17/01/2026  10:57 pm    <DIR>          ..
+18/01/2026  02:25 am                60 .gitignore
+18/01/2026  02:37 am    <DIR>          .ralph-tui
+17/01/2026  11:49 pm    <DIR>          agents
+18/01/2026  02:52 am             6,420 bun.lock
+18/01/2026  02:32 am    <DIR>          client
+18/01/2026  02:30 am    <DIR>          dist
+18/01/2026  12:36 am             7,207 IMPLEMENTATION.md
+18/01/2026  02:29 am    <DIR>          node_modules
+18/01/2026  02:37 am               315 package.json
+18/01/2026  03:21 am            30,087 prd.json
+18/01/2026  01:05 am               348 README.md
+18/01/2026  03:15 am    <DIR>          server
+18/01/2026  02:32 am    <DIR>          shared
+18/01/2026  02:35 am               438 tsconfig.json
+18/01/2026  02:33 am            17,487 tsconfig.tsbuildinfo
+               8 File(s)         62,362 bytes
+               9 Dir(s)  26,597,261,312 bytes free
+
+[94m[1m| [0m[90m Glob     [0m{"pattern":"client/**/*"}
+[96m[1m| [0m[90m Read     [0mclient\package.json
+[96m[1m| [0m[90m Read     [0mclient\src\index.ts
+[96m[1m| [0m[90m Read     [0mshared\src\index.ts
+[96m[1m| [0m[90m Read     [0mpackage.json
+[91m[1m| [0m[90m Bash     [0mList client/src directory Volume in drive C is root
+ Volume Serial Number is 2116-A032
+
+ Directory of C:\Users\mark\Works\ccu.vc\client\src
+
+18/01/2026  02:29 am    <DIR>          .
+18/01/2026  02:32 am    <DIR>          ..
+18/01/2026  02:38 am               743 index.ts
+               1 File(s)            743 bytes
+               2 Dir(s)  26,597,076,992 bytes free
+
+
+
+[92m[1m| [0m[90m Edit     [0mclient\package.json
+[92m[1m| [0m[90m Write    [0mclient\index.html
+[92m[1m| [0m[90m Write    [0mclient\src\main.tsx
+[92m[1m| [0m[90m Write    [0mclient\src\index.css
+[92m[1m| [0m[90m Write    [0mclient\src\App.tsx
+[92m[1m| [0m[90m Write    [0mclient\vite.config.ts
+
+
+[91m[1m| [0m[90m Bash     [0mInstall client dependenciesbun install v1.3.6 (d530ed99)
+Resolving dependencies
+Resolved, downloaded and extracted [19]
+Saved lockfile
+
++ @types/react@18.3.27 (v19.2.8 available)
++ @types/react-dom@18.3.7 (v19.2.3 available)
++ vite@5.4.21 (v7.3.1 available)
++ react@18.3.1 (v19.2.3 available)
++ react-dom@18.3.1 (v19.2.3 available)
+
+40 packages installed [703.00ms]
+
+[91m[1m| [0m[90m Bash     [0mAdd socket.io-client dependency
+
+
+bun add v1.3.6 (d530ed99)
+Saved lockfile
+
+installed socket.io-client@4.8.3
+
+[74.00ms] done
+[91m[1m| [0m[90m Bash     [0mRun client typecheck
+
+$ tsc --noEmit
+src/App.tsx(38,89): error TS7006: Parameter 'response' implicitly has an 'any' type.
+src/App.tsx(78,36): error TS7006: Parameter 'response' implicitly has an 'any' type.
+src/App.tsx(84,75): error TS7006: Parameter 'response' implicitly has an 'any' type.
+src/App.tsx(128,63): error TS7006: Parameter 'response' implicitly has an 'any' type.
+src/App.tsx(189,64): error TS2339: Property 'connected' does not exist on type 'PlayerPublic'.
+src/App.tsx(191,50): error TS2339: Property 'connected' does not exist on type 'PlayerPublic'.
+src/index.ts(12,5): error TS2741: Property 'connected' is missing in type '{ id: string; name: string; isReady: false; secret: string; }' but required in type 'PlayerPrivate'.
+src/index.ts(21,9): error TS2739: Type '{ joinRoom: (roomId: string) => void; leaveRoom: () => void; updatePlayer: (data: Partial<PlayerPrivate>) => void; playerReady: () => void; }' is missing the following properties from type 'ClientToServerEvents': create_room, join_room, reconnect_room
+
+[91m[1m| [0m[90m Bash     [0mDelete old index.ts file
+[92m[1m| [0m[90m Edit     [0mclient\src\App.tsx
+[92m[1m| [0m[90m Edit     [0mclient\src\App.tsx
+[92m[1m| [0m[90m Edit     [0mclient\src\App.tsx
+[96m[1m| [0m[90m Read     [0mclient\src\App.tsx
+[96m[1m| [0m[90m Read     [0mshared\src\index.ts
+[92m[1m| [0m[90m Edit     [0mclient\src\App.tsx
+
+
+$ tsc --noEmit
+src/App.tsx(189,64): error TS2339: Property 'connected' does not exist on type 'PlayerPublic'.
+src/App.tsx(191,50): error TS2339: Property 'connected' does not exist on type 'PlayerPublic'.
+
+[91m[1m| [0m[90m Bash     [0mRun client typecheck[96m[1m| [0m[90m Read     [0mclient\dist\shared\src\index.d.ts
+[96m[1m| [0m[90m Read     [0mshared\src\index.ts
+[91m[1m| [0m[90m Bash     [0mBuild shared module
+
+
+$ tsc --outDir dist
+[91m[1m| [0m[90m Bash     [0mBuild client
+
+$ tsc --noEmit && vite build
+[36mvite v5.4.21 [32mbuilding for production...[36m[39m
+transforming...
+[32m✓[39m 60 modules transformed.
+rendering chunks...
+computing gzip size...
+[2mdist/[22m[32mindex.html                 [39m[1m[2m  0.39 kB[22m[1m[22m[2m │ gzip:  0.27 kB[22m
+[2mdist/[22m[35massets/index-D8X-SmYZ.css  [39m[1m[2m  1.78 kB[22m[1m[22m[2m │ gzip:  0.80 kB[22m
+[2mdist/[22m[36massets/index-Cf0Dc4QH.js   [39m[1m[2m188.16 kB[22m[1m[22m[2m │ gzip: 62.30 kB[22m
+[32m✓ built in 1.59s[39m
+
+[91m[1m| [0m[90m Bash     [0mRun client typecheck
+$ tsc --noEmit
+
+
+[91m[1m| [0m[90m Bash     [0mRun project typecheck
+
+error: Script not found "typecheck"
+
+[91m[1m| [0m[90m Bash     [0mRun project build
+
+error: Script not found "build"
+
+[96m[1m| [0m[90m Read     [0mpackage.json
+[91m[1m| [0m[90m Bash     [0mRun all typechecks
+
+shared typecheck: Exited with code 0
+client typecheck: Exited with code 0
+server typecheck: Exited with code 0
+
+[91m[1m| [0m[90m Bash     [0mRun all builds
+
+shared build: Exited with code 0
+server build: Exited with code 0
+client build: [36mvite v5.4.21 [32mbuilding for production...[36m[39m
+client build: transforming...
+client build: [32m✓[39m 60 modules transformed.
+client build: rendering chunks...
+client build: computing gzip size...
+client build: [2mdist/[22m[32mindex.html                 [39m[1m[2m  0.39 kB[22m[1m[22m[2m │ gzip:  0.27 kB[22m
+client build: [2mdist/[22m[35massets/index-D8X-SmYZ.css  [39m[1m[2m  1.78 kB[22m[1m[22m[2m │ gzip:  0.80 kB[22m
+client build: [2mdist/[22m[36massets/index-Cf0Dc4QH.js   [39m[1m[2m188.16 kB[22m[1m[22m[2m │ gzip: 62.30 kB[22m
+client build: [32m✓ built in 1.58s[39m
+client build: Exited with code 0
+
+[96m[1m| [0m[90m Read     [0mclient\src\App.tsx
+[92m[1m| [0m[90m Edit     [0mclient\src\App.tsx
+[91m[1m| [0m[90m Bash     [0mRun client typecheck
+
+$ tsc --noEmit
+
+[91m[1m| [0m[90m Bash     [0mRun client build
+
+$ tsc --noEmit && vite build
+[36mvite v5.4.21 [32mbuilding for production...[36m[39m
+transforming...
+[32m✓[39m 60 modules transformed.
+rendering chunks...
+computing gzip size...
+[2mdist/[22m[32mindex.html                 [39m[1m[2m  0.39 kB[22m[1m[22m[2m │ gzip:  0.27 kB[22m
+[2mdist/[22m[35massets/index-D8X-SmYZ.css  [39m[1m[2m  1.78 kB[22m[1m[22m[2m │ gzip:  0.80 kB[22m
+[2mdist/[22m[36massets/index-Cf0Dc4QH.js   [39m[1m[2m188.16 kB[22m[1m[22m[2m │ gzip: 62.30 kB[22m
+[32m✓ built in 1.58s[39m
+
+[91m[1m| [0m[90m Bash     [0mShow git status
+
+On branch main
+Your branch is ahead of 'origin/main' by 3 commits.
+  (use "git push" to publish your local commits)
+
+Changes not staged for commit:
+  (use "git add/rm <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   .ralph-tui/config.toml
+	modified:   bun.lock
+	modified:   client/package.json
+	deleted:    client/src/index.ts
+	modified:   prd.json
+	modified:   server/package.json
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	.ralph-tui/iterations/
+	.ralph-tui/progress.md
+	.ralph-tui/ralph.lock
+	.ralph-tui/session.json
+	client/index.html
+	client/src/App.tsx
+	client/src/index.css
+	client/src/main.tsx
+	client/vite.config.ts
+
+no changes added to commit (use "git add" and/or "git commit -a")
+
+[91m[1m| [0m[90m Bash     [0mShow staged changes
+[91m[1m| [0m[90m Bash     [0mShow unstaged changes
+
+warning: in the working copy of '.ralph-tui/config.toml', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'bun.lock', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'client/package.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'prd.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'server/package.json', LF will be replaced by CRLF the next time Git touches it
+diff --git a/.ralph-tui/config.toml b/.ralph-tui/config.toml
+index 3d9594a..454f1d1 100644
+--- a/.ralph-tui/config.toml
++++ b/.ralph-tui/config.toml
+@@ -1,11 +1,8 @@
+-# Ralph TUI Configuration
+-# Generated by setup wizard
+-# See: ralph-tui config help
+-
+-tracker = "json"
+-agent = "opencode"
+ maxIterations = 10
++agent = "opencode"
++tracker = "json"
+ autoCommit = true
++subagentTracingDetail = "off"
+ 
+-[trackerOptions]
+ [agentOptions]
++[trackerOptions]
+diff --git a/bun.lock b/bun.lock
+index 18d7f20..0771d6e 100644
+--- a/bun.lock
++++ b/bun.lock
+@@ -12,10 +12,16 @@
+       "name": "client",
+       "version": "0.0.1",
+       "dependencies": {
++        "react": "^18.0.0",
++        "react-dom": "^18.0.0",
+         "shared": "workspace:*",
++        "socket.io-client": "^4.8.3",
+       },
+       "devDependencies": {
++        "@types/react": "^18.0.0",
++        "@types/react-dom": "^18.0.0",
+         "typescript": "^5.0.0",
++        "vite": "^5.0.0",
+       },
+     },
+     "server": {
+@@ -27,6 +33,7 @@
+       },
+       "devDependencies": {
+         "@types/bun": "latest",
++        "socket.io-client": "^4.8.3",
+         "typescript": "^5.0.0",
+       },
+     },
+@@ -39,14 +46,118 @@
+     },
+   },
+   "packages": {
++    "@esbuild/aix-ppc64": ["@esbuild/aix-ppc64@0.21.5", "", { "os": "aix", "cpu": "ppc64" }, "sha512-1SDgH6ZSPTlggy1yI6+Dbkiz8xzpHJEVAlF/AM1tHPLsf5STom9rwtjE4hKAF20FfXXNTFqEYXyJNWh1GiZedQ=="],
++
++    "@esbuild/android-arm": ["@esbuild/android-arm@0.21.5", "", { "os": "android", "cpu": "arm" }, "sha512-vCPvzSjpPHEi1siZdlvAlsPxXl7WbOVUBBAowWug4rJHb68Ox8KualB+1ocNvT5fjv6wpkX6o/iEpbDrf68zcg=="],
++
++    "@esbuild/android-arm64": ["@esbuild/android-arm64@0.21.5", "", { "os": "android", "cpu": "arm64" }, "sha512-c0uX9VAUBQ7dTDCjq+wdyGLowMdtR/GoC2U5IYk/7D1H1JYC0qseD7+11iMP2mRLN9RcCMRcjC4YMclCzGwS/A=="],
++
++    "@esbuild/android-x64": ["@esbuild/android-x64@0.21.5", "", { "os": "android", "cpu": "x64" }, "sha512-D7aPRUUNHRBwHxzxRvp856rjUHRFW1SdQATKXH2hqA0kAZb1hKmi02OpYRacl0TxIGz/ZmXWlbZgjwWYaCakTA=="],
++
++    "@esbuild/darwin-arm64": ["@esbuild/darwin-arm64@0.21.5", "", { "os": "darwin", "cpu": "arm64" }, "sha512-DwqXqZyuk5AiWWf3UfLiRDJ5EDd49zg6O9wclZ7kUMv2WRFr4HKjXp/5t8JZ11QbQfUS6/cRCKGwYhtNAY88kQ=="],
++
++    "@esbuild/darwin-x64": ["@esbuild/darwin-x64@0.21.5", "", { "os": "darwin", "cpu": "x64" }, "sha512-se/JjF8NlmKVG4kNIuyWMV/22ZaerB+qaSi5MdrXtd6R08kvs2qCN4C09miupktDitvh8jRFflwGFBQcxZRjbw=="],
++
++    "@esbuild/freebsd-arm64": ["@esbuild/freebsd-arm64@0.21.5", "", { "os": "freebsd", "cpu": "arm64" }, "sha512-5JcRxxRDUJLX8JXp/wcBCy3pENnCgBR9bN6JsY4OmhfUtIHe3ZW0mawA7+RDAcMLrMIZaf03NlQiX9DGyB8h4g=="],
++
++    "@esbuild/freebsd-x64": ["@esbuild/freebsd-x64@0.21.5", "", { "os": "freebsd", "cpu": "x64" }, "sha512-J95kNBj1zkbMXtHVH29bBriQygMXqoVQOQYA+ISs0/2l3T9/kj42ow2mpqerRBxDJnmkUDCaQT/dfNXWX/ZZCQ=="],
++
++    "@esbuild/linux-arm": ["@esbuild/linux-arm@0.21.5", "", { "os": "linux", "cpu": "arm" }, "sha512-bPb5AHZtbeNGjCKVZ9UGqGwo8EUu4cLq68E95A53KlxAPRmUyYv2D6F0uUI65XisGOL1hBP5mTronbgo+0bFcA=="],
++
++    "@esbuild/linux-arm64": ["@esbuild/linux-arm64@0.21.5", "", { "os": "linux", "cpu": "arm64" }, "sha512-ibKvmyYzKsBeX8d8I7MH/TMfWDXBF3db4qM6sy+7re0YXya+K1cem3on9XgdT2EQGMu4hQyZhan7TeQ8XkGp4Q=="],
++
++    "@esbuild/linux-ia32": ["@esbuild/linux-ia32@0.21.5", "", { "os": "linux", "cpu": "ia32" }, "sha512-YvjXDqLRqPDl2dvRODYmmhz4rPeVKYvppfGYKSNGdyZkA01046pLWyRKKI3ax8fbJoK5QbxblURkwK/MWY18Tg=="],
++
++    "@esbuild/linux-loong64": ["@esbuild/linux-loong64@0.21.5", "", { "os": "linux", "cpu": "none" }, "sha512-uHf1BmMG8qEvzdrzAqg2SIG/02+4/DHB6a9Kbya0XDvwDEKCoC8ZRWI5JJvNdUjtciBGFQ5PuBlpEOXQj+JQSg=="],
++
++    "@esbuild/linux-mips64el": ["@esbuild/linux-mips64el@0.21.5", "", { "os": "linux", "cpu": "none" }, "sha512-IajOmO+KJK23bj52dFSNCMsz1QP1DqM6cwLUv3W1QwyxkyIWecfafnI555fvSGqEKwjMXVLokcV5ygHW5b3Jbg=="],
++
++    "@esbuild/linux-ppc64": ["@esbuild/linux-ppc64@0.21.5", "", { "os": "linux", "cpu": "ppc64" }, "sha512-1hHV/Z4OEfMwpLO8rp7CvlhBDnjsC3CttJXIhBi+5Aj5r+MBvy4egg7wCbe//hSsT+RvDAG7s81tAvpL2XAE4w=="],
++
++    "@esbuild/linux-riscv64": ["@esbuild/linux-riscv64@0.21.5", "", { "os": "linux", "cpu": "none" }, "sha512-2HdXDMd9GMgTGrPWnJzP2ALSokE/0O5HhTUvWIbD3YdjME8JwvSCnNGBnTThKGEB91OZhzrJ4qIIxk/SBmyDDA=="],
++
++    "@esbuild/linux-s390x": ["@esbuild/linux-s390x@0.21.5", "", { "os": "linux", "cpu": "s390x" }, "sha512-zus5sxzqBJD3eXxwvjN1yQkRepANgxE9lgOW2qLnmr8ikMTphkjgXu1HR01K4FJg8h1kEEDAqDcZQtbrRnB41A=="],
++
++    "@esbuild/linux-x64": ["@esbuild/linux-x64@0.21.5", "", { "os": "linux", "cpu": "x64" }, "sha512-1rYdTpyv03iycF1+BhzrzQJCdOuAOtaqHTWJZCWvijKD2N5Xu0TtVC8/+1faWqcP9iBCWOmjmhoH94dH82BxPQ=="],
++
++    "@esbuild/netbsd-x64": ["@esbuild/netbsd-x64@0.21.5", "", { "os": "none", "cpu": "x64" }, "sha512-Woi2MXzXjMULccIwMnLciyZH4nCIMpWQAs049KEeMvOcNADVxo0UBIQPfSmxB3CWKedngg7sWZdLvLczpe0tLg=="],
++
++    "@esbuild/openbsd-x64": ["@esbuild/openbsd-x64@0.21.5", "", { "os": "openbsd", "cpu": "x64" }, "sha512-HLNNw99xsvx12lFBUwoT8EVCsSvRNDVxNpjZ7bPn947b8gJPzeHWyNVhFsaerc0n3TsbOINvRP2byTZ5LKezow=="],
++
++    "@esbuild/sunos-x64": ["@esbuild/sunos-x64@0.21.5", "", { "os": "sunos", "cpu": "x64" }, "sha512-6+gjmFpfy0BHU5Tpptkuh8+uw3mnrvgs+dSPQXQOv3ekbordwnzTVEb4qnIvQcYXq6gzkyTnoZ9dZG+D4garKg=="],
++
++    "@esbuild/win32-arm64": ["@esbuild/win32-arm64@0.21.5", "", { "os": "win32", "cpu": "arm64" }, "sha512-Z0gOTd75VvXqyq7nsl93zwahcTROgqvuAcYDUr+vOv8uHhNSKROyU961kgtCD1e95IqPKSQKH7tBTslnS3tA8A=="],
++
++    "@esbuild/win32-ia32": ["@esbuild/win32-ia32@0.21.5", "", { "os": "win32", "cpu": "ia32" }, "sha512-SWXFF1CL2RVNMaVs+BBClwtfZSvDgtL//G/smwAc5oVK/UPu2Gu9tIaRgFmYFFKrmg3SyAjSrElf0TiJ1v8fYA=="],
++
++    "@esbuild/win32-x64": ["@esbuild/win32-x64@0.21.5", "", { "os": "win32", "cpu": "x64" }, "sha512-tQd/1efJuzPC6rCFwEvLtci/xNFcTZknmXs98FYDfGE4wP9ClFV98nyKrzJKVPMhdDnjzLhdUyMX4PsQAPjwIw=="],
++
++    "@rollup/rollup-android-arm-eabi": ["@rollup/rollup-android-arm-eabi@4.55.1", "", { "os": "android", "cpu": "arm" }, "sha512-9R0DM/ykwfGIlNu6+2U09ga0WXeZ9MRC2Ter8jnz8415VbuIykVuc6bhdrbORFZANDmTDvq26mJrEVTl8TdnDg=="],
++
++    "@rollup/rollup-android-arm64": ["@rollup/rollup-android-arm64@4.55.1", "", { "os": "android", "cpu": "arm64" }, "sha512-eFZCb1YUqhTysgW3sj/55du5cG57S7UTNtdMjCW7LwVcj3dTTcowCsC8p7uBdzKsZYa8J7IDE8lhMI+HX1vQvg=="],
++
++    "@rollup/rollup-darwin-arm64": ["@rollup/rollup-darwin-arm64@4.55.1", "", { "os": "darwin", "cpu": "arm64" }, "sha512-p3grE2PHcQm2e8PSGZdzIhCKbMCw/xi9XvMPErPhwO17vxtvCN5FEA2mSLgmKlCjHGMQTP6phuQTYWUnKewwGg=="],
++
++    "@rollup/rollup-darwin-x64": ["@rollup/rollup-darwin-x64@4.55.1", "", { "os": "darwin", "cpu": "x64" }, "sha512-rDUjG25C9qoTm+e02Esi+aqTKSBYwVTaoS1wxcN47/Luqef57Vgp96xNANwt5npq9GDxsH7kXxNkJVEsWEOEaQ=="],
++
++    "@rollup/rollup-freebsd-arm64": ["@rollup/rollup-freebsd-arm64@4.55.1", "", { "os": "freebsd", "cpu": "arm64" }, "sha512-+JiU7Jbp5cdxekIgdte0jfcu5oqw4GCKr6i3PJTlXTCU5H5Fvtkpbs4XJHRmWNXF+hKmn4v7ogI5OQPaupJgOg=="],
++
++    "@rollup/rollup-freebsd-x64": ["@rollup/rollup-freebsd-x64@4.55.1", "", { "os": "freebsd", "cpu": "x64" }, "sha512-V5xC1tOVWtLLmr3YUk2f6EJK4qksksOYiz/TCsFHu/R+woubcLWdC9nZQmwjOAbmExBIVKsm1/wKmEy4z4u4Bw=="],
++
++    "@rollup/rollup-linux-arm-gnueabihf": ["@rollup/rollup-linux-arm-gnueabihf@4.55.1", "", { "os": "linux", "cpu": "arm" }, "sha512-Rn3n+FUk2J5VWx+ywrG/HGPTD9jXNbicRtTM11e/uorplArnXZYsVifnPPqNNP5BsO3roI4n8332ukpY/zN7rQ=="],
++
++    "@rollup/rollup-linux-arm-musleabihf": ["@rollup/rollup-linux-arm-musleabihf@4.55.1", "", { "os": "linux", "cpu": "arm" }, "sha512-grPNWydeKtc1aEdrJDWk4opD7nFtQbMmV7769hiAaYyUKCT1faPRm2av8CX1YJsZ4TLAZcg9gTR1KvEzoLjXkg=="],
++
++    "@rollup/rollup-linux-arm64-gnu": ["@rollup/rollup-linux-arm64-gnu@4.55.1", "", { "os": "linux", "cpu": "arm64" }, "sha512-a59mwd1k6x8tXKcUxSyISiquLwB5pX+fJW9TkWU46lCqD/GRDe9uDN31jrMmVP3feI3mhAdvcCClhV8V5MhJFQ=="],
++
++    "@rollup/rollup-linux-arm64-musl": ["@rollup/rollup-linux-arm64-musl@4.55.1", "", { "os": "linux", "cpu": "arm64" }, "sha512-puS1MEgWX5GsHSoiAsF0TYrpomdvkaXm0CofIMG5uVkP6IBV+ZO9xhC5YEN49nsgYo1DuuMquF9+7EDBVYu4uA=="],
++
++    "@rollup/rollup-linux-loong64-gnu": ["@rollup/rollup-linux-loong64-gnu@4.55.1", "", { "os": "linux", "cpu": "none" }, "sha512-r3Wv40in+lTsULSb6nnoudVbARdOwb2u5fpeoOAZjFLznp6tDU8kd+GTHmJoqZ9lt6/Sys33KdIHUaQihFcu7g=="],
++
++    "@rollup/rollup-linux-loong64-musl": ["@rollup/rollup-linux-loong64-musl@4.55.1", "", { "os": "linux", "cpu": "none" }, "sha512-MR8c0+UxAlB22Fq4R+aQSPBayvYa3+9DrwG/i1TKQXFYEaoW3B5b/rkSRIypcZDdWjWnpcvxbNaAJDcSbJU3Lw=="],
++
++    "@rollup/rollup-linux-ppc64-gnu": ["@rollup/rollup-linux-ppc64-gnu@4.55.1", "", { "os": "linux", "cpu": "ppc64" }, "sha512-3KhoECe1BRlSYpMTeVrD4sh2Pw2xgt4jzNSZIIPLFEsnQn9gAnZagW9+VqDqAHgm1Xc77LzJOo2LdigS5qZ+gw=="],
++
++    "@rollup/rollup-linux-ppc64-musl": ["@rollup/rollup-linux-ppc64-musl@4.55.1", "", { "os": "linux", "cpu": "ppc64" }, "sha512-ziR1OuZx0vdYZZ30vueNZTg73alF59DicYrPViG0NEgDVN8/Jl87zkAPu4u6VjZST2llgEUjaiNl9JM6HH1Vdw=="],
++
++    "@rollup/rollup-linux-riscv64-gnu": ["@rollup/rollup-linux-riscv64-gnu@4.55.1", "", { "os": "linux", "cpu": "none" }, "sha512-uW0Y12ih2XJRERZ4jAfKamTyIHVMPQnTZcQjme2HMVDAHY4amf5u414OqNYC+x+LzRdRcnIG1YodLrrtA8xsxw=="],
++
++    "@rollup/rollup-linux-riscv64-musl": ["@rollup/rollup-linux-riscv64-musl@4.55.1", "", { "os": "linux", "cpu": "none" }, "sha512-u9yZ0jUkOED1BFrqu3BwMQoixvGHGZ+JhJNkNKY/hyoEgOwlqKb62qu+7UjbPSHYjiVy8kKJHvXKv5coH4wDeg=="],
++
++    "@rollup/rollup-linux-s390x-gnu": ["@rollup/rollup-linux-s390x-gnu@4.55.1", "", { "os": "linux", "cpu": "s390x" }, "sha512-/0PenBCmqM4ZUd0190j7J0UsQ/1nsi735iPRakO8iPciE7BQ495Y6msPzaOmvx0/pn+eJVVlZrNrSh4WSYLxNg=="],
++
++    "@rollup/rollup-linux-x64-gnu": ["@rollup/rollup-linux-x64-gnu@4.55.1", "", { "os": "linux", "cpu": "x64" }, "sha512-a8G4wiQxQG2BAvo+gU6XrReRRqj+pLS2NGXKm8io19goR+K8lw269eTrPkSdDTALwMmJp4th2Uh0D8J9bEV1vg=="],
++
++    "@rollup/rollup-linux-x64-musl": ["@rollup/rollup-linux-x64-musl@4.55.1", "", { "os": "linux", "cpu": "x64" }, "sha512-bD+zjpFrMpP/hqkfEcnjXWHMw5BIghGisOKPj+2NaNDuVT+8Ds4mPf3XcPHuat1tz89WRL+1wbcxKY3WSbiT7w=="],
++
++    "@rollup/rollup-openbsd-x64": ["@rollup/rollup-openbsd-x64@4.55.1", "", { "os": "openbsd", "cpu": "x64" }, "sha512-eLXw0dOiqE4QmvikfQ6yjgkg/xDM+MdU9YJuP4ySTibXU0oAvnEWXt7UDJmD4UkYialMfOGFPJnIHSe/kdzPxg=="],
++
++    "@rollup/rollup-openharmony-arm64": ["@rollup/rollup-openharmony-arm64@4.55.1", "", { "os": "none", "cpu": "arm64" }, "sha512-xzm44KgEP11te3S2HCSyYf5zIzWmx3n8HDCc7EE59+lTcswEWNpvMLfd9uJvVX8LCg9QWG67Xt75AuHn4vgsXw=="],
++
++    "@rollup/rollup-win32-arm64-msvc": ["@rollup/rollup-win32-arm64-msvc@4.55.1", "", { "os": "win32", "cpu": "arm64" }, "sha512-yR6Bl3tMC/gBok5cz/Qi0xYnVbIxGx5Fcf/ca0eB6/6JwOY+SRUcJfI0OpeTpPls7f194as62thCt/2BjxYN8g=="],
++
++    "@rollup/rollup-win32-ia32-msvc": ["@rollup/rollup-win32-ia32-msvc@4.55.1", "", { "os": "win32", "cpu": "ia32" }, "sha512-3fZBidchE0eY0oFZBnekYCfg+5wAB0mbpCBuofh5mZuzIU/4jIVkbESmd2dOsFNS78b53CYv3OAtwqkZZmU5nA=="],
++
++    "@rollup/rollup-win32-x64-gnu": ["@rollup/rollup-win32-x64-gnu@4.55.1", "", { "os": "win32", "cpu": "x64" }, "sha512-xGGY5pXj69IxKb4yv/POoocPy/qmEGhimy/FoTpTSVju3FYXUQQMFCaZZXJVidsmGxRioZAwpThl/4zX41gRKg=="],
++
++    "@rollup/rollup-win32-x64-msvc": ["@rollup/rollup-win32-x64-msvc@4.55.1", "", { "os": "win32", "cpu": "x64" }, "sha512-SPEpaL6DX4rmcXtnhdrQYgzQ5W2uW3SCJch88lB2zImhJRhIIK44fkUrgIV/Q8yUNfw5oyZ5vkeQsZLhCb06lw=="],
++
+     "@socket.io/component-emitter": ["@socket.io/component-emitter@3.1.2", "", {}, "sha512-9BCxFwvbGg/RsZK9tjXd8s4UcwR0MWeFQ1XEKIQVVvAGJyINdrqKMcTRyLoK8Rse1GjzLV9cwjWV1olXRWEXVA=="],
+ 
+     "@types/bun": ["@types/bun@1.3.6", "", { "dependencies": { "bun-types": "1.3.6" } }, "sha512-uWCv6FO/8LcpREhenN1d1b6fcspAB+cefwD7uti8C8VffIv0Um08TKMn98FynpTiU38+y2dUO55T11NgDt8VAA=="],
+ 
+     "@types/cors": ["@types/cors@2.8.19", "", { "dependencies": { "@types/node": "*" } }, "sha512-mFNylyeyqN93lfe/9CSxOGREz8cpzAhH+E93xJ4xWQf62V8sQ/24reV2nyzUWM6H6Xji+GGHpkbLe7pVoUEskg=="],
+ 
++    "@types/estree": ["@types/estree@1.0.8", "", {}, "sha512-dWHzHa2WqEXI/O1E9OjrocMTKJl2mSrEolh1Iomrv6U+JuNwaHXsXx9bLu5gG7BUWFIN0skIQJQ/L1rIex4X6w=="],
++
+     "@types/node": ["@types/node@25.0.9", "", { "dependencies": { "undici-types": "~7.16.0" } }, "sha512-/rpCXHlCWeqClNBwUhDcusJxXYDjZTyE8v5oTO7WbL8eij2nKhUeU89/6xgjU7N4/Vh3He0BtyhJdQbDyhiXAw=="],
+ 
++    "@types/prop-types": ["@types/prop-types@15.7.15", "", {}, "sha512-F6bEyamV9jKGAFBEmlQnesRPGOQqS2+Uwi0Em15xenOxHaf2hv6L8YCVn3rPdPJOiJfPiCnLIRyvwVaqMY3MIw=="],
++
++    "@types/react": ["@types/react@18.3.27", "", { "dependencies": { "@types/prop-types": "*", "csstype": "^3.2.2" } }, "sha512-cisd7gxkzjBKU2GgdYrTdtQx1SORymWyaAFhaxQPK9bYO9ot3Y5OikQRvY0VYQtvwjeQnizCINJAenh/V7MK2w=="],
++
++    "@types/react-dom": ["@types/react-dom@18.3.7", "", { "peerDependencies": { "@types/react": "^18.0.0" } }, "sha512-MEe3UeoENYVFXzoXEWsvcpg6ZvlrFNlOQ7EOsvhI3CfAXwzPfO8Qwuxd40nepsYKqyyVQnTdEfv68q91yLcKrQ=="],
++
+     "accepts": ["accepts@1.3.8", "", { "dependencies": { "mime-types": "~2.1.34", "negotiator": "0.6.3" } }, "sha512-PYAthTa2m2VKxuvSD3DPC/Gy+U+sOA1LAuT8mkmRuvw+NACSaeXEQ+NHcVF7rONl6qcaxV3Uuemwawk+7+SJLw=="],
+ 
+     "base64id": ["base64id@2.0.0", "", {}, "sha512-lGe34o6EHj9y3Kts9R4ZYs/Gr+6N7MCaMlIFA3F1R2O5/m7K06AxfSeO5530PEERE6/WyEg3lsuyw4GHlPZHog=="],
+@@ -59,22 +170,48 @@
+ 
+     "cors": ["cors@2.8.5", "", { "dependencies": { "object-assign": "^4", "vary": "^1" } }, "sha512-KIHbLJqu73RGr/hnbrO9uBeixNGuvSQjul/jdFvS/KFSIH1hWVd1ng7zOHx+YrEfInLG7q4n6GHQ9cDtxv/P6g=="],
+ 
++    "csstype": ["csstype@3.2.3", "", {}, "sha512-z1HGKcYy2xA8AGQfwrn0PAy+PB7X/GSj3UVJW9qKyn43xWa+gl5nXmU4qqLMRzWVLFC8KusUX8T/0kCiOYpAIQ=="],
++
+     "debug": ["debug@4.4.3", "", { "dependencies": { "ms": "^2.1.3" } }, "sha512-RGwwWnwQvkVfavKVt22FGLw+xYSdzARwm0ru6DhTVA3umU5hZc28V3kO4stgYryrTlLpuvgI9GiijltAjNbcqA=="],
+ 
+     "engine.io": ["engine.io@6.6.5", "", { "dependencies": { "@types/cors": "^2.8.12", "@types/node": ">=10.0.0", "accepts": "~1.3.4", "base64id": "2.0.0", "cookie": "~0.7.2", "cors": "~2.8.5", "debug": "~4.4.1", "engine.io-parser": "~5.2.1", "ws": "~8.18.3" } }, "sha512-2RZdgEbXmp5+dVbRm0P7HQUImZpICccJy7rN7Tv+SFa55pH+lxnuw6/K1ZxxBfHoYpSkHLAO92oa8O4SwFXA2A=="],
+ 
++    "engine.io-client": ["engine.io-client@6.6.4", "", { "dependencies": { "@socket.io/component-emitter": "~3.1.0", "debug": "~4.4.1", "engine.io-parser": "~5.2.1", "ws": "~8.18.3", "xmlhttprequest-ssl": "~2.1.1" } }, "sha512-+kjUJnZGwzewFDw951CDWcwj35vMNf2fcj7xQWOctq1F2i1jkDdVvdFG9kM/BEChymCH36KgjnW0NsL58JYRxw=="],
++
+     "engine.io-parser": ["engine.io-parser@5.2.3", "", {}, "sha512-HqD3yTBfnBxIrbnM1DoD6Pcq8NECnh8d4As1Qgh0z5Gg3jRRIqijury0CL3ghu/edArpUYiYqQiDUQBIs4np3Q=="],
+ 
++    "esbuild": ["esbuild@0.21.5", "", { "optionalDependencies": { "@esbuild/aix-ppc64": "0.21.5", "@esbuild/android-arm": "0.21.5", "@esbuild/android-arm64": "0.21.5", "@esbuild/android-x64": "0.21.5", "@esbuild/darwin-arm64": "0.21.5", "@esbuild/darwin-x64": "0.21.5", "@esbuild/freebsd-arm64": "0.21.5", "@esbuild/freebsd-x64": "0.21.5", "@esbuild/linux-arm": "0.21.5", "@esbuild/linux-arm64": "0.21.5", "@esbuild/linux-ia32": "0.21.5", "@esbuild/linux-loong64": "0.21.5", "@esbuild/linux-mips64el": "0.21.5", "@esbuild/linux-ppc64": "0.21.5", "@esbuild/linux-riscv64": "0.21.5", "@esbuild/linux-s390x": "0.21.5", "@esbuild/linux-x64": "0.21.5", "@esbuild/netbsd-x64": "0.21.5", "@esbuild/openbsd-x64": "0.21.5", "@esbuild/sunos-x64": "0.21.5", "@esbuild/win32-arm64": "0.21.5", "@esbuild/win32-ia32": "0.21.5", "@esbuild/win32-x64": "0.21.5" }, "bin": { "esbuild": "bin/esbuild" } }, "sha512-mg3OPMV4hXywwpoDxu3Qda5xCKQi+vCTZq8S9J/EpkhB2HzKXq4SNFZE3+NK93JYxc8VMSep+lOUSC/RVKaBqw=="],
++
++    "fsevents": ["fsevents@2.3.3", "", { "os": "darwin" }, "sha512-5xoDfX+fL7faATnagmWPpbFtwh/R77WmMMqqHGS65C3vvB0YHrgF+B1YmZ3441tMj5n63k0212XNoJwzlhffQw=="],
++
++    "js-tokens": ["js-tokens@4.0.0", "", {}, "sha512-RdJUflcE3cUzKiMqQgsCu06FPu9UdIJO0beYbPhHN4k6apgJtifcoCtT9bcxOpYBtpD2kCM6Sbzg4CausW/PKQ=="],
++
++    "loose-envify": ["loose-envify@1.4.0", "", { "dependencies": { "js-tokens": "^3.0.0 || ^4.0.0" }, "bin": { "loose-envify": "cli.js" } }, "sha512-lyuxPGr/Wfhrlem2CL/UcnUc1zcqKAImBDzukY7Y5F/yQiNdko6+fRLevlw1HgMySw7f611UIY408EtxRSoK3Q=="],
++
+     "mime-db": ["mime-db@1.52.0", "", {}, "sha512-sPU4uV7dYlvtWJxwwxHD0PuihVNiE7TyAbQ5SWxDCB9mUYvOgroQOwYQQOKPJ8CIbE+1ETVlOoK1UC2nU3gYvg=="],
+ 
+     "mime-types": ["mime-types@2.1.35", "", { "dependencies": { "mime-db": "1.52.0" } }, "sha512-ZDY+bPm5zTTF+YpCrAU9nK0UgICYPT0QtT1NZWFv4s++TNkcgVaT0g6+4R2uI4MjQjzysHB1zxuWL50hzaeXiw=="],
+ 
+     "ms": ["ms@2.1.3", "", {}, "sha512-6FlzubTLZG3J2a/NVCAleEhjzq5oxgHyaCU9yYXvcLsvoVaHJq/s5xXI6/XXP6tz7R9xAOtHnSO/tXtF3WRTlA=="],
+ 
++    "nanoid": ["nanoid@3.3.11", "", { "bin": { "nanoid": "bin/nanoid.cjs" } }, "sha512-N8SpfPUnUp1bK+PMYW8qSWdl9U+wwNWI4QKxOYDy9JAro3WMX7p2OeVRF9v+347pnakNevPmiHhNmZ2HbFA76w=="],
++
+     "negotiator": ["negotiator@0.6.3", "", {}, "sha512-+EUsqGPLsM+j/zdChZjsnX51g4XrHFOIXwfnCVPGlQk/k5giakcKsuxCObBRu6DSm9opw/O6slWbJdghQM4bBg=="],
+ 
+     "object-assign": ["object-assign@4.1.1", "", {}, "sha512-rJgTQnkUnH1sFw8yT6VSU3zD3sWmu6sZhIseY8VX+GRu3P6F7Fu+JNDoXfklElbLJSnc3FUQHVe4cU5hj+BcUg=="],
+ 
++    "picocolors": ["picocolors@1.1.1", "", {}, "sha512-xceH2snhtb5M9liqDsmEw56le376mTZkEX/jEb/RxNFyegNul7eNslCXP9FDj/Lcu0X8KEyMceP2ntpaHrDEVA=="],
++
++    "postcss": ["postcss@8.5.6", "", { "dependencies": { "nanoid": "^3.3.11", "picocolors": "^1.1.1", "source-map-js": "^1.2.1" } }, "sha512-3Ybi1tAuwAP9s0r1UQ2J4n5Y0G05bJkpUIO0/bI9MhwmD70S5aTWbXGBwxHrelT+XM1k6dM0pk+SwNkpTRN7Pg=="],
++
++    "react": ["react@18.3.1", "", { "dependencies": { "loose-envify": "^1.1.0" } }, "sha512-wS+hAgJShR0KhEvPJArfuPVN1+Hz1t0Y6n5jLrGQbkb4urgPE/0Rve+1kMB1v/oWgHgm4WIcV+i7F2pTVj+2iQ=="],
++
++    "react-dom": ["react-dom@18.3.1", "", { "dependencies": { "loose-envify": "^1.1.0", "scheduler": "^0.23.2" }, "peerDependencies": { "react": "^18.3.1" } }, "sha512-5m4nQKp+rZRb09LNH59GM4BxTh9251/ylbKIbpe7TpGxfJ+9kv6BLkLBXIjjspbgbnIBNqlI23tRnTWT0snUIw=="],
++
++    "rollup": ["rollup@4.55.1", "", { "dependencies": { "@types/estree": "1.0.8" }, "optionalDependencies": { "@rollup/rollup-android-arm-eabi": "4.55.1", "@rollup/rollup-android-arm64": "4.55.1", "@rollup/rollup-darwin-arm64": "4.55.1", "@rollup/rollup-darwin-x64": "4.55.1", "@rollup/rollup-freebsd-arm64": "4.55.1", "@rollup/rollup-freebsd-x64": "4.55.1", "@rollup/rollup-linux-arm-gnueabihf": "4.55.1", "@rollup/rollup-linux-arm-musleabihf": "4.55.1", "@rollup/rollup-linux-arm64-gnu": "4.55.1", "@rollup/rollup-linux-arm64-musl": "4.55.1", "@rollup/rollup-linux-loong64-gnu": "4.55.1", "@rollup/rollup-linux-loong64-musl": "4.55.1", "@rollup/rollup-linux-ppc64-gnu": "4.55.1", "@rollup/rollup-linux-ppc64-musl": "4.55.1", "@rollup/rollup-linux-riscv64-gnu": "4.55.1", "@rollup/rollup-linux-riscv64-musl": "4.55.1", "@rollup/rollup-linux-s390x-gnu": "4.55.1", "@rollup/rollup-linux-x64-gnu": "4.55.1", "@rollup/rollup-linux-x64-musl": "4.55.1", "@rollup/rollup-openbsd-x64": "4.55.1", "@rollup/rollup-openharmony-arm64": "4.55.1", "@rollup/rollup-win32-arm64-msvc": "4.55.1", "@rollup/rollup-win32-ia32-msvc": "4.55.1", "@rollup/rollup-win32-x64-gnu": "4.55.1", "@rollup/rollup-win32-x64-msvc": "4.55.1", "fsevents": "~2.3.2" }, "bin": { "rollup": "dist/bin/rollup" } }, "sha512-wDv/Ht1BNHB4upNbK74s9usvl7hObDnvVzknxqY/E/O3X6rW1U1rV1aENEfJ54eFZDTNo7zv1f5N4edCluH7+A=="],
++
++    "scheduler": ["scheduler@0.23.2", "", { "dependencies": { "loose-envify": "^1.1.0" } }, "sha512-UOShsPwz7NrMUqhR6t0hWjFduvOzbtv7toDH1/hIrfRNIDBnnBWd0CwJTGvTpngVlmwGCdP9/Zl/tVrDqcuYzQ=="],
++
+     "server": ["server@workspace:server"],
+ 
+     "shared": ["shared@workspace:shared"],
+@@ -83,14 +220,22 @@
+ 
+     "socket.io-adapter": ["socket.io-adapter@2.5.6", "", { "dependencies": { "debug": "~4.4.1", "ws": "~8.18.3" } }, "sha512-DkkO/dz7MGln0dHn5bmN3pPy+JmywNICWrJqVWiVOyvXjWQFIv9c2h24JrQLLFJ2aQVQf/Cvl1vblnd4r2apLQ=="],
+ 
++    "socket.io-client": ["socket.io-client@4.8.3", "", { "dependencies": { "@socket.io/component-emitter": "~3.1.0", "debug": "~4.4.1", "engine.io-client": "~6.6.1", "socket.io-parser": "~4.2.4" } }, "sha512-uP0bpjWrjQmUt5DTHq9RuoCBdFJF10cdX9X+a368j/Ft0wmaVgxlrjvK3kjvgCODOMMOz9lcaRzxmso0bTWZ/g=="],
++
+     "socket.io-parser": ["socket.io-parser@4.2.5", "", { "dependencies": { "@socket.io/component-emitter": "~3.1.0", "debug": "~4.4.1" } }, "sha512-bPMmpy/5WWKHea5Y/jYAP6k74A+hvmRCQaJuJB6I/ML5JZq/KfNieUVo/3Mh7SAqn7TyFdIo6wqYHInG1MU1bQ=="],
+ 
++    "source-map-js": ["source-map-js@1.2.1", "", {}, "sha512-UXWMKhLOwVKb728IUtQPXxfYU+usdybtUrK/8uGE8CQMvrhOpwvzDBwj0QhSL7MQc7vIsISBG8VQ8+IDQxpfQA=="],
++
+     "typescript": ["typescript@5.9.3", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw=="],
+ 
+     "undici-types": ["undici-types@7.16.0", "", {}, "sha512-Zz+aZWSj8LE6zoxD+xrjh4VfkIG8Ya6LvYkZqtUQGJPZjYl53ypCaUwWqo7eI0x66KBGeRo+mlBEkMSeSZ38Nw=="],
+ 
+     "vary": ["vary@1.1.2", "", {}, "sha512-BNGbWLfd0eUPabhkXUVm0j8uuvREyTh5ovRa/dyow/BqAbZJyC+5fU+IzQOzmAKzYqYRAISoRhdQr3eIZ/PXqg=="],
+ 
++    "vite": ["vite@5.4.21", "", { "dependencies": { "esbuild": "^0.21.3", "postcss": "^8.4.43", "rollup": "^4.20.0" }, "optionalDependencies": { "fsevents": "~2.3.3" }, "peerDependencies": { "@types/node": "^18.0.0 || >=20.0.0", "less": "*", "lightningcss": "^1.21.0", "sass": "*", "sass-embedded": "*", "stylus": "*", "sugarss": "*", "terser": "^5.4.0" }, "optionalPeers": ["@types/node", "less", "lightningcss", "sass", "sass-embedded", "stylus", "sugarss", "terser"], "bin": { "vite": "bin/vite.js" } }, "sha512-o5a9xKjbtuhY6Bi5S3+HvbRERmouabWbyUcpXXUA1u+GNUKoROi9byOJ8M0nHbHYHkYICiMlqxkg1KkYmm25Sw=="],
++
+     "ws": ["ws@8.18.3", "", { "peerDependencies": { "bufferutil": "^4.0.1", "utf-8-validate": ">=5.0.2" }, "optionalPeers": ["bufferutil", "utf-8-validate"] }, "sha512-PEIGCY5tSlUt50cqyMXfCzX+oOPqN0vuGqWzbcJ2xvnkzkq46oOpz7dQaTDBdfICb4N14+GARUDw2XV2N4tvzg=="],
++
++    "xmlhttprequest-ssl": ["xmlhttprequest-ssl@2.1.2", "", {}, "sha512-TEU+nJVUUnA4CYJFLvK5X9AOeH4KvDvhIfm0vV1GaQRtchnG0hgK5p8hw/xjv8cunWYCsiPCSDzObPyhEwq3KQ=="],
+   }
+ }
+diff --git a/client/package.json b/client/package.json
+index 3927ec3..8f4aa95 100644
+--- a/client/package.json
++++ b/client/package.json
+@@ -3,13 +3,20 @@
+   "version": "0.0.1",
+   "type": "module",
+   "scripts": {
+-    "build": "tsc --outDir dist",
+-    "typecheck": "tsc --noEmit"
++    "build": "tsc --noEmit && vite build",
++    "typecheck": "tsc --noEmit",
++    "dev": "vite"
+   },
+   "devDependencies": {
+-    "typescript": "^5.0.0"
++    "typescript": "^5.0.0",
++    "vite": "^5.0.0",
++    "@types/react": "^18.0.0",
++    "@types/react-dom": "^18.0.0"
+   },
+   "dependencies": {
+-    "shared": "workspace:*"
++    "react": "^18.0.0",
++    "react-dom": "^18.0.0",
++    "shared": "workspace:*",
++    "socket.io-client": "^4.8.3"
+   }
+ }
+diff --git a/client/src/index.ts b/client/src/index.ts
+deleted file mode 100644
+index 3d701fa..0000000
+--- a/client/src/index.ts
++++ /dev/null
+@@ -1,5 +0,0 @@
+-import { greet } from '../../shared/src';
+-
+-export const main = (): void => {
+-  console.log(greet('World'));
+-};
+diff --git a/prd.json b/prd.json
+index f5ac66a..815003c 100644
+--- a/prd.json
++++ b/prd.json
+@@ -1,7 +1,7 @@
+ {
+-  "project": "ccu.vc",
+-  "branchName": "ralph/chess-clock-uno",
++  "name": "ccu.vc",
+   "description": "Implement a Bun-powered, server-authoritative Chess Clock UNO web game with ephemeral rooms (short codes), ephemeral identities (name + avatar), room-wide chat, and a responsive React UI.",
++  "branchName": "ralph/chess-clock-uno",
+   "userStories": [
+     {
+       "id": "US-001",
+@@ -14,8 +14,9 @@
+         "quality gate: `bun --filter server run typecheck` exits with code 0"
+       ],
+       "priority": 1,
+-      "passes": false,
+-      "notes": "Assumes TypeScript is used for server/client/shared to enable typecheck quality gates."
++      "passes": true,
++      "notes": "Assumes TypeScript is used for server/client/shared to enable typecheck quality gates.",
++      "completionNotes": "Completed by agent"
+     },
+     {
+       "id": "US-002",
+@@ -29,8 +30,9 @@
+         "quality gate: `bun --filter client run typecheck` exits with code 0"
+       ],
+       "priority": 2,
+-      "passes": false,
+-      "notes": "If client does not have typecheck script yet, add it as part of this story."
++      "passes": true,
++      "notes": "If client does not have typecheck script yet, add it as part of this story.",
++      "completionNotes": "Completed by agent"
+     },
+     {
+       "id": "US-003",
+@@ -43,8 +45,9 @@
+         "quality gate: `bun --filter server test` exits with code 0"
+       ],
+       "priority": 3,
+-      "passes": false,
+-      "notes": "Server may use Bun's HTTP server or Express-style framework; must remain Bun-compatible."
++      "passes": true,
++      "notes": "Server may use Bun's HTTP server or Express-style framework; must remain Bun-compatible.",
++      "completionNotes": "Completed by agent"
+     },
+     {
+       "id": "US-004",
+@@ -58,8 +61,9 @@
+         "quality gate: `bun --filter server run typecheck` exits with code 0"
+       ],
+       "priority": 4,
+-      "passes": false,
+-      "notes": "Assumes a short-code generator spec: uppercase base32-like alphabet without ambiguous chars is acceptable."
++      "passes": true,
++      "notes": "Assumes a short-code generator spec: uppercase base32-like alphabet without ambiguous chars is acceptable.",
++      "completionNotes": "Completed by agent"
+     },
+     {
+       "id": "US-005",
+@@ -73,8 +77,9 @@
+         "quality gate: `bun --filter server run typecheck` exits with code 0"
+       ],
+       "priority": 5,
+-      "passes": false,
+-      "notes": "Validation rules for `displayName`: 1-24 chars after trimming; reject control characters."
++      "passes": true,
++      "notes": "Validation rules for `displayName`: 1-24 chars after trimming; reject control characters.",
++      "completionNotes": "Completed by agent"
+     },
+     {
+       "id": "US-006",
+@@ -88,8 +93,9 @@
+         "quality gate: `bun --filter server run typecheck` exits with code 0"
+       ],
+       "priority": 6,
+-      "passes": false,
+-      "notes": "Room deletion on zero-connected makes reconnect impossible once everyone leaves, per requirements."
++      "passes": true,
++      "notes": "Room deletion on zero-connected makes reconnect impossible once everyone leaves, per requirements.",
++      "completionNotes": "Completed by agent"
+     },
+     {
+       "id": "US-007",
+@@ -517,5 +523,8 @@
+       "passes": false,
+       "notes": "Implementation can use `@use-gesture/react` and `react-spring`."
+     }
+-  ]
+-}
++  ],
++  "metadata": {
++    "updatedAt": "2026-01-17T19:21:04.954Z"
++  }
++}
+\ No newline at end of file
+diff --git a/server/package.json b/server/package.json
+index 533408a..15e35be 100644
+--- a/server/package.json
++++ b/server/package.json
+@@ -9,8 +9,9 @@
+     "test": "bun test"
+   },
+   "devDependencies": {
+-    "typescript": "^5.0.0",
+-    "@types/bun": "latest"
++    "@types/bun": "latest",
++    "socket.io-client": "^4.8.3",
++    "typescript": "^5.0.0"
+   },
+   "dependencies": {
+     "shared": "workspace:*",
+
+[91m[1m| [0m[90m Bash     [0mShow recent commits
+
+59a1035 Implement reconnect using playerSecret to reclaim seat
+04da1f9 Implement Bun Socket.io server bootstrap with health endpoint
+3bf1e28 Scaffold Bun monorepo with client/server/shared workspaces
+fab23ef meta: switch to ralph-tui
+31342b3 ralph: impl v2
+
+[91m[1m| [0m[90m Bash     [0mStage client changes
+
+warning: in the working copy of 'client/package.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'client/index.html', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'client/src/App.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'client/src/index.css', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'client/src/main.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'client/vite.config.ts', LF will be replaced by CRLF the next time Git touches it
+
+[91m[1m| [0m[90m Bash     [0mStage shared dist changes
+
+
+The following paths are ignored by one of your .gitignore files:
+shared/dist
+hint: Use -f if you really want to add them.
+hint: Disable this message with "git config set advice.addIgnoredFile false"
+[91m[1m| [0m[90m Bash     [0mCommit US-007 changes
+
+[main 24251d4] $(cat <<'EOF'
+ 7 files changed, 446 insertions(+), 9 deletions(-)
+ create mode 100644 client/index.html
+ create mode 100644 client/src/App.tsx
+ create mode 100644 client/src/index.css
+ delete mode 100644 client/src/index.ts
+ create mode 100644 client/src/main.tsx
+ create mode 100644 client/vite.config.ts
+
+[91m[1m| [0m[90m Bash     [0mShow git status after commit
+
+On branch main
+Your branch is ahead of 'origin/main' by 4 commits.
+  (use "git push" to publish your local commits)
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   .ralph-tui/config.toml
+	modified:   bun.lock
+	modified:   prd.json
+	modified:   server/package.json
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	.ralph-tui/iterations/
+	.ralph-tui/progress.md
+	.ralph-tui/ralph.lock
+	.ralph-tui/session.json
+
+no changes added to commit (use "git add" and/or "git commit -a")
+

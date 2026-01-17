@@ -50,6 +50,8 @@ export type ClientToServerEvents = {
   updatePlayer: (data: Partial<PlayerPrivate>) => void;
   playerReady: () => void;
   start_game: (actionId: string, callback: (response: { success: boolean; error?: string }) => void) => void;
+  playCard: (actionId: string, card: Card, callback: (response: { success: boolean; error?: string }) => void) => void;
+  drawCard: (actionId: string, callback: (response: { success: boolean; error?: string }) => void) => void;
 };
 
 export type ServerToClientEvents = {
