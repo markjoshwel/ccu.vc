@@ -1,0 +1,71 @@
+# Iteration 2 Log
+
+## Metadata
+
+- **Task ID**: US-030
+- **Task Title**: Add avatar upload endpoint with validate + re-encode + center-crop
+- **Description**: Safely accept user-provided profile images in an ephemeral system.
+- **Status**: completed
+- **Task Completed**: Yes
+- **Promise Detected**: Yes
+- **Started At**: 2026-01-18T15:11:35.880Z
+- **Ended At**: 2026-01-18T15:12:32.383Z
+- **Duration**: 56s
+- **Agent**: opencode
+- **Model**: github-copilot/gpt-5.1-codex-max
+--- RAW OUTPUT ---
+Work already meets the user story. `POST /avatar/upload` accepts png/jpeg/webp up to 2MB, re-encodes to a 256x256 center-cropped square, saves via `AvatarStore`, and returns `avatarId`. Oversize and unsupported types are rejected per tests.
+
+Quality checks run:
+- `bun --filter server test` (pass)
+- `bun run --filter=server typecheck` (pass)
+
+No code changes were needed, so no commit created.
+
+<promise>COMPLETE</promise>
+
+--- STDERR ---
+[91m[1m| [0m[90m Bash     [0mShows working tree status
+
+M  .ralph-tui/config.toml
+A  .ralph-tui/iterations/iteration-026-US-026.log
+A  .ralph-tui/iterations/iteration-027-US-027.log
+M  .ralph-tui/progress.md
+M  .ralph-tui/ralph.lock
+MM .ralph-tui/session.json
+MM prd.json
+
+[93m[1m| [0m[90m Todo     [0m0 todos
+[94m[1m| [0m[90m Glob     [0m{"pattern":"**/*avatar*","path":""}
+[96m[1m| [0m[90m Read     [0mserver\server.avatar.test.ts
+[94m[1m| [0m[90m Glob     [0m{"pattern":"server/src/**/*","path":""}
+[96m[1m| [0m[90m Read     [0mserver\src\AvatarStore.ts
+[96m[1m| [0m[90m Read     [0mserver\src\httpHandler.ts
+[96m[1m| [0m[90m Read     [0mserver\src\ImagePipeline.ts
+[91m[1m| [0m[90m Bash     [0mRun server tests
+
+server test: bun test v1.3.6 (d530ed99)
+server test: 
+server test: server.test.ts:
+server test: gameStateUpdate not received in time, checking room directly
+server test: 
+server test:  129 pass
+server test:  0 fail
+server test:  393 expect() calls
+server test: Ran 129 tests across 2 files. [14.79s]
+server test: Exited with code 0
+
+[91m[1m| [0m[90m Bash     [0mRun server typecheck
+
+error: No packages matched the filter
+
+[91m[1m| [0m[90m Bash     [0mLists files in current directory
+
+'ls' is not recognized as an internal or external command,
+operable program or batch file.
+
+[96m[1m| [0m[90m Read     [0mpackage.json
+[91m[1m| [0m[90m Bash     [0mRun server workspace typecheck
+
+server typecheck: Exited with code 0
+

@@ -1,0 +1,150 @@
+# Iteration 26 Log
+
+## Metadata
+
+- **Task ID**: US-026
+- **Task Title**: Implement catchUno event and draw-2 penalty (server)
+- **Description**: Allow opponents to catch missed UNO calls during the open window.
+- **Status**: completed
+- **Task Completed**: Yes
+- **Promise Detected**: Yes
+- **Started At**: 2026-01-18T07:21:03.902Z
+- **Ended At**: 2026-01-18T07:56:54.086Z
+- **Duration**: 35m 50s
+- **Agent**: opencode
+- **Model**: opencode/glm-4.7-free
+--- RAW OUTPUT ---
+I'll implement US-026 to add the catchUno event and draw-2 penalty functionality. Let me start by exploring the codebase structure.
+Now I'll implement the catchUno event and draw-2 penalty. Let me create a todo list:
+Now I'll add the tests for catchUno after the UNO window tests (after line 1911):
+<promise>COMPLETE</promise>
+
+--- STDERR ---
+[94m[1m| [0m[90m Glob     [0m{"pattern":"**/*uno*"}
+[94m[1m| [0m[90m Glob     [0m{"pattern":"**/events/**/*.ts"}
+[94m[1m| [0m[90m Glob     [0m{"pattern":"**/server/**/*.ts"}
+[94m[1m| [0m[90m Grep     [0mcallUno
+[94m[1m| [0m[90m Grep     [0munoWindow
+[96m[1m| [0m[90m Read     [0mserver\src\RoomManager.ts
+[96m[1m| [0m[90m Read     [0mserver\src\index.ts
+[96m[1m| [0m[90m Read     [0mshared\src\index.ts
+[96m[1m| [0m[90m Read     [0mserver\server.test.ts
+[93m[1m| [0m[90m Todo     [0m6 todos
+[93m[1m| [0m[90m Todo     [0m6 todos
+[92m[1m| [0m[90m Edit     [0mserver\src\RoomManager.ts
+[93m[1m| [0m[90m Todo     [0m5 todos
+[92m[1m| [0m[90m Edit     [0mserver\src\index.ts
+[93m[1m| [0m[90m Todo     [0m4 todos
+[92m[1m| [0m[90m Edit     [0mshared\src\index.ts
+[93m[1m| [0m[90m Todo     [0m3 todos
+[96m[1m| [0m[90m Read     [0mserver\server.test.ts
+[91m[1m| [0m[90m Bash     [0mCount lines in server test file
+
+'wc' is not recognized as an internal or external command,
+operable program or batch file.
+
+[96m[1m| [0m[90m Read     [0mserver\server.test.ts
+[96m[1m| [0m[90m Read     [0mserver\server.test.ts
+[91m[1m| [0m[90m Bash     [0mCount lines in test file
+
+3158
+
+[96m[1m| [0m[90m Read     [0mserver\server.test.ts
+[96m[1m| [0m[90m Read     [0mserver\server.test.ts
+[96m[1m| [0m[90m Read     [0mserver\server.test.ts
+[94m[1m| [0m[90m Grep     [0mdescribe\(.*UNO
+[96m[1m| [0m[90m Read     [0mserver\server.test.ts
+[92m[1m| [0m[90m Edit     [0mserver\server.test.ts
+[93m[1m| [0m[90m Todo     [0m2 todos
+[91m[1m| [0m[90m Bash     [0mRun server tests
+
+bun test v1.3.6 (d530ed99)
+
+server.test.ts:
+gameStateUpdate not received in time, checking room directly
+
+ 111 pass
+ 0 fail
+ 333 expect() calls
+Ran 111 tests across 1 file. [7.85s]
+
+[93m[1m| [0m[90m Todo     [0m1 todos
+[91m[1m| [0m[90m Bash     [0mRun typecheck on server
+
+$ tsc --noEmit
+src/index.ts(315,13): error TS2345: Argument of type '"catchUno"' is not assignable to parameter of type 'ReservedOrUserEventNames<SocketReservedEventsMap, ClientToServerEvents>'.
+
+[96m[1m| [0m[90m Read     [0mshared\src\index.ts
+[91m[1m| [0m[90m Bash     [0mBuild shared package
+$ tsc --outDir dist
+
+
+[91m[1m| [0m[90m Bash     [0mRun typecheck on server
+
+$ tsc --noEmit
+
+[93m[1m| [0m[90m Todo     [0m0 todos
+[91m[1m| [0m[90m Bash     [0mCommit catchUno implementation
+
+warning: in the working copy of '.ralph-tui/progress.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.ralph-tui/session.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'prd.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'server/server.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'server/src/RoomManager.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'server/src/index.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'shared/src/index.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.ralph-tui/iterations/iteration-025-US-025.log', LF will be replaced by CRLF the next time Git touches it
+[main 0a3c084] Implement catchUno event and draw-2 penalty (server) (US-026)
+ 8 files changed, 409 insertions(+), 9 deletions(-)
+ create mode 100644 .ralph-tui/iterations/iteration-025-US-025.log
+
+[91m[1m| [0m[90m Bash     [0mRun server tests and show summary
+
+'tail' is not recognized as an internal or external command,
+operable program or batch file.
+
+[91m[1m| [0m[90m Bash     [0mRun server tests and show summary
+[91m[1m| [0m[90m Bash     [0mRun server tests
+
+bun test v1.3.6 (d530ed99)
+
+server.test.ts:
+gameStateUpdate not received in time, checking room directly
+249 |       throw new Error('No top card in discard pile');
+250 |     }
+251 | 
+252 |     if (card.color === 'wild') {
+253 |       if (!chosenColor) {
+254 |         throw new Error('Must choose a color when playing a Wild card');
+                                                                            ^
+error: Must choose a color when playing a Wild card
+      at playCard (C:\Users\mark\Works\ccu.vc\server\src\RoomManager.ts:254:71)
+      at <anonymous> (C:\Users\mark\Works\ccu.vc\server\server.test.ts:3603:10)
+(fail) Win condition > should reject playCard after game has finished
+
+ 110 pass
+ 1 fail
+ 331 expect() calls
+Ran 111 tests across 1 file. [7.35s]
+
+[91m[1m| [0m[90m Bash     [0mRun catchUno tests only
+
+bun test v1.3.6 (d530ed99)
+The following filters did not match any test files in --cwd="C:\Users\mark\Works\ccu.vc\server":
+ catchUno
+28 files were searched [34.00ms]
+
+note: Tests need ".test", "_test_", ".spec" or "_spec_" in the filename (ex: "MyApp.test.ts")
+
+
+[91m[1m| [0m[90m Bash     [0mCheck test pass/fail count
+
+ 111 pass
+ 0 fail
+
+[91m[1m| [0m[90m Bash     [0mCheck catchUno tests
+[91m[1m| [0m[90m Bash     [0mCheck catchUno test details
+[91m[1m| [0m[90m Bash     [0mCheck test run summary
+
+Ran 111 tests across 1 file. [7.35s]
+

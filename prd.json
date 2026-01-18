@@ -457,8 +457,9 @@
         "quality gate: `bun --filter server run typecheck` exits with code 0"
       ],
       "priority": 30,
-      "passes": false,
-      "notes": "Exact image library is implementation-specific; tests can validate by checking stored metadata/dimensions if the library exposes it."
+      "passes": true,
+      "notes": "Exact image library is implementation-specific; tests can validate by checking stored metadata/dimensions if the library exposes it.",
+      "completionNotes": "Completed by agent"
     },
     {
       "id": "US-031",
@@ -547,6 +548,6 @@
     }
   ],
   "metadata": {
-    "updatedAt": "2026-01-18T15:04:05.359Z"
+    "updatedAt": "2026-01-18T15:12:33.428Z"
   }
 }

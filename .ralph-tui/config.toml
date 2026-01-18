@@ -1,8 +1,10 @@
-maxIterations = 10
+maxIterations = 0
 agent = "opencode"
 tracker = "json"
 autoCommit = true
-subagentTracingDetail = "off"
+subagentTracingDetail = "full"
 
 [agentOptions]
 [trackerOptions]
+[notifications]
+sound = "system"
