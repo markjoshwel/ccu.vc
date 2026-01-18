@@ -259,3 +259,12 @@ I'll implement US-024 to add UNO window and callUno event handling on the server
 Now I'll implement the UNO window and callUno event functionality. Let me start by creating a todo list to track the work:
 
 ---
+## ✓ Iteration 25 - US-025: Close UNO window on next player's first action (server)
+*2026-01-18T07:21:02.875Z (267s)*
+
+**Status:** Completed
+
+**Notes:**
+I'll implement US-025 to close the UNO window on the next player's first action. Let me start by exploring the codebase structure.
+
+---

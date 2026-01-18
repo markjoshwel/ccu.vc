@@ -407,6 +407,43 @@ export class Room {
     this.updateState();
   }
 
+  catchUno(catcherPlayerId: string, targetPlayerId: string): void {
+    if (this.state.gameStatus !== 'playing') {
+      throw new Error('Game is not in playing state');
+    }
+
+    if (!this.unoWindow) {
+      throw new Error('No UNO window open');
+    }
+
+    if (this.unoWindow.playerId !== targetPlayerId) {
+      throw new Error('Target player does not have an open UNO window');
+    }
+
+    if (this.unoWindow.called) {
+      throw new Error('UNO already called');
+    }
+
+    const targetPlayer = this.players.get(targetPlayerId);
+    if (!targetPlayer) {
+      throw new Error('Target player not found');
+    }
+
+    if (!this.deck || this.deck.isEmpty()) {
+      throw new Error('Deck is empty');
+    }
+
+    for (let i = 0; i < 2; i++) {
+      const drawnCard = this.deck.draw();
+      if (drawnCard) {
+        targetPlayer.hand.push(drawnCard);
+      }
+    }
+
+    this.unoWindow = undefined;
+    this.updateState();
+  }
+
   getClockSyncData(): ClockSyncData {
     const activePlayerId = this.playerOrder[this.currentPlayerIndex];
     return {

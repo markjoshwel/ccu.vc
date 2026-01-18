@@ -60,6 +60,7 @@ export type ClientToServerEvents = {
   playCard: (actionId: string, card: Card, callback: (response: { success: boolean; error?: string }) => void, chosenColor?: 'red' | 'yellow' | 'green' | 'blue') => void;
   drawCard: (actionId: string, callback: (response: { success: boolean; error?: string }) => void) => void;
   callUno: (actionId: string, callback: (response: { success: boolean; error?: string }) => void) => void;
+  catchUno: (actionId: string, targetPlayerId: string, callback: (response: { success: boolean; error?: string }) => void) => void;
 };
 
 export type ClockSyncData = {

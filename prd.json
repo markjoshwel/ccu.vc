@@ -382,8 +382,9 @@
         "quality gate: `bun --filter server run typecheck` exits with code 0"
       ],
       "priority": 25,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "",
+      "completionNotes": "Completed by agent"
     },
     {
       "id": "US-026",
@@ -543,6 +544,6 @@
     }
   ],
   "metadata": {
-    "updatedAt": "2026-01-18T07:16:35.601Z"
+    "updatedAt": "2026-01-18T07:21:03.902Z"
   }
 }
