@@ -55,12 +55,18 @@ export type ClientToServerEvents = {
   drawCard: (actionId: string, callback: (response: { success: boolean; error?: string }) => void) => void;
 };
 
+export type ClockSyncData = {
+  activePlayerId: string;
+  timeRemainingMs: { [playerId: string]: number };
+};
+
 export type ServerToClientEvents = {
   roomUpdated: (room: RoomState) => void;
   playerJoined: (player: PlayerPublic) => void;
   playerLeft: (playerId: string) => void;
   gameStarted: () => void;
   gameStateUpdate: (view: GameView) => void;
+  clockSync: (data: ClockSyncData) => void;
   error: (message: string) => void;
   actionAck: (data: { actionId: string; ok: boolean }) => void;
 };

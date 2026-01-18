@@ -2964,3 +2964,185 @@ describe('Win condition', () => {
     expect(() => room.drawCard(playerId2)).toThrow('Game is not in playing state');
   });
 });
+
+describe('clock sync scheduler', () => {
+  it('should start clock sync when game is playing', async () => {
+    const manager = new RoomManager();
+    const room = manager.createRoom();
+
+    const socketId1 = 'socket1';
+    const playerId1 = 'player1';
+    const player1 = { id: playerId1, name: 'Player 1', isReady: false, secret: 'secret1', connected: true, hand: [], handCount: 0 };
+
+    const socketId2 = 'socket2';
+    const playerId2 = 'player2';
+    const player2 = { id: playerId2, name: 'Player 2', isReady: false, secret: 'secret2', connected: true, hand: [], handCount: 0 };
+
+    room.addPlayer(socketId1, player1);
+    room.addPlayer(socketId2, player2);
+
+    const clockSyncCalls: any[] = [];
+    room.onClockSync = (data) => {
+      clockSyncCalls.push(data);
+    };
+
+    expect(room.clockSyncIntervalId).toBeUndefined();
+
+    room.startGame();
+
+    expect(room.clockSyncIntervalId).toBeDefined();
+    expect(Object.keys(room.timeRemainingMs)).toHaveLength(2);
+    expect(room.timeRemainingMs[playerId1]).toBe(60000);
+    expect(room.timeRemainingMs[playerId2]).toBe(60000);
+
+    await new Promise(resolve => setTimeout(resolve, 1100));
+
+    expect(clockSyncCalls.length).toBeGreaterThanOrEqual(2);
+    expect(clockSyncCalls[0].activePlayerId).toBe(playerId1);
+    expect(clockSyncCalls[0].timeRemainingMs[playerId1]).toBeLessThan(60000);
+    expect(clockSyncCalls[0].timeRemainingMs[playerId2]).toBe(60000);
+
+    room.stopClockSync();
+  });
+
+  it('should stop clock sync when game ends', () => {
+    const manager = new RoomManager();
+    const room = manager.createRoom();
+
+    const socketId1 = 'socket1';
+    const playerId1 = 'player1';
+    const player1 = { id: playerId1, name: 'Player 1', isReady: false, secret: 'secret1', connected: true, hand: [], handCount: 0 };
+
+    const socketId2 = 'socket2';
+    const playerId2 = 'player2';
+    const player2 = { id: playerId2, name: 'Player 2', isReady: false, secret: 'secret2', connected: true, hand: [], handCount: 0 };
+
+    room.addPlayer(socketId1, player1);
+    room.addPlayer(socketId2, player2);
+
+    room.startGame();
+
+    expect(room.clockSyncIntervalId).toBeDefined();
+
+    const topCard = room.discardPile[0];
+    const matchingCard: Card = { color: topCard.color, value: topCard.value };
+
+    room.players.get(playerId1)!.hand = [matchingCard];
+    room.playCard(playerId1, matchingCard);
+
+    expect(room.state.gameStatus).toBe('finished');
+    expect(room.clockSyncIntervalId).toBeUndefined();
+  });
+
+  it('should stop clock sync when only one player remains connected', () => {
+    const manager = new RoomManager();
+    const room = manager.createRoom();
+
+    const socketId1 = 'socket1';
+    const playerId1 = 'player1';
+    const player1 = { id: playerId1, name: 'Player 1', isReady: false, secret: 'secret1', connected: true, hand: [], handCount: 0 };
+
+    const socketId2 = 'socket2';
+    const playerId2 = 'player2';
+    const player2 = { id: playerId2, name: 'Player 2', isReady: false, secret: 'secret2', connected: true, hand: [], handCount: 0 };
+
+    const socketId3 = 'socket3';
+    const playerId3 = 'player3';
+    const player3 = { id: playerId3, name: 'Player 3', isReady: false, secret: 'secret3', connected: true, hand: [], handCount: 0 };
+
+    room.addPlayer(socketId1, player1);
+    room.addPlayer(socketId2, player2);
+    room.addPlayer(socketId3, player3);
+
+    room.startGame();
+
+    expect(room.clockSyncIntervalId).toBeDefined();
+
+    room.markPlayerDisconnected(playerId2);
+    room.markPlayerDisconnected(playerId3);
+
+    const topCard = room.discardPile[0];
+    const matchingCard: Card = { color: topCard.color, value: topCard.value };
+    room.players.get(playerId1)!.hand.push(matchingCard);
+    room.playCard(playerId1, matchingCard);
+
+    expect(room.state.gameStatus).toBe('finished');
+    expect(room.clockSyncIntervalId).toBeUndefined();
+  });
+
+  it('should only decrement active player time', async () => {
+    const manager = new RoomManager();
+    const room = manager.createRoom();
+
+    const socketId1 = 'socket1';
+    const playerId1 = 'player1';
+    const player1 = { id: playerId1, name: 'Player 1', isReady: false, secret: 'secret1', connected: true, hand: [], handCount: 0 };
+
+    const socketId2 = 'socket2';
+    const playerId2 = 'player2';
+    const player2 = { id: playerId2, name: 'Player 2', isReady: false, secret: 'secret2', connected: true, hand: [], handCount: 0 };
+
+    room.addPlayer(socketId1, player1);
+    room.addPlayer(socketId2, player2);
+
+    const clockSyncCalls: any[] = [];
+    room.onClockSync = (data) => {
+      clockSyncCalls.push(data);
+    };
+
+    room.startGame();
+
+    const topCard = room.discardPile[0];
+    const matchingCard: Card = { color: topCard.color, value: topCard.value };
+
+    room.players.get(playerId1)!.hand.push(matchingCard);
+
+    await new Promise(resolve => setTimeout(resolve, 600));
+
+    const initialPlayer1Time = clockSyncCalls[clockSyncCalls.length - 1].timeRemainingMs[playerId1];
+    const initialPlayer2Time = clockSyncCalls[clockSyncCalls.length - 1].timeRemainingMs[playerId2];
+
+    expect(initialPlayer1Time).toBeLessThan(60000);
+    expect(initialPlayer2Time).toBe(60000);
+
+    room.playCard(playerId1, matchingCard);
+
+    await new Promise(resolve => setTimeout(resolve, 600));
+
+    const afterPlayer1Time = clockSyncCalls[clockSyncCalls.length - 1].timeRemainingMs[playerId1];
+    const afterPlayer2Time = clockSyncCalls[clockSyncCalls.length - 1].timeRemainingMs[playerId2];
+
+    expect(afterPlayer1Time).toBe(initialPlayer1Time);
+    expect(afterPlayer2Time).toBeLessThan(60000);
+
+    room.stopClockSync();
+  });
+
+  it('should return clock sync data with activePlayerId and timeRemainingMs', () => {
+    const manager = new RoomManager();
+    const room = manager.createRoom();
+
+    const socketId1 = 'socket1';
+    const playerId1 = 'player1';
+    const player1 = { id: playerId1, name: 'Player 1', isReady: false, secret: 'secret1', connected: true, hand: [], handCount: 0 };
+
+    const socketId2 = 'socket2';
+    const playerId2 = 'player2';
+    const player2 = { id: playerId2, name: 'Player 2', isReady: false, secret: 'secret2', connected: true, hand: [], handCount: 0 };
+
+    room.addPlayer(socketId1, player1);
+    room.addPlayer(socketId2, player2);
+
+    room.startGame();
+
+    const clockSyncData = room.getClockSyncData();
+
+    expect(clockSyncData).toBeDefined();
+    expect(clockSyncData.activePlayerId).toBe(playerId1);
+    expect(clockSyncData.timeRemainingMs).toBeDefined();
+    expect(clockSyncData.timeRemainingMs[playerId1]).toBe(60000);
+    expect(clockSyncData.timeRemainingMs[playerId2]).toBe(60000);
+
+    room.stopClockSync();
+  });
+});

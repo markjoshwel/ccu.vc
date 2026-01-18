@@ -1,4 +1,4 @@
-import type { RoomState, PlayerPublic, PlayerPrivate, Card, GameView } from 'shared';
+import type { RoomState, PlayerPublic, PlayerPrivate, Card, GameView, ClockSyncData } from 'shared';
 import { Deck } from './Deck';
 
 type RoomCode = string;
@@ -17,6 +17,9 @@ export class Room {
   direction: 1 | -1;
   playerOrder: string[];
   activeColor?: 'red' | 'yellow' | 'green' | 'blue';
+  timeRemainingMs: { [playerId: string]: number };
+  clockSyncIntervalId?: ReturnType<typeof setInterval>;
+  onClockSync?: (data: ClockSyncData) => void;
 
   constructor(code: RoomCode) {
     this.code = code;
@@ -34,6 +37,7 @@ export class Room {
     this.currentPlayerIndex = 0;
     this.direction = 1;
     this.playerOrder = [];
+    this.timeRemainingMs = {};
   }
 
   addPlayer(socketId: string, player: StoredPlayer): void {
@@ -129,6 +133,7 @@ export class Room {
 
     this.state.gameStatus = 'playing';
     this.updateState();
+    this.startClockSync();
   }
 
   toGameView(playerId: string): GameView {
@@ -189,6 +194,7 @@ export class Room {
       this.state.gameStatus = 'finished';
       this.state.gameEndedReason = 'last-player-connected';
       this.updateState();
+      this.stopClockSync();
     }
 
     return nextIndex;
@@ -268,6 +274,7 @@ export class Room {
       this.state.gameStatus = 'finished';
       this.state.gameEndedReason = `${player.name} won`;
       this.updateState();
+      this.stopClockSync();
       return;
     }
 
@@ -359,6 +366,42 @@ export class Room {
 
     this.updateState();
     this.advanceTurn();
+  }
+
+  getClockSyncData(): ClockSyncData {
+    const activePlayerId = this.playerOrder[this.currentPlayerIndex];
+    return {
+      activePlayerId,
+      timeRemainingMs: { ...this.timeRemainingMs }
+    };
+  }
+
+  startClockSync(): void {
+    if (this.clockSyncIntervalId) {
+      return;
+    }
+
+    this.playerOrder.forEach(playerId => {
+      this.timeRemainingMs[playerId] = 60000;
+    });
+
+    this.clockSyncIntervalId = setInterval(() => {
+      if (this.state.gameStatus === 'playing') {
+        const activePlayerId = this.playerOrder[this.currentPlayerIndex];
+        this.timeRemainingMs[activePlayerId] = Math.max(0, this.timeRemainingMs[activePlayerId] - 500);
+        
+        if (this.onClockSync) {
+          this.onClockSync(this.getClockSyncData());
+        }
+      }
+    }, 500);
+  }
+
+  stopClockSync(): void {
+    if (this.clockSyncIntervalId) {
+      clearInterval(this.clockSyncIntervalId);
+      this.clockSyncIntervalId = undefined;
+    }
   }
 }
 
