@@ -59,11 +59,12 @@
             # Build client
             cd client
             bun run build
+            cd ..
           '';
 
           installPhase = ''
             mkdir -p $out
-            cp -r client/dist/* $out/
+            cp -r client/dist/. $out/
           '';
         };
 
@@ -90,15 +91,19 @@
             # Build server
             cd server
             bun run build
+            cd ..
+            
+            # Verify outputs exist
+            ls -la server/dist/
           '';
 
           installPhase = ''
             mkdir -p $out/dist
-            cp -r server/dist/* $out/dist/
+            cp -r server/dist/. $out/dist/
             cp server/package.json $out/
             # Copy shared types (needed at runtime for type references)
             mkdir -p $out/shared/src
-            cp -r shared/src/* $out/shared/src/
+            cp -r shared/src/. $out/shared/src/
           '';
         };
 
