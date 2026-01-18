@@ -230,6 +230,17 @@ button:disabled {
 
 .discard-area {
   margin-bottom: 24px;
+  position: relative;
+}
+
+div[data-drop-target]::after {
+  content: 'Drop to play';
+  position: absolute;
+  top: -12px;
+  right: 0;
+  font-size: 12px;
+  color: #6b7280;
+  opacity: 0.8;
 }
 
 .hand-area {
@@ -258,11 +269,22 @@ button:disabled {
   transition: transform 0.2s, box-shadow 0.2s;
   background: #333;
   border: 2px solid white;
+  touch-action: none;
+  user-select: none;
 }
 
 .card-display:hover:not(.disabled) {
   transform: translateY(-2px);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.card-display.selected {
+  outline: 3px solid #f59e0b;
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+}
+
+.card-display.dragging {
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.25);
 }
 
 .card-display.disabled {
@@ -288,6 +310,12 @@ button:disabled {
 
 .card-display.color-wild {
   background: linear-gradient(135deg, #9b59b6, #8e44ad);
+}
+
+.card-display.drop-hover,
+[data-drop-target] .drop-hover {
+  box-shadow: 0 0 0 3px #10b981, 0 12px 24px rgba(16, 185, 129, 0.3);
+  transform: translateY(-2px) scale(1.02);
 }
 
 .card-value {

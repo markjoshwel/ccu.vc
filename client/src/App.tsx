@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef, ChangeEvent } from 'react';
+import { animated, useSprings } from '@react-spring/web';
+import { useDrag } from '@use-gesture/react';
 import { io, Socket } from 'socket.io-client';
 import type { RoomState, PlayerPublic, PlayerPrivate, ServerToClientEvents, ClientToServerEvents, Card, GameView } from 'shared';
 
@@ -41,8 +43,14 @@ function App() {
   const [chatInput, setChatInput] = useState('');
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [selectedCardIndex, setSelectedCardIndex] = useState<number | null>(null);
+  const [playActionId, setPlayActionId] = useState<string | null>(null);
+  const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
+  const [isOverDiscard, setIsOverDiscard] = useState(false);
   const chatListRef = useRef<HTMLDivElement | null>(null);
   const isChatOpenRef = useRef(false);
+  const playActionIdRef = useRef<string | null>(null);
+  const discardRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -95,13 +103,23 @@ function App() {
 
       const newSocket = io('http://localhost:3000');
 
-      newSocket.on('actionAck', ({ actionId }: { actionId: string; ok: boolean }) => {
-        setPendingActions((prev) => {
-          const next = new Set(prev);
-          next.delete(actionId);
-          return next;
-        });
+    newSocket.on('actionAck', ({ actionId, ok }: { actionId: string; ok: boolean }) => {
+      setPendingActions((prev) => {
+        const next = new Set(prev);
+        next.delete(actionId);
+        return next;
       });
+      if (playActionIdRef.current && actionId === playActionIdRef.current && ok) {
+        clearSelection();
+        setPlayActionId(null);
+        playActionIdRef.current = null;
+      }
+      if (playActionIdRef.current && actionId === playActionIdRef.current && !ok) {
+        setPlayActionId(null);
+        playActionIdRef.current = null;
+      }
+    });
+
 
       newSocket.on('chatMessage', (data) => {
         setChatMessages((prev) => [...prev, data]);
@@ -162,12 +180,21 @@ function App() {
 
     const newSocket = io('http://localhost:3000');
 
-    newSocket.on('actionAck', ({ actionId }: { actionId: string; ok: boolean }) => {
+    newSocket.on('actionAck', ({ actionId, ok }: { actionId: string; ok: boolean }) => {
       setPendingActions((prev) => {
         const next = new Set(prev);
         next.delete(actionId);
         return next;
       });
+      if (playActionIdRef.current && actionId === playActionIdRef.current && ok) {
+        clearSelection();
+        setPlayActionId(null);
+        playActionIdRef.current = null;
+      }
+      if (playActionIdRef.current && actionId === playActionIdRef.current && !ok) {
+        setPlayActionId(null);
+        playActionIdRef.current = null;
+      }
     });
 
     newSocket.on('chatMessage', (data) => {
@@ -243,12 +270,21 @@ function App() {
 
     const newSocket = io('http://localhost:3000');
 
-    newSocket.on('actionAck', ({ actionId }: { actionId: string; ok: boolean }) => {
+    newSocket.on('actionAck', ({ actionId, ok }: { actionId: string; ok: boolean }) => {
       setPendingActions((prev) => {
         const next = new Set(prev);
         next.delete(actionId);
         return next;
       });
+      if (playActionIdRef.current && actionId === playActionIdRef.current && ok) {
+        clearSelection();
+        setPlayActionId(null);
+        playActionIdRef.current = null;
+      }
+      if (playActionIdRef.current && actionId === playActionIdRef.current && !ok) {
+        setPlayActionId(null);
+        playActionIdRef.current = null;
+      }
     });
 
     newSocket.on('chatMessage', (data) => {
@@ -324,18 +360,26 @@ function App() {
     setError('');
   };
 
-  const handlePlayCard = (card: Card) => {
+  const clearSelection = () => {
+    setSelectedCardIndex(null);
+    setPendingWildCard(null);
+    setShowColorPicker(false);
+  };
+
+  const triggerPlayCard = (card: Card) => {
     if (!socket) return;
-    
+
     if (card.color === 'wild') {
       setPendingWildCard(card);
       setShowColorPicker(true);
       return;
     }
-    
+
     const actionId = generateActionId();
+    setPlayActionId(actionId);
+    playActionIdRef.current = actionId;
     setPendingActions((prev) => new Set(prev).add(actionId));
-    
+
     socket.emit('playCard', actionId, card, (response) => {
       if (!response.success) {
         setError(response.error || 'Failed to play card');
@@ -343,10 +387,17 @@ function App() {
     });
   };
 
+  const handlePlayCard = (card: Card) => {
+    setSelectedCardIndex(null);
+    triggerPlayCard(card);
+  };
+
   const handleColorSelect = (color: 'red' | 'yellow' | 'green' | 'blue') => {
     if (!socket || !pendingWildCard) return;
     
     const actionId = generateActionId();
+    setPlayActionId(actionId);
+    playActionIdRef.current = actionId;
     setPendingActions((prev) => new Set(prev).add(actionId));
     
     socket.emit('playCard', actionId, pendingWildCard, (response) => {
@@ -357,6 +408,7 @@ function App() {
     
     setShowColorPicker(false);
     setPendingWildCard(null);
+    setSelectedCardIndex(null);
   };
 
   const handleColorPickerCancel = () => {
@@ -502,6 +554,83 @@ function App() {
     }
   };
 
+  const myPlayerId = localStorage.getItem(STORAGE_KEYS.PLAYER_ID);
+  const allPlayers = room && gameView ? [...gameView.otherPlayers, gameView.me] : players;
+  const myPlayer = room && gameView ? (gameView.me as PlayerPrivate) : players.find((p) => p.id === myPlayerId);
+  const topCard = room && room.discardPile && room.discardPile.length > 0 ? room.discardPile[room.discardPile.length - 1] : null;
+  const myTurn = !!(room && myPlayerId && room.currentPlayerIndex !== undefined && allPlayers[room.currentPlayerIndex]?.id === myPlayerId);
+  const orderedPlayers = room ? allPlayers.map((p, index) => ({ player: p, isActive: room.currentPlayerIndex === index })) : [];
+  const isPlayPending = pendingActions.size > 0;
+  const isPlayerPrivate = (player: any): player is { hand: Card[] } => player && 'hand' in player;
+  const getPlayerHandCount = (player: any): number => {
+    if (isPlayerPrivate(player)) {
+      return player.hand?.length || 0;
+    }
+    return player?.handCount || 0;
+  };
+
+  const formatTime = (ms: number): string => {
+    const seconds = Math.ceil(ms / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+  };
+
+  const getPlayerTime = (playerId: string): number => {
+    if (interpolatedTime[playerId] !== undefined) {
+      return interpolatedTime[playerId];
+    }
+    if (clockSync?.timeRemainingMs[playerId] !== undefined) {
+      return clockSync.timeRemainingMs[playerId];
+    }
+    return 0;
+  };
+
+  const handCards: Card[] = isPlayerPrivate(myPlayer) && myPlayer.hand ? myPlayer.hand : [];
+  const [springs, api] = useSprings(handCards.length, () => ({ x: 0, y: 0, scale: 1, rotateZ: 0, immediate: false }));
+
+  const bindCard = useDrag(
+    ({ args: [card, index], active, movement: [mx, my], down, event }) => {
+      if (!myTurn || isPlayPending) return;
+      if (event?.type === 'pointerdown') {
+        setSelectedCardIndex(index);
+      }
+
+      setDraggingIndex(active ? index : null);
+
+      api.start((i) => (i === index ? { x: active ? mx : 0, y: active ? my : 0, scale: active ? 1.05 : 1, rotateZ: active ? mx * 0.03 : 0, immediate: down } : undefined));
+
+      if (!discardRef.current) {
+        if (!active) {
+          setIsOverDiscard(false);
+        }
+        return;
+      }
+
+      const rect = discardRef.current.getBoundingClientRect();
+      const pointer = event instanceof PointerEvent ? event : null;
+      const over = !!(active && pointer && rect.left <= pointer.clientX && pointer.clientX <= rect.right && rect.top <= pointer.clientY && pointer.clientY <= rect.bottom);
+      setIsOverDiscard(over);
+
+      if (!active) {
+        setIsOverDiscard(false);
+        setDraggingIndex(null);
+        api.start((i) => (i === index ? { x: 0, y: 0, scale: 1, rotateZ: 0 } : undefined));
+      }
+
+      if (!active && selectedCardIndex === index) {
+        if (over) {
+          triggerPlayCard(card);
+        } else {
+          setSelectedCardIndex(null);
+          setPendingWildCard(null);
+          setShowColorPicker(false);
+        }
+      }
+    },
+    { threshold: 8, pointer: { touch: true }, filterTaps: true }
+  );
+
   if (loading) {
     return (
       <div className="container">
@@ -513,41 +642,8 @@ function App() {
   }
 
   if (view === 'room' && room) {
-    const myPlayerId = localStorage.getItem(STORAGE_KEYS.PLAYER_ID);
-    const allPlayers = gameView ? [...gameView.otherPlayers, gameView.me] : players;
-    const myPlayer = gameView ? (gameView.me as PlayerPrivate) : players.find((p) => p.id === myPlayerId);
-    const topCard = room.discardPile && room.discardPile.length > 0 ? room.discardPile[room.discardPile.length - 1] : null;
-    const myTurn = myPlayerId && room.currentPlayerIndex !== undefined && allPlayers[room.currentPlayerIndex]?.id === myPlayerId;
-    const orderedPlayers = allPlayers.map((p, index) => ({ player: p, isActive: room.currentPlayerIndex === index }));
-    const isPlayPending = pendingActions.size > 0;
-    const isPlayerPrivate = (player: any): player is { hand: Card[] } => 'hand' in player;
-    const getPlayerHandCount = (player: any): number => {
-      if (isPlayerPrivate(player)) {
-        return player.hand?.length || 0;
-      }
-      return player.handCount || 0;
-    };
-
-    const myName = players.find((p) => p.id === myPlayerId)?.name;
-
-    const formatTime = (ms: number): string => {
-      const seconds = Math.ceil(ms / 1000);
-      const minutes = Math.floor(seconds / 60);
-      const remainingSeconds = seconds % 60;
-      return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
-    };
-
-    const getPlayerTime = (playerId: string): number => {
-      if (interpolatedTime[playerId] !== undefined) {
-        return interpolatedTime[playerId];
-      }
-      if (clockSync?.timeRemainingMs[playerId] !== undefined) {
-        return clockSync.timeRemainingMs[playerId];
-      }
-      return 0;
-    };
-
     return (
+
       <div className="container">
         <div className="card">
           <h1>Room {room.id}</h1>
@@ -555,7 +651,7 @@ function App() {
 
           {room.gameStatus === 'playing' && topCard && (
             <div className="game-area">
-              <div className="discard-area">
+              <div className="discard-area" ref={discardRef} data-drop-target>
                 <h2>Discard Pile</h2>
                 {room.activeColor && (
                   <div className="active-color-indicator">
@@ -563,7 +659,7 @@ function App() {
                     <span className={`color-badge ${room.activeColor}`}>{room.activeColor}</span>
                   </div>
                 )}
-                <div className={`card-display color-${topCard.color}`}>
+                <div className={`card-display color-${topCard.color} ${isOverDiscard ? 'drop-hover' : ''}`} data-discard-card>
                   <span className="card-value">{topCard.value}</span>
                 </div>
               </div>
@@ -636,16 +732,33 @@ function App() {
                   {isPlayPending ? 'Calling...' : 'Call UNO!'}
                 </button>
               )}
-              <div className="hand-grid">
+              <div className="hand-grid" data-hand>
                 {gameView.me.hand.map((card, index) => (
-                  <button
+                  <animated.button
+                    {...bindCard(card, index)}
                     key={index}
-                    className={`card-display color-${card.color} ${!myTurn || isPlayPending ? 'disabled' : ''}`}
-                    onClick={() => myTurn && !isPlayPending && handlePlayCard(card)}
+                    className={`card-display color-${card.color} ${!myTurn || isPlayPending ? 'disabled' : ''} ${selectedCardIndex === index ? 'selected' : ''} ${draggingIndex === index ? 'dragging' : ''}`}
+                    onClick={() => {
+                      if (!myTurn || isPlayPending) return;
+                      setSelectedCardIndex(index);
+                      handlePlayCard(card);
+                    }}
+                    onPointerDown={() => {
+                      if (!myTurn || isPlayPending) return;
+                      setSelectedCardIndex(index);
+                    }}
                     disabled={!myTurn || isPlayPending}
+                    style={{
+                      x: springs[index].x,
+                      y: springs[index].y,
+                      scale: springs[index].scale,
+                      rotateZ: springs[index].rotateZ,
+                      zIndex: draggingIndex === index ? 2 : 1
+                    }}
+                    data-card-index={index}
                   >
                     <span className="card-value">{card.value}</span>
-                  </button>
+                  </animated.button>
                 ))}
               </div>
             </div>
