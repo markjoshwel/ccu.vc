@@ -155,6 +155,19 @@ describe('avatar endpoints', () => {
       expect(stored?.width).toBe(256);
       expect(stored?.height).toBe(256);
       expect(stored?.contentType.startsWith('image/')).toBe(true);
+
+      const getRes = await fetch(`${baseUrl}/avatars/${json.avatarId}`);
+      expect(getRes.status).toBe(200);
+      expect(getRes.headers.get('content-type')).toBe(stored?.contentType ?? null);
+      const bytes = new Uint8Array(await getRes.arrayBuffer());
+      expect(bytes.byteLength).toBeGreaterThan(0);
+    });
+  });
+
+  describe('GET /avatars/:id', () => {
+    it('returns 404 for unknown id', async () => {
+      const res = await fetch(`${baseUrl}/avatars/not-found`);
+      expect(res.status).toBe(404);
     });
   });
 });

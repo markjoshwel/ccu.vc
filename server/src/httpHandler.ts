@@ -27,9 +27,32 @@ export function createHttpHandler(deps: HttpHandlerDeps) {
 
   return async function handleRequest(req: IncomingMessage, res: ServerResponse) {
     try {
+      const parsedUrl = req.url ? new URL(req.url, 'http://localhost') : null;
+
       if (req.url === '/health' && req.method === 'GET') {
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ status: 'ok' }));
+        return;
+      }
+
+      if (parsedUrl && req.method === 'GET' && parsedUrl.pathname.startsWith('/avatars/')) {
+        const avatarId = parsedUrl.pathname.slice('/avatars/'.length);
+        if (!avatarId) {
+          res.writeHead(404);
+          res.end('Not Found');
+          return;
+        }
+        const stored = deps.avatarStore.get(avatarId);
+        if (!stored) {
+          res.writeHead(404);
+          res.end('Not Found');
+          return;
+        }
+        res.writeHead(200, {
+          'Content-Type': stored.contentType,
+          'Content-Length': stored.data.byteLength
+        });
+        res.end(Buffer.from(stored.data));
         return;
       }
 
