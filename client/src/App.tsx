@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
 import type { RoomState, PlayerPublic, ServerToClientEvents, ClientToServerEvents, Card, GameView } from 'shared';
 
@@ -32,6 +32,12 @@ function App() {
   const [clockSync, setClockSync] = useState<import('shared').ClockSyncData | null>(null);
   const [interpolatedTime, setInterpolatedTime] = useState<{ [playerId: string]: number }>({});
   const [reducedMotion, setReducedMotion] = useState(false);
+  const [chatMessages, setChatMessages] = useState<{ playerId: string; playerName: string; message: string; timestamp: number }[]>([]);
+  const [chatInput, setChatInput] = useState('');
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const chatListRef = useRef<HTMLDivElement | null>(null);
+  const isChatOpenRef = useRef(false);
 
   useEffect(() => {
     const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -47,14 +53,12 @@ function App() {
 
     const updateInterval = reducedMotion ? 1000 : 100;
     let lastSyncTime = Date.now();
-    let lastSecond = -1;
 
     const updateInterpolatedTime = () => {
       const now = Date.now();
       const elapsed = now - lastSyncTime;
-      const currentSecond = Math.floor(elapsed / 1000);
       
-      setInterpolatedTime((prev) => {
+      setInterpolatedTime(() => {
         const newInterpolatedTime: { [playerId: string]: number } = {};
         
         for (const [playerId, timeRemainingMs] of Object.entries(clockSync.timeRemainingMs)) {
@@ -66,7 +70,6 @@ function App() {
       });
 
       lastSyncTime = now;
-      lastSecond = currentSecond;
     };
 
     const intervalId = setInterval(updateInterpolatedTime, updateInterval);
@@ -85,12 +88,19 @@ function App() {
 
       const newSocket = io('http://localhost:3000');
 
-      newSocket.on('actionAck', ({ actionId, ok }: { actionId: string; ok: boolean }) => {
+      newSocket.on('actionAck', ({ actionId }: { actionId: string; ok: boolean }) => {
         setPendingActions((prev) => {
           const next = new Set(prev);
           next.delete(actionId);
           return next;
         });
+      });
+
+      newSocket.on('chatMessage', (data) => {
+        setChatMessages((prev) => [...prev, data]);
+        if (!isChatOpenRef.current) {
+          setUnreadCount((count) => count + 1);
+        }
       });
 
       newSocket.on('connect', () => {
@@ -145,12 +155,19 @@ function App() {
 
     const newSocket = io('http://localhost:3000');
 
-    newSocket.on('actionAck', ({ actionId, ok }: { actionId: string; ok: boolean }) => {
+    newSocket.on('actionAck', ({ actionId }: { actionId: string; ok: boolean }) => {
       setPendingActions((prev) => {
         const next = new Set(prev);
         next.delete(actionId);
         return next;
       });
+    });
+
+    newSocket.on('chatMessage', (data) => {
+      setChatMessages((prev) => [...prev, data]);
+      if (!isChatOpenRef.current) {
+        setUnreadCount((count) => count + 1);
+      }
     });
 
     newSocket.emit('create_room', (response: { roomCode: string }) => {
@@ -209,12 +226,19 @@ function App() {
 
     const newSocket = io('http://localhost:3000');
 
-    newSocket.on('actionAck', ({ actionId, ok }: { actionId: string; ok: boolean }) => {
+    newSocket.on('actionAck', ({ actionId }: { actionId: string; ok: boolean }) => {
       setPendingActions((prev) => {
         const next = new Set(prev);
         next.delete(actionId);
         return next;
       });
+    });
+
+    newSocket.on('chatMessage', (data) => {
+      setChatMessages((prev) => [...prev, data]);
+      if (!isChatOpenRef.current) {
+        setUnreadCount((count) => count + 1);
+      }
     });
 
     newSocket.on('connect', () => {
@@ -269,6 +293,9 @@ function App() {
     setGameView(null);
     setClockSync(null);
     setInterpolatedTime({});
+    setChatMessages([]);
+    setUnreadCount(0);
+    setIsChatOpen(false);
     setView('lobby');
     setLoading(false);
     setError('');
@@ -353,6 +380,38 @@ function App() {
     });
   };
 
+  const handleSendChat = () => {
+    if (!socket || !chatInput.trim()) return;
+    const actionId = generateActionId();
+    setPendingActions((prev) => new Set(prev).add(actionId));
+    const message = chatInput.trim();
+    setChatInput('');
+    socket.emit('sendChat', actionId, message, (response) => {
+      if (!response.success) {
+        setError(response.error || 'Failed to send message');
+      }
+    });
+  };
+
+  const toggleChat = () => {
+    setIsChatOpen((open) => {
+      const next = !open;
+      isChatOpenRef.current = next;
+      if (next) {
+        setUnreadCount(0);
+      }
+      return next;
+    });
+  };
+
+  useEffect(() => {
+    if (!isChatOpen) return;
+    setUnreadCount(0);
+    if (chatListRef.current) {
+      chatListRef.current.scrollTop = chatListRef.current.scrollHeight;
+    }
+  }, [chatMessages, isChatOpen]);
+
   const isCreatePending = pendingActions.size > 0;
   const isJoinPending = pendingActions.size > 0;
 
@@ -380,6 +439,8 @@ function App() {
       return player.handCount || 0;
     };
 
+    const myName = players.find((p) => p.id === myPlayerId)?.name;
+
     const formatTime = (ms: number): string => {
       const seconds = Math.ceil(ms / 1000);
       const minutes = Math.floor(seconds / 60);
@@ -402,6 +463,10 @@ function App() {
         <div className="card">
           <h1>Room {room.id}</h1>
           <div className="room-code">{roomCode || joinRoomCode}</div>
+
+          <button className="chat-toggle" onClick={toggleChat}>
+            Chat {unreadCount > 0 && <span className="badge">{unreadCount}</span>}
+          </button>
           
           {room.gameStatus === 'playing' && topCard && (
             <div className="game-area">
@@ -486,6 +551,46 @@ function App() {
               {isPlayPending ? 'Drawing...' : 'Draw Card'}
             </button>
           )}
+
+          <div className={`chat-drawer ${isChatOpen ? 'open' : ''}`}>
+            <div className="chat-header">
+              <div>
+                <div className="chat-title">Room Chat</div>
+                <div className="chat-subtitle">Messages are visible to everyone</div>
+              </div>
+              <button className="chat-close" onClick={toggleChat}>
+                {isChatOpen ? 'Close' : 'Open'}
+              </button>
+            </div>
+            <div className="chat-messages" ref={chatListRef}>
+              {chatMessages.map((msg, index) => (
+                <div key={index} className={`chat-message ${msg.playerId === myPlayerId ? 'me' : ''}`}>
+                  <div className="chat-meta">
+                    <span className="chat-author">{msg.playerName}</span>
+                    <span className="chat-time">{new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                  </div>
+                  <div className="chat-text">{msg.message}</div>
+                </div>
+              ))}
+            </div>
+            <div className="chat-input-row">
+              <input
+                type="text"
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                placeholder="Type a message"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleSendChat();
+                  }
+                }}
+              />
+              <button onClick={handleSendChat} disabled={!chatInput.trim() || pendingActions.size > 0}>
+                Send
+              </button>
+            </div>
+          </div>
 
           {room.gameStatus === 'waiting' && (
             <div className="players-list">
