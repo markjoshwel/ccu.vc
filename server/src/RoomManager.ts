@@ -122,7 +122,7 @@ export class Room {
     }
 
     let initialCard = this.deck.draw();
-    while (initialCard && initialCard.color === 'wild' && initialCard.value === 'wild_draw4') {
+    while (initialCard && initialCard.color === 'wild') {
       this.deck.cards.unshift(initialCard);
       this.deck.shuffle(rng);
       initialCard = this.deck.draw();
@@ -264,7 +264,9 @@ export class Room {
     const isMatch =
       card.color === 'wild' ||
       card.color === effectiveColor ||
-      card.value === topCard.value;
+      card.value === topCard.value ||
+      topCard.value === 'wild' ||
+      topCard.value === 'wild_draw4';
 
     if (!isMatch) {
       throw new Error('Card does not match top discard');
