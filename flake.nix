@@ -104,27 +104,26 @@
           '';
         };
 
-        # Docker image for client (static files served by nginx)
+        # Docker image for client (static files served by darkhttpd)
         clientImage = pkgs.dockerTools.buildImage {
           name = "ccu-client";
           tag = version;
           
           copyToRoot = pkgs.buildEnv {
             name = "ccu-client-root";
-            paths = [ pkgs.nginx clientBuild ];
-            pathsToLink = [ "/bin" "/etc" "/var" ];
+            paths = [ pkgs.darkhttpd ];
+            pathsToLink = [ "/bin" ];
           };
 
           runAsRoot = ''
-            mkdir -p /var/log/nginx /var/cache/nginx /run
-            mkdir -p /usr/share/nginx/html
-            cp -r ${clientBuild}/* /usr/share/nginx/html/
+            mkdir -p /srv
+            cp -r ${clientBuild}/* /srv/
           '';
 
           config = {
-            Cmd = [ "${pkgs.nginx}/bin/nginx" "-g" "daemon off;" ];
-            ExposedPorts = { "80/tcp" = {}; };
-            WorkingDir = "/usr/share/nginx/html";
+            Cmd = [ "${pkgs.darkhttpd}/bin/darkhttpd" "/srv" "--port" "8080" ];
+            ExposedPorts = { "8080/tcp" = {}; };
+            WorkingDir = "/srv";
           };
         };
 
