@@ -3921,6 +3921,467 @@ describe('RateLimiter', () => {
     expect(rateLimiter.tryConsume()).toBe(false);
   });
 });
+
+describe('sendChat event', () => {
+  let server: ReturnType<typeof createServer>;
+  let io: SocketIOServer<ClientToServerEvents, ServerToClientEvents>;
+  let port: number;
+  let roomManager: RoomManager;
+  let socketRoomMap: Map<string, string>;
+  let socketPlayerMap: Map<string, { playerId: string; playerSecret: string }>;
+  let playerRateLimiters: Map<string, RateLimiter>;
+
+  beforeAll(() => {
+    port = 3004;
+    server = createServer((req, res) => {
+      res.writeHead(404);
+      res.end('Not Found');
+    });
+
+    io = new SocketIOServer<ClientToServerEvents, ServerToClientEvents>(server, {
+      cors: {
+        origin: '*',
+        methods: ['GET', 'POST']
+      }
+    });
+
+    roomManager = new RoomManager();
+
+    function validateDisplayName(displayName: string): { valid: boolean; error?: string } {
+      const trimmed = displayName.trim();
+      
+      if (trimmed.length === 0) {
+        return { valid: false, error: 'Display name cannot be empty' };
+      }
+      
+      if (trimmed.length > 24) {
+        return { valid: false, error: 'Display name must be 24 characters or less' };
+      }
+      
+      if (/[\x00-\x1F\x7F]/.test(trimmed)) {
+        return { valid: false, error: 'Display name cannot contain control characters' };
+      }
+      
+      return { valid: true };
+    }
+
+    function generatePlayerSecret(): string {
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+      let secret = '';
+      for (let i = 0; i < 32; i++) {
+        secret += chars[Math.floor(Math.random() * chars.length)];
+      }
+      return secret;
+    }
+
+    socketRoomMap = new Map<string, string>();
+    socketPlayerMap = new Map<string, { playerId: string; playerSecret: string }>();
+    playerRateLimiters = new Map<string, RateLimiter>();
+
+    io.on('connection', (socket) => {
+      (socket as any).on('create_room', (callback: (response: { roomCode: string }) => void) => {
+        const room = roomManager.createRoom();
+        callback({ roomCode: room.code });
+      });
+      
+      (socket as any).on('join_room', (roomCode: string, displayName: string, callback: (response: { playerId: string; playerSecret: string } | { error: string }) => void) => {
+        const validation = validateDisplayName(displayName);
+        
+        if (!validation.valid) {
+          callback({ error: validation.error || 'Invalid display name' });
+          return;
+        }
+        
+        const room = roomManager.getRoom(roomCode);
+        
+        if (!room) {
+          callback({ error: 'Room not found' });
+          return;
+        }
+        
+        const playerId = `player_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+        const playerSecret = generatePlayerSecret();
+        
+        const player = {
+          id: playerId,
+          name: displayName.trim(),
+          isReady: false,
+          secret: playerSecret,
+          connected: true,
+          hand: [],
+          handCount: 0
+        };
+        
+        roomManager.handlePlayerConnection(roomCode, socket.id, player);
+        socketRoomMap.set(socket.id, roomCode);
+        socketPlayerMap.set(socket.id, { playerId, playerSecret });
+        io.to(roomCode).emit('roomUpdated', room.state);
+        const playerPublic = { id: player.id, name: player.name, isReady: player.isReady, connected: player.connected, handCount: player.hand.length };
+        io.to(roomCode).emit('playerJoined', playerPublic as any);
+        socket.join(roomCode);
+        
+        callback({ playerId, playerSecret });
+      });
+
+      (socket as any).on('reconnect_room', (roomCode: string, playerId: string, playerSecret: string, callback: (response: { success: boolean; error?: string }) => void) => {
+        const room = roomManager.handlePlayerReconnection(roomCode, socket.id, playerId, playerSecret);
+        
+        if (!room) {
+          callback({ success: false, error: 'Reconnection failed' });
+          return;
+        }
+        
+        socketRoomMap.set(socket.id, roomCode);
+        socketPlayerMap.set(socket.id, { playerId, playerSecret });
+        io.to(roomCode).emit('roomUpdated', room.state);
+        socket.join(roomCode);
+        
+        callback({ success: true });
+      });
+
+      (socket as any).on('sendChat', (actionId: string, message: string, callback: (response: { success: boolean; error?: string }) => void) => {
+        const roomCode = socketRoomMap.get(socket.id);
+        
+        if (!roomCode) {
+          socket.emit('actionAck', { actionId, ok: false });
+          callback({ success: false, error: 'Not in a room' });
+          return;
+        }
+        
+        if (message.length > 280) {
+          socket.emit('actionAck', { actionId, ok: false });
+          callback({ success: false, error: 'Message exceeds 280 characters' });
+          return;
+        }
+        
+        const playerData = socketPlayerMap.get(socket.id);
+        if (!playerData) {
+          socket.emit('actionAck', { actionId, ok: false });
+          callback({ success: false, error: 'Player not found' });
+          return;
+        }
+        
+        const playerId = playerData.playerId;
+        
+        let rateLimiter = playerRateLimiters.get(playerId);
+        if (!rateLimiter) {
+          rateLimiter = new RateLimiter(3, 1);
+          playerRateLimiters.set(playerId, rateLimiter);
+        }
+        
+        if (!rateLimiter.tryConsume()) {
+          socket.emit('actionAck', { actionId, ok: false });
+          callback({ success: false, error: 'Rate limit exceeded' });
+          return;
+        }
+        
+        const room = roomManager.getRoom(roomCode);
+        const player = room?.players.get(playerId);
+        
+        if (!room || !player) {
+          socket.emit('actionAck', { actionId, ok: false });
+          callback({ success: false, error: 'Room or player not found' });
+          return;
+        }
+        
+        io.to(roomCode).emit('chatMessage', {
+          playerId,
+          playerName: player.name,
+          message,
+          timestamp: Date.now()
+        });
+        socket.emit('actionAck', { actionId, ok: true });
+        callback({ success: true });
+      });
+      
+      socket.on('disconnect', () => {
+        const roomId = socketRoomMap.get(socket.id);
+        if (roomId) {
+          const playerData = socketPlayerMap.get(socket.id);
+          const playerId = playerData?.playerId || socket.id;
+          const room = roomManager.handlePlayerDisconnection(roomId, socket.id, playerId);
+          socketRoomMap.delete(socket.id);
+          socketPlayerMap.delete(socket.id);
+          if (room) {
+            io.to(roomId).emit('roomUpdated', room.state);
+          }
+        }
+      });
+    });
+
+    server.listen(port);
+  });
+
+  afterAll(() => {
+    server.close();
+  });
+
+  describe('sendChat broadcasts to room', () => {
+    it('should broadcast chatMessage to all connected players in room', async () => {
+      const client1 = ioClient(`http://localhost:${port}`) as any;
+      
+      const createRoomPromise = new Promise<{ roomCode: string }>((resolve) => {
+        client1.emit('create_room', (response: { roomCode: string }) => {
+          resolve(response);
+        });
+      });
+      
+      const { roomCode } = await createRoomPromise;
+      
+      const joinPromise1 = new Promise<{ playerId: string; playerSecret: string }>((resolve, reject) => {
+        client1.emit('join_room', roomCode, 'Player1', (response: { playerId: string; playerSecret: string } | { error: string }) => {
+          if ('error' in response) {
+            reject(new Error(response.error));
+          } else {
+            resolve(response);
+          }
+        });
+      });
+      
+      await joinPromise1;
+      
+      const client2 = ioClient(`http://localhost:${port}`) as any;
+      const joinPromise2 = new Promise<{ playerId: string; playerSecret: string }>((resolve, reject) => {
+        client2.emit('join_room', roomCode, 'Player2', (response: { playerId: string; playerSecret: string } | { error: string }) => {
+          if ('error' in response) {
+            reject(new Error(response.error));
+          } else {
+            resolve(response);
+          }
+        });
+      });
+      await joinPromise2;
+      
+      const chatMessages1: any[] = [];
+      const chatMessages2: any[] = [];
+      
+      client1.on('chatMessage', (data: any) => {
+        chatMessages1.push(data);
+      });
+      
+      client2.on('chatMessage', (data: any) => {
+        chatMessages2.push(data);
+      });
+      
+      const sendChatPromise = new Promise<{ success: boolean; error?: string }>((resolve) => {
+        client1.emit('sendChat', 'action1', 'Hello everyone!', (response: { success: boolean; error?: string }) => {
+          resolve(response);
+        });
+      });
+      
+      const result = await sendChatPromise;
+      expect(result.success).toBe(true);
+      
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      expect(chatMessages1).toHaveLength(1);
+      expect(chatMessages2).toHaveLength(1);
+      expect(chatMessages1[0].message).toBe('Hello everyone!');
+      expect(chatMessages1[0].playerName).toBe('Player1');
+      expect(chatMessages2[0].message).toBe('Hello everyone!');
+      expect(chatMessages2[0].playerName).toBe('Player1');
+      
+      client1.disconnect();
+      client2.disconnect();
+    });
+
+    it('should reject messages longer than 280 characters', async () => {
+      const client1 = ioClient(`http://localhost:${port}`) as any;
+      
+      const createRoomPromise = new Promise<{ roomCode: string }>((resolve) => {
+        client1.emit('create_room', (response: { roomCode: string }) => {
+          resolve(response);
+        });
+      });
+      
+      const { roomCode } = await createRoomPromise;
+      
+      const joinPromise = new Promise<{ playerId: string; playerSecret: string }>((resolve, reject) => {
+        client1.emit('join_room', roomCode, 'Player1', (response: { playerId: string; playerSecret: string } | { error: string }) => {
+          if ('error' in response) {
+            reject(new Error(response.error));
+          } else {
+            resolve(response);
+          }
+        });
+      });
+      
+      await joinPromise;
+      
+      const longMessage = 'A'.repeat(281);
+      
+      const sendChatPromise = new Promise<{ success: boolean; error?: string }>((resolve) => {
+        client1.emit('sendChat', 'action1', longMessage, (response: { success: boolean; error?: string }) => {
+          resolve(response);
+        });
+      });
+      
+      const result = await sendChatPromise;
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Message exceeds 280 characters');
+      
+      client1.disconnect();
+    });
+
+    it('should accept messages exactly 280 characters', async () => {
+      const client1 = ioClient(`http://localhost:${port}`) as any;
+      
+      const createRoomPromise = new Promise<{ roomCode: string }>((resolve) => {
+        client1.emit('create_room', (response: { roomCode: string }) => {
+          resolve(response);
+        });
+      });
+      
+      const { roomCode } = await createRoomPromise;
+      
+      const joinPromise = new Promise<{ playerId: string; playerSecret: string }>((resolve, reject) => {
+        client1.emit('join_room', roomCode, 'Player1', (response: { playerId: string; playerSecret: string } | { error: string }) => {
+          if ('error' in response) {
+            reject(new Error(response.error));
+          } else {
+            resolve(response);
+          }
+        });
+      });
+      
+      await joinPromise;
+      
+      const message = 'A'.repeat(280);
+      
+      const sendChatPromise = new Promise<{ success: boolean; error?: string }>((resolve) => {
+        client1.emit('sendChat', 'action1', message, (response: { success: boolean; error?: string }) => {
+          resolve(response);
+        });
+      });
+      
+      const result = await sendChatPromise;
+      expect(result.success).toBe(true);
+      
+      client1.disconnect();
+    });
+
+    it('should enforce rate limit of burst 3 messages', async () => {
+      const client1 = ioClient(`http://localhost:${port}`) as any;
+      
+      const createRoomPromise = new Promise<{ roomCode: string }>((resolve) => {
+        client1.emit('create_room', (response: { roomCode: string }) => {
+          resolve(response);
+        });
+      });
+      
+      const { roomCode } = await createRoomPromise;
+      
+      const joinPromise = new Promise<{ playerId: string; playerSecret: string }>((resolve, reject) => {
+        client1.emit('join_room', roomCode, 'Player1', (response: { playerId: string; playerSecret: string } | { error: string }) => {
+          if ('error' in response) {
+            reject(new Error(response.error));
+          } else {
+            resolve(response);
+          }
+        });
+      });
+      
+      await joinPromise;
+      
+      const messages1: any[] = [];
+      client1.on('chatMessage', (data: any) => messages1.push(data));
+      
+      const sendChat1 = new Promise<{ success: boolean; error?: string }>((resolve) => {
+        client1.emit('sendChat', 'action1', 'Message 1', (response: { success: boolean; error?: string }) => {
+          resolve(response);
+        });
+      });
+      
+      const sendChat2 = new Promise<{ success: boolean; error?: string }>((resolve) => {
+        client1.emit('sendChat', 'action2', 'Message 2', (response: { success: boolean; error?: string }) => {
+          resolve(response);
+        });
+      });
+      
+      const sendChat3 = new Promise<{ success: boolean; error?: string }>((resolve) => {
+        client1.emit('sendChat', 'action3', 'Message 3', (response: { success: boolean; error?: string }) => {
+          resolve(response);
+        });
+      });
+      
+      const sendChat4 = new Promise<{ success: boolean; error?: string }>((resolve) => {
+        client1.emit('sendChat', 'action4', 'Message 4', (response: { success: boolean; error?: string }) => {
+          resolve(response);
+        });
+      });
+      
+      const [result1, result2, result3, result4] = await Promise.all([sendChat1, sendChat2, sendChat3, sendChat4]);
+      
+      expect(result1.success).toBe(true);
+      expect(result2.success).toBe(true);
+      expect(result3.success).toBe(true);
+      expect(result4.success).toBe(false);
+      expect(result4.error).toBe('Rate limit exceeded');
+      
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      expect(messages1).toHaveLength(3);
+      
+      client1.disconnect();
+    });
+
+    it('should refill rate limit after 1 second', async () => {
+      const client1 = ioClient(`http://localhost:${port}`) as any;
+      
+      const createRoomPromise = new Promise<{ roomCode: string }>((resolve) => {
+        client1.emit('create_room', (response: { roomCode: string }) => {
+          resolve(response);
+        });
+      });
+      
+      const { roomCode } = await createRoomPromise;
+      
+      const joinPromise = new Promise<{ playerId: string; playerSecret: string }>((resolve, reject) => {
+        client1.emit('join_room', roomCode, 'Player1', (response: { playerId: string; playerSecret: string } | { error: string }) => {
+          if ('error' in response) {
+            reject(new Error(response.error));
+          } else {
+            resolve(response);
+          }
+        });
+      });
+      
+      await joinPromise;
+      
+      const messages: any[] = [];
+      client1.on('chatMessage', (data: any) => messages.push(data));
+      
+      for (let i = 0; i < 3; i++) {
+        const sendChatPromise = new Promise<{ success: boolean; error?: string }>((resolve) => {
+          client1.emit('sendChat', `action${i}`, `Message ${i}`, (response: { success: boolean; error?: string }) => {
+            resolve(response);
+          });
+        });
+        await sendChatPromise;
+      }
+      
+      expect(messages).toHaveLength(3);
+      
+      await new Promise(resolve => setTimeout(resolve, 1100));
+      
+      const sendChatPromise = new Promise<{ success: boolean; error?: string }>((resolve) => {
+        client1.emit('sendChat', 'action1', 'Message after delay', (response: { success: boolean; error?: string }) => {
+          resolve(response);
+        });
+      });
+      
+      const result = await sendChatPromise;
+      expect(result.success).toBe(true);
+      
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      expect(messages).toHaveLength(4);
+      expect(messages[3].message).toBe('Message after delay');
+      
+      client1.disconnect();
+    });
+  });
+});
 describe('timeout detection', () => {
   it('should emit timeOut event when player time reaches zero', async () => {
     const manager = new RoomManager();
