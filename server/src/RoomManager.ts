@@ -375,7 +375,6 @@ export class Room {
     }
 
     this.currentPlayerIndex = this.nextConnectedPlayerIndex();
-    this.resetCurrentPlayerTimer();
     this.updateState();
     
     // Schedule AI move if next player is AI
