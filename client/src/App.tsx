@@ -327,6 +327,32 @@ function App() {
     });
   };
 
+  const handleCallUno = () => {
+    if (!socket) return;
+
+    const actionId = generateActionId();
+    setPendingActions((prev) => new Set(prev).add(actionId));
+
+    socket.emit('callUno', actionId, (response) => {
+      if (!response.success) {
+        setError(response.error || 'Failed to call UNO');
+      }
+    });
+  };
+
+  const handleCatchUno = (targetPlayerId: string) => {
+    if (!socket) return;
+
+    const actionId = generateActionId();
+    setPendingActions((prev) => new Set(prev).add(actionId));
+
+    socket.emit('catchUno', actionId, targetPlayerId, (response) => {
+      if (!response.success) {
+        setError(response.error || 'Failed to catch UNO');
+      }
+    });
+  };
+
   const isCreatePending = pendingActions.size > 0;
   const isJoinPending = pendingActions.size > 0;
 
@@ -407,6 +433,16 @@ function App() {
                         {formatTime(getPlayerTime(player.id))}
                       </span>
                     )}
+                    {room.gameStatus === 'playing' && room.unoWindow && room.unoWindow.playerId === player.id && !room.unoWindow.called && player.id !== myPlayerId && (
+                      <button
+                        onClick={() => handleCatchUno(player.id)}
+                        disabled={isPlayPending}
+                        className="catch-btn"
+                        style={{ marginTop: '8px' }}
+                      >
+                        {isPlayPending ? 'Catching...' : 'Catch UNO!'}
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>
@@ -416,6 +452,16 @@ function App() {
           {gameView && gameView.me.hand && gameView.me.hand.length > 0 && (
             <div className="hand-area">
               <h2>Your Hand</h2>
+              {room.unoWindow && room.unoWindow.playerId === myPlayerId && !room.unoWindow.called && gameView.me.hand.length === 1 && (
+                <button
+                  onClick={handleCallUno}
+                  disabled={isPlayPending}
+                  className="uno-btn"
+                  style={{ marginBottom: '16px' }}
+                >
+                  {isPlayPending ? 'Calling...' : 'Call UNO!'}
+                </button>
+              )}
               <div className="hand-grid">
                 {gameView.me.hand.map((card, index) => (
                   <button

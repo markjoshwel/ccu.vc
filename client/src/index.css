@@ -393,3 +393,47 @@ button:disabled {
     opacity: 0.7;
   }
 }
+
+.uno-btn {
+  background: linear-gradient(135deg, #e67e22, #d35400);
+  font-size: 18px;
+  font-weight: bold;
+  padding: 16px;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  animation: uno-pulse 1s ease-in-out infinite;
+}
+
+.uno-btn:hover {
+  background: linear-gradient(135deg, #d35400, #c03900);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .uno-btn {
+    animation: none;
+  }
+}
+
+@keyframes uno-pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+.catch-btn {
+  background: linear-gradient(135deg, #e74c3c, #c0392b);
+  font-size: 14px;
+  font-weight: bold;
+  padding: 8px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-top: 8px;
+  width: auto;
+}
+
+.catch-btn:hover {
+  background: linear-gradient(135deg, #c0392b, #a93226);
+}
