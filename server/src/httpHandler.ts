@@ -18,6 +18,7 @@ export type HttpHandlerDeps = {
   avatarStore: AvatarStore;
   fetchImpl?: typeof fetch;
   resolveHost?: (hostname: string) => Promise<string[]>;
+  getStats?: () => { rooms: number; players: number; avatars: number };
 };
 
 
@@ -42,8 +43,15 @@ export function createHttpHandler(deps: HttpHandlerDeps) {
       const parsedUrl = req.url ? new URL(req.url, 'http://localhost') : null;
 
       if (req.url === '/health' && req.method === 'GET') {
+        const stats = deps.getStats?.() ?? { rooms: 0, players: 0, avatars: deps.avatarStore.size };
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ status: 'ok' }));
+        res.end(JSON.stringify({ 
+          status: 'ok',
+          uptime: process.uptime(),
+          rooms: stats.rooms,
+          players: stats.players,
+          avatars: stats.avatars
+        }));
         return;
       }
 

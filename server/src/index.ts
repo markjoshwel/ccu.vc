@@ -1,6 +1,6 @@
 import { createServer } from 'node:http';
 import { Server as SocketIOServer } from 'socket.io';
-import type { ClientToServerEvents, ServerToClientEvents, RoomSettings } from 'shared';
+import type { ClientToServerEvents, ServerToClientEvents, RoomSettings, Card } from 'shared';
 import { RoomManager } from './RoomManager';
 import { RateLimiter } from './RateLimiter';
 import { AvatarStore } from './AvatarStore';
@@ -8,8 +8,27 @@ import { createHttpHandler } from './httpHandler';
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
+// Global error handlers for production robustness
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught exception:', err);
+  // Keep server running but log the error
+});
+
+process.on('unhandledRejection', (reason) => {
+  console.error('Unhandled rejection:', reason);
+});
+
 const avatarStore = new AvatarStore();
-const httpHandler = createHttpHandler({ avatarStore });
+const roomManager = new RoomManager();
+
+const httpHandler = createHttpHandler({ 
+  avatarStore,
+  getStats: () => ({
+    rooms: roomManager.roomCount,
+    players: roomManager.connectedPlayerCount,
+    avatars: avatarStore.size
+  })
+});
 
 const httpServer = createServer(httpHandler);
 
@@ -20,11 +39,47 @@ const io = new SocketIOServer<ClientToServerEvents, ServerToClientEvents>(httpSe
   }
 });
 
-const roomManager = new RoomManager();
-
 const socketRoomMap = new Map<string, string>();
 const socketPlayerMap = new Map<string, { playerId: string; playerSecret: string; avatarId?: string }>();
-const playerRateLimiters = new Map<string, RateLimiter>();
+
+// Rate limiters per socket for different action types
+const socketRateLimiters = new Map<string, {
+  chat: RateLimiter;
+  action: RateLimiter;  // For game actions (playCard, drawCard, etc.)
+  room: RateLimiter;    // For room actions (create, join)
+}>();
+
+function getOrCreateRateLimiters(socketId: string) {
+  let limiters = socketRateLimiters.get(socketId);
+  if (!limiters) {
+    limiters = {
+      chat: new RateLimiter(3, 1),      // 3 messages per second
+      action: new RateLimiter(10, 1),   // 10 actions per second
+      room: new RateLimiter(2, 5),      // 2 room actions per 5 seconds
+    };
+    socketRateLimiters.set(socketId, limiters);
+  }
+  return limiters;
+}
+
+// Input validation helpers
+function isValidRoomCode(code: unknown): code is string {
+  return typeof code === 'string' && /^[A-Z0-9]{6}$/.test(code);
+}
+
+function isValidCard(card: unknown): card is Card {
+  if (typeof card !== 'object' || card === null) return false;
+  const c = card as Record<string, unknown>;
+  if (typeof c.color !== 'string' || typeof c.value !== 'string') return false;
+  if (!['red', 'yellow', 'green', 'blue', 'wild'].includes(c.color)) return false;
+  const validValues = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'skip', 'reverse', 'draw2', 'wild', 'wild_draw4'];
+  if (!validValues.includes(c.value)) return false;
+  return true;
+}
+
+function isValidColor(color: unknown): color is 'red' | 'yellow' | 'green' | 'blue' | null {
+  return color === null || ['red', 'yellow', 'green', 'blue'].includes(color as string);
+}
 
 function broadcastGameStateUpdate(roomCode: string): void {
   const room = roomManager.getRoom(roomCode);
@@ -69,7 +124,17 @@ function generatePlayerSecret(): string {
 io.on('connection', (socket) => {
   console.log(`Client connected: ${socket.id}`);
   
+  // Initialize rate limiters for this socket
+  getOrCreateRateLimiters(socket.id);
+  
   socket.on('create_room', (actionId: string, settings: Partial<RoomSettings> | null, callback: (response: { roomCode: string }) => void) => {
+    const limiters = getOrCreateRateLimiters(socket.id);
+    if (!limiters.room.tryConsume()) {
+      socket.emit('actionAck', { actionId, ok: false });
+      socket.emit('error', 'Rate limit exceeded. Please wait before creating another room.');
+      return;
+    }
+    
     // Validate and sanitize settings
     const sanitizedSettings: Partial<RoomSettings> = {};
     if (settings) {
@@ -96,6 +161,21 @@ io.on('connection', (socket) => {
     const callback = (typeof maybeAvatarOrCallback === 'function'
       ? maybeAvatarOrCallback
       : maybeCallback) as (response: { playerId: string; playerSecret: string } | { error: string }) => void;
+
+    // Rate limiting
+    const limiters = getOrCreateRateLimiters(socket.id);
+    if (!limiters.room.tryConsume()) {
+      socket.emit('actionAck', { actionId, ok: false });
+      callback({ error: 'Rate limit exceeded. Please wait before joining.' });
+      return;
+    }
+
+    // Validate room code format
+    if (!isValidRoomCode(roomCode)) {
+      socket.emit('actionAck', { actionId, ok: false });
+      callback({ error: 'Invalid room code format' });
+      return;
+    }
 
     const validation = validateDisplayName(displayName);
     
@@ -245,6 +325,28 @@ io.on('connection', (socket) => {
   });
 
   socket.on('playCard', (actionId: string, card: any, chosenColor: 'red' | 'yellow' | 'green' | 'blue' | null, callback?: (response: { success: boolean; error?: string }) => void) => {
+    // Rate limiting
+    const limiters = getOrCreateRateLimiters(socket.id);
+    if (!limiters.action.tryConsume()) {
+      socket.emit('actionAck', { actionId, ok: false });
+      callback?.({ success: false, error: 'Rate limit exceeded' });
+      return;
+    }
+
+    // Validate card object
+    if (!isValidCard(card)) {
+      socket.emit('actionAck', { actionId, ok: false });
+      callback?.({ success: false, error: 'Invalid card' });
+      return;
+    }
+
+    // Validate color choice
+    if (!isValidColor(chosenColor)) {
+      socket.emit('actionAck', { actionId, ok: false });
+      callback?.({ success: false, error: 'Invalid color choice' });
+      return;
+    }
+
     const roomCode = socketRoomMap.get(socket.id);
     
     if (!roomCode) {
@@ -281,6 +383,14 @@ io.on('connection', (socket) => {
   });
 
   socket.on('drawCard', (actionId: string, callback?: (response: { success: boolean; error?: string }) => void) => {
+    // Rate limiting
+    const limiters = getOrCreateRateLimiters(socket.id);
+    if (!limiters.action.tryConsume()) {
+      socket.emit('actionAck', { actionId, ok: false });
+      callback?.({ success: false, error: 'Rate limit exceeded' });
+      return;
+    }
+
     const roomCode = socketRoomMap.get(socket.id);
     
     if (!roomCode) {
@@ -317,6 +427,14 @@ io.on('connection', (socket) => {
   });
 
   socket.on('callUno', (actionId: string, callback?: (response: { success: boolean; error?: string }) => void) => {
+    // Rate limiting
+    const limiters = getOrCreateRateLimiters(socket.id);
+    if (!limiters.action.tryConsume()) {
+      socket.emit('actionAck', { actionId, ok: false });
+      callback?.({ success: false, error: 'Rate limit exceeded' });
+      return;
+    }
+
     const roomCode = socketRoomMap.get(socket.id);
     
     if (!roomCode) {
@@ -353,6 +471,21 @@ io.on('connection', (socket) => {
   });
 
   socket.on('catchUno', (actionId: string, targetPlayerId: string, callback?: (response: { success: boolean; error?: string }) => void) => {
+    // Rate limiting
+    const limiters = getOrCreateRateLimiters(socket.id);
+    if (!limiters.action.tryConsume()) {
+      socket.emit('actionAck', { actionId, ok: false });
+      callback?.({ success: false, error: 'Rate limit exceeded' });
+      return;
+    }
+
+    // Validate targetPlayerId
+    if (typeof targetPlayerId !== 'string' || targetPlayerId.length === 0) {
+      socket.emit('actionAck', { actionId, ok: false });
+      callback?.({ success: false, error: 'Invalid target player' });
+      return;
+    }
+
     const roomCode = socketRoomMap.get(socket.id);
     
     if (!roomCode) {
@@ -397,6 +530,13 @@ io.on('connection', (socket) => {
       return;
     }
     
+    // Validate message
+    if (typeof message !== 'string' || message.length === 0) {
+      socket.emit('actionAck', { actionId, ok: false });
+      callback?.({ success: false, error: 'Invalid message' });
+      return;
+    }
+    
     if (message.length > 280) {
       socket.emit('actionAck', { actionId, ok: false });
       callback?.({ success: false, error: 'Message exceeds 280 characters' });
@@ -410,20 +550,15 @@ io.on('connection', (socket) => {
       return;
     }
     
-    const playerId = playerData.playerId;
-    
-    let rateLimiter = playerRateLimiters.get(playerId);
-    if (!rateLimiter) {
-      rateLimiter = new RateLimiter(3, 1);
-      playerRateLimiters.set(playerId, rateLimiter);
-    }
-    
-    if (!rateLimiter.tryConsume()) {
+    // Rate limiting using socket-based limiter
+    const limiters = getOrCreateRateLimiters(socket.id);
+    if (!limiters.chat.tryConsume()) {
       socket.emit('actionAck', { actionId, ok: false });
       callback?.({ success: false, error: 'Rate limit exceeded' });
       return;
     }
     
+    const playerId = playerData.playerId;
     const room = roomManager.getRoom(roomCode);
     const player = room?.players.get(playerId);
     
@@ -464,6 +599,10 @@ io.on('connection', (socket) => {
   
   socket.on('disconnect', () => {
     console.log(`Client disconnected: ${socket.id}`);
+    
+    // Clean up rate limiters for this socket
+    socketRateLimiters.delete(socket.id);
+    
     const roomId = socketRoomMap.get(socket.id);
     if (roomId) {
       const playerData = socketPlayerMap.get(socket.id);
@@ -481,6 +620,9 @@ io.on('connection', (socket) => {
         // Room was deleted - clean up avatars
         avatarStore.deleteByRoom(roomId);
       }
+    } else {
+      // Clean up socket maps even if not in a room
+      socketPlayerMap.delete(socket.id);
     }
   });
 });
@@ -488,3 +630,48 @@ io.on('connection', (socket) => {
 httpServer.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`);
 });
+
+// Graceful shutdown handling
+function gracefulShutdown(signal: string) {
+  console.log(`\n${signal} received. Starting graceful shutdown...`);
+  
+  // Stop accepting new connections
+  httpServer.close((err) => {
+    if (err) {
+      console.error('Error closing HTTP server:', err);
+    } else {
+      console.log('HTTP server closed');
+    }
+  });
+  
+  // Stop room cleanup interval
+  roomManager.stopCleanupInterval();
+  console.log('Room cleanup interval stopped');
+  
+  // Disconnect all sockets gracefully
+  io.sockets.sockets.forEach((socket) => {
+    socket.disconnect(true);
+  });
+  console.log('All sockets disconnected');
+  
+  // Close Socket.IO server
+  io.close((err) => {
+    if (err) {
+      console.error('Error closing Socket.IO server:', err);
+    } else {
+      console.log('Socket.IO server closed');
+    }
+    
+    console.log('Graceful shutdown complete');
+    process.exit(0);
+  });
+  
+  // Force exit after 10 seconds if graceful shutdown fails
+  setTimeout(() => {
+    console.error('Graceful shutdown timed out, forcing exit');
+    process.exit(1);
+  }, 10000);
+}
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));

@@ -8,6 +8,9 @@ type StoredPlayer = PlayerPublic & { secret: string; connected: boolean; hand: C
 const MAX_CHAT_HISTORY = 100;
 const DEFAULT_TIME_PER_TURN_MS = 60000;
 const DEFAULT_MAX_PLAYERS = 6;
+const MAX_ROOMS = 1000;
+const ROOM_STALE_TTL_MS = 30 * 60 * 1000; // 30 minutes
+const ROOM_CLEANUP_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 const AI_NAMES = ['Bot Alpha', 'Bot Beta', 'Bot Gamma', 'Bot Delta', 'Bot Epsilon', 'Bot Zeta', 'Bot Eta', 'Bot Theta', 'Bot Iota'];
 
 export class Room {
@@ -388,6 +391,30 @@ export class Room {
     this.updateState();
   }
 
+  // Reshuffle discard pile into deck when deck is empty (standard UNO rule)
+  private reshuffleDiscardIntoDeck(): void {
+    if (this.discardPile.length <= 1) {
+      throw new Error('No cards available to draw');
+    }
+    
+    // Keep top card, shuffle rest back into deck
+    const topCard = this.discardPile.pop()!;
+    const cardsToShuffle = this.discardPile.splice(0);
+    
+    this.deck = new Deck();
+    this.deck.cards = cardsToShuffle;
+    this.deck.shuffle();
+    
+    this.discardPile = [topCard];
+  }
+
+  // Ensure deck has cards, reshuffling if necessary
+  private ensureDeckHasCards(): void {
+    if (!this.deck || this.deck.isEmpty()) {
+      this.reshuffleDiscardIntoDeck();
+    }
+  }
+
   playCard(playerId: string, card: Card, chosenColor?: 'red' | 'yellow' | 'green' | 'blue'): void {
     if (this.state.gameStatus !== 'playing') {
       throw new Error('Game is not in playing state');
@@ -481,11 +508,15 @@ export class Room {
       
       if (nextPlayer) {
         for (let i = 0; i < 2; i++) {
-          if (this.deck && !this.deck.isEmpty()) {
-            const drawnCard = this.deck.draw();
+          try {
+            this.ensureDeckHasCards();
+            const drawnCard = this.deck!.draw();
             if (drawnCard) {
               nextPlayer.hand.push(drawnCard);
             }
+          } catch {
+            // No more cards available to draw
+            break;
           }
         }
         this.updateState();
@@ -500,11 +531,15 @@ export class Room {
       
       if (nextPlayer) {
         for (let i = 0; i < 4; i++) {
-          if (this.deck && !this.deck.isEmpty()) {
-            const drawnCard = this.deck.draw();
+          try {
+            this.ensureDeckHasCards();
+            const drawnCard = this.deck!.draw();
             if (drawnCard) {
               nextPlayer.hand.push(drawnCard);
             }
+          } catch {
+            // No more cards available to draw
+            break;
           }
         }
         this.updateState();
@@ -537,11 +572,10 @@ export class Room {
       throw new Error('Player not found');
     }
 
-    if (!this.deck || this.deck.isEmpty()) {
-      throw new Error('Deck is empty');
-    }
+    // Reshuffle discard into deck if needed
+    this.ensureDeckHasCards();
 
-    const drawnCard = this.deck.draw();
+    const drawnCard = this.deck!.draw();
     if (drawnCard) {
       player.hand.push(drawnCard);
     }
@@ -598,14 +632,15 @@ export class Room {
       throw new Error('Target player not found');
     }
 
-    if (!this.deck || this.deck.isEmpty()) {
-      throw new Error('Deck is empty');
-    }
+    // Reshuffle discard into deck if needed
+    this.ensureDeckHasCards();
 
     for (let i = 0; i < 2; i++) {
-      const drawnCard = this.deck.draw();
-      if (drawnCard) {
-        targetPlayer.hand.push(drawnCard);
+      if (this.deck && !this.deck.isEmpty()) {
+        const drawnCard = this.deck.draw();
+        if (drawnCard) {
+          targetPlayer.hand.push(drawnCard);
+        }
       }
     }
 
@@ -680,9 +715,41 @@ export class Room {
 
 export class RoomManager {
   rooms: Map<RoomCode, Room>;
+  private cleanupIntervalId?: ReturnType<typeof setInterval>;
 
   constructor() {
     this.rooms = new Map();
+    this.startCleanupInterval();
+  }
+
+  private startCleanupInterval(): void {
+    this.cleanupIntervalId = setInterval(() => {
+      this.cleanupStaleRooms();
+    }, ROOM_CLEANUP_INTERVAL_MS);
+  }
+
+  stopCleanupInterval(): void {
+    if (this.cleanupIntervalId) {
+      clearInterval(this.cleanupIntervalId);
+      this.cleanupIntervalId = undefined;
+    }
+  }
+
+  private cleanupStaleRooms(): void {
+    const now = Date.now();
+    
+    for (const [code, room] of this.rooms) {
+      // Count connected humans (AI don't count for keeping room alive)
+      const connectedHumans = Array.from(room.players.values()).filter(p => !p.isAI && p.connected).length;
+      
+      // Room is stale if: no humans connected AND (room is old OR game is finished)
+      const isStaleAndEmpty = connectedHumans === 0 && (now - room.state.createdAt > ROOM_STALE_TTL_MS);
+      const isFinishedAndEmpty = room.state.gameStatus === 'finished' && connectedHumans === 0;
+      
+      if (isStaleAndEmpty || isFinishedAndEmpty) {
+        this.removeRoom(code);
+      }
+    }
   }
 
   private generateRoomCode(): RoomCode {
@@ -696,6 +763,10 @@ export class RoomManager {
   }
 
   createRoom(settings?: Partial<RoomSettings>): Room {
+    if (this.rooms.size >= MAX_ROOMS) {
+      throw new Error('Server is at capacity. Please try again later.');
+    }
+    
     let code: RoomCode;
     do {
       code = this.generateRoomCode();
@@ -711,6 +782,10 @@ export class RoomManager {
   }
 
   removeRoom(code: RoomCode): void {
+    const room = this.rooms.get(code);
+    if (room) {
+      room.stopClockSync();
+    }
     this.rooms.delete(code);
   }
 
@@ -759,5 +834,21 @@ export class RoomManager {
 
   get roomCount(): number {
     return this.rooms.size;
+  }
+  
+  get playerCount(): number {
+    let count = 0;
+    for (const room of this.rooms.values()) {
+      count += room.state.players.length;
+    }
+    return count;
+  }
+  
+  get connectedPlayerCount(): number {
+    let count = 0;
+    for (const room of this.rooms.values()) {
+      count += room.connectedPlayerCount;
+    }
+    return count;
   }
 }

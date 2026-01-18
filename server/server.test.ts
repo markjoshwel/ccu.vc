@@ -3101,7 +3101,7 @@ describe('drawCard', () => {
     expect(() => room.drawCard(nonexistentPlayerId)).toThrow('Not your turn');
   });
 
-  it('should reject draw when deck is empty', () => {
+  it('should reject draw when deck is empty and discard pile cannot be reshuffled', () => {
     const manager = new RoomManager();
     const room = manager.createRoom();
 
@@ -3118,11 +3118,17 @@ describe('drawCard', () => {
 
     room.startGame();
 
+    // Empty the deck
     while (!room.deck!.isEmpty()) {
       room.deck!.draw();
     }
 
-    expect(() => room.drawCard(playerId1)).toThrow('Deck is empty');
+    // Reduce discard pile to just 1 card (can't reshuffle when only top card remains)
+    while (room.discardPile.length > 1) {
+      room.discardPile.shift();
+    }
+
+    expect(() => room.drawCard(playerId1)).toThrow('No cards available to draw');
   });
 });
 

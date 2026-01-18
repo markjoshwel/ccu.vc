@@ -7,6 +7,20 @@ Chess Clock UNO - Real-time multiplayer UNO with chess clock mechanics, keyboard
 
 ### Recent Changes (v2026.1.19)
 
+#### Production Robustness
+- **Max Room Limit**: Server caps at 1000 concurrent rooms to prevent resource exhaustion
+- **TTL-based Room Cleanup**: Stale rooms (30 min inactive, no humans) auto-cleaned every 5 min
+- **React Error Boundary**: Catches React crashes, shows user-friendly error with reload button
+- **Socket Auto-Reconnection**: Automatic rejoin attempts when connection is lost
+- **Deck Reshuffling**: Discard pile automatically reshuffled into deck when empty (standard UNO rule)
+- **Rate Limiting**: All socket events rate-limited (chat: 3/s, actions: 10/s, room ops: 2/5s)
+- **Input Validation**: Room codes, cards, colors, and player IDs validated server-side
+- **Memory Leak Fix**: Rate limiters cleaned up on socket disconnect
+- **Timer Cleanup**: Room clocks properly stopped when room is removed
+- **Graceful Shutdown**: SIGTERM/SIGINT handlers for clean server shutdown
+- **Avatar LRU Eviction**: MAX_AVATARS=5000 limit with least-recently-used eviction
+- **Health Endpoint**: `GET /health` returns status, uptime, room/player/avatar counts
+
 #### Keyboard Controls
 - **Arrow Left/Right**: Select card in hand
 - **Arrow Up / Enter**: Play selected card
@@ -19,7 +33,8 @@ Chess Clock UNO - Real-time multiplayer UNO with chess clock mechanics, keyboard
 - Messages fly across the screen right-to-left like niconico/bilibili
 - Press `/` to open floating chat input overlay
 - Messages visible without scrolling down
-- 8-second animation across screen
+- Dynamic animation duration based on screen width (~200px/s speed)
+- Own messages appear instantly (optimistic UI, no server round-trip delay)
 - Original ChatDrawer still available at bottom
 
 #### Opponent Hand Visualization
@@ -102,9 +117,7 @@ ccu.vc/
   0% { transform: translateX(0); }
   100% { transform: translateX(calc(-100% - 100vw)); }
 }
-.animate-fly-across {
-  animation: fly-across 8s linear forwards;
-}
+/* Duration set dynamically via inline styles: (screenWidth + 300) / 200 seconds */
 ```
 
 ### How to Run
@@ -157,5 +170,6 @@ sendChat: (actionId, message, callback?) => void
 - URL params cleaned after processing to keep URLs clean
 - Mobile breakpoint uses Tailwind's `md:` prefix (768px)
 - Keyboard controls only active when not typing in input fields
-- Flying messages removed after 8s animation completes
+- Flying message duration calculated as `(screenWidth + 300) / 200` seconds for consistent speed
+- Own flying messages shown immediately via optimistic UI (no server round-trip)
 - Opponent cards capped at 12 visible for performance

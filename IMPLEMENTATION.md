@@ -1,158 +1,482 @@
-**Implementation Plan: Chess Clock UNO (ccu.vc)**
+# Chess Clock UNO - Implementation Reference
 
-- Goals
-- Web multiplayer UNO with a chess clock
-- Server-authoritative gameplay and timer
-- Rule customization per room, defaulting to official UNO
-- 2–10 players ("2–many"), designed for large friend groups
-- Ephemeral identity (name + optional avatar), ephemeral rooms (exist only while someone is connected)
-- Responsive, game-like interaction “juice” with physics-based motion
-- Room-wide chat
+## Overview
 
-**Tech Stack**
-- Monorepo managed by Bun (workspaces)
-- Server: Bun + Socket.io, in-memory room map (ephemeral)
-- Client: Vite + React
-- Shared: `shared/` for TypeScript types/constants and Socket event typings
-- Motion/gestures: `react-spring` + `@use-gesture/react` (prefers-reduced-motion aware)
+Chess Clock UNO (`ccu.vc`) is a real-time multiplayer UNO game with chess clock mechanics. Features include:
+- Server-authoritative gameplay with 2-10 players
+- Chess clock time pressure per turn (configurable, default 60s)
+- AI opponents (0-9 bots per room)
+- Ephemeral identity and rooms (no accounts required)
+- Niconico-style flying chat messages
+- Keyboard controls for fast gameplay
+- Avatar upload from file or URL
+- Reconnection support
 
-**Room & Identity Model**
-- Room lifecycle
-- Room exists iff `connectedCount > 0`
-- If `connectedCount` becomes 0: room is ended and deleted immediately (game + chat + avatars)
-- If only one connected player remains: auto-end game, winner = last connected, `reason="last-player-connected"`
-- Player identity (ephemeral)
-- On join: user submits `displayName` (required) and optional avatar setup
-- Server assigns `playerId` (seat) and `playerSecret` (reconnect credential)
-- Client stores `playerSecret` locally to reclaim seat on reconnect
-- Reconnect allowed indefinitely as long as room still exists (someone connected)
+## Tech Stack
 
-**Server-Authoritative Game Engine**
-- State store: `Map<roomId, RoomState>`
-- Deterministic engine API shape
-- `validateAction(room, playerId, action)`
-- `applyAction(room, playerId, action)` -> updates state, returns animation/effect hints
-- Hidden information
-- Server stores full hands
-- Client state view includes:
-  - full own hand
-  - opponents’ hand counts only
-- Turn order + direction
-- `players[]` is an ordered seat list
-- `turnIndex` + `direction`
-- `nextConnectedPlayerIndex()` skips disconnected players
-- Reverse behavior
-- 2 players: Reverse acts like Skip
-- 3+ players: Reverse flips direction
-- Settings (host-controlled pre-start)
-- `maxPlayers` (2–10, default 6)
-- timer config, UNO rule toggles, timeout policy, deck count (default 1)
+- **Monorepo**: Managed by Bun workspaces
+- **Server**: Bun + Socket.io + Node HTTP server (in-memory, ephemeral)
+- **Client**: Vite + React + TypeScript + Tailwind CSS v4
+- **Shared**: TypeScript types package (`shared/`)
+- **Motion**: `react-spring` + `@use-gesture/react` (drag-to-play cards)
+- **Image Processing**: `imagescript` (avatar sanitization)
 
-**Chess Clock System**
-- Server authoritative bookkeeping
-- For each player: `timeRemainingMs`
-- Current running clock: `activePlayerId`, `lastStartEpochMs`
-- Internal timeout checks every 100–250ms (no broadcast)
-- Broadcast sync: `clockSync` every 500ms per active room
-- Client interpolation
-- Smooth render using rAF (or 50ms interval fallback)
-- Gentle correction on sync drift
-- Timeout default (UNO flavor)
-- On timeout: forced draw 1, immediately end turn (“autoDrawAndSkip”), advance to next connected player
+## Project Structure
 
-**UNO Call / Catch (Defaults)**
-- When a player hits 1 card by playing: open an “UNO window”
-- Player may `callUno` out of turn until the next player performs their first action (play/draw)
-- Catch-only resolution
-- Any opponent may `catchUno(targetPlayerId)` while the window is open
-- If caught: apply penalty (default draw 2), close window
-- If window closes uncaught: no penalty (they got away with it)
-- UNO/catch do not pause/switch clocks (prevents time abuse); rate-limited
+```
+ccu.vc/
+├── client/                    # Vite + React frontend
+│   ├── index.html             # Entry HTML (Barlow font from Google Fonts)
+│   └── src/
+│       ├── App.tsx            # Main component (~2800 lines)
+│       ├── main.tsx           # Entry point
+│       └── index.css          # Tailwind v4 + custom animations
+├── server/                    # Bun + Socket.io backend
+│   └── src/
+│       ├── index.ts           # Server entry, socket event handlers
+│       ├── RoomManager.ts     # Room & game logic, AI players
+│       ├── Deck.ts            # UNO deck creation and shuffling
+│       ├── RateLimiter.ts     # Token bucket rate limiter
+│       ├── AvatarStore.ts     # In-memory avatar storage
+│       ├── ImagePipeline.ts   # Avatar image processing
+│       └── httpHandler.ts     # HTTP routes (avatars, health)
+├── shared/                    # Shared TypeScript types
+│   └── src/
+│       └── index.ts           # Types for Room, Player, Card, Events
+├── flake.nix                  # Nix flake for builds & Docker images
+├── docker-compose.yml         # Container orchestration
+├── Caddyfile                  # Reverse proxy configuration
+├── DEPLOY.md                  # Deployment documentation
+├── AGENTS.md                  # Session notes
+└── IMPLEMENTATION.md          # This file
+```
 
-**Networking Model (Socket.io)**
-- Core idea: client sends “intent”, server validates and broadcasts authoritative updates
-- Action pipeline (for responsiveness)
-- Client generates `actionId` and sends action
-- Immediate local pending visuals (optimistic intent, not optimistic state)
-- Server replies quickly with `actionAck({ actionId, ok, errorCode? })`
-- Server emits `actionResolved` (animation hints) + `gameStateUpdate` (full snapshot)
-- Snapshot strategy
-- Start with full snapshots after each action and on join/reconnect
-- Optimize to deltas later only if needed
+---
 
-**Chat (Room-Wide)**
-- Room-wide only, ephemeral
-- Server maintains capped `chatLog` (last 100–200 msgs)
-- On join/reconnect: `chatHistory`
-- Rate limiting: e.g. 1 msg/sec with small burst
-- Text-only rendering (no HTML), length cap (e.g. 280)
+## Server Architecture
 
-**Avatars (Upload + URL)**
-- User can set avatar from:
-- Uploaded file
-- Remote URL
-- Safety + serving model
-- Server always sanitizes and serves avatars from your own endpoint
-- Client never embeds third-party URLs directly in `<img>`
-- Publicly accessible avatar URLs (anyone can fetch if they know the URL)
-- Use unguessable `avatarId` (UUID) to make enumeration impractical
-- Endpoints (example)
-- `POST /avatar/upload` multipart -> `{ avatarId }`
-- `POST /avatar/from-url` JSON -> `{ avatarId }`
-- `GET /avatars/:avatarId` -> image bytes
-- Sanitization pipeline (mandatory)
-- Allowlist input types: png/jpeg/webp (no SVG; skip GIF in v1)
-- Size cap: 1–2MB, strict timeout for URL fetch
-- SSRF protection for URL fetch:
-  - HTTPS only
-  - forbid localhost/private/link-local IPs
-  - limit redirects, re-check after redirect
-- Decode then re-encode to a single safe format (recommend WebP)
-- Strip metadata (EXIF), center-crop and resize to square (e.g. 256x256)
-- Storage
-- Ephemeral storage tied to room lifecycle (in-memory map is fine)
-- On room deletion (0 connected): delete associated avatars
+### Entry Point (`server/src/index.ts`)
 
-**Security Practices Checklist**
-- Validate all user input server-side (name, chat, settings, actions, URLs)
-- Escape/render chat as text
-- Strict CORS allowlist in production; validate Socket.io handshake origin
-- Server-per-event authorization (room membership, turn ownership, host-only sets)
-- Rate limit:
-- game actions
-- join/create
-- chat
-- avatar upload/fetch
-- Don’t leak hidden info (hands)
-- Use unguessable IDs for rooms, players, avatars
-- HTTPS/WSS in production
+- Creates HTTP server with custom handler for avatar endpoints
+- Creates Socket.io server with CORS enabled
+- Initializes `RoomManager` and `AvatarStore`
+- Manages socket-to-room and socket-to-player mappings
+- Implements global error handlers for production robustness
 
-**Client UI/UX + Motion (“Interaction Juice”)**
-- Design requirements
-- First feedback within ~50ms for taps/presses
-- GPU-friendly: animate transforms + opacity only
-- Physics-based springs for tactile feel; interruptible gestures
-- Respect `prefers-reduced-motion` (reduce bounce, simplify)
-- Controls
-- Tap/click selects card (primary, mobile friendly)
-- Drag-and-drop optional for both mouse and touch (Pointer Events + drag threshold)
-- Wild color selection via bottom sheet modal
-- Feedback loops
-- Pending action states on cards/buttons while awaiting server ack
-- Invalid action: shake + message (no silent failures)
-- Subtle audio/haptics optional (behind toggles and autoplay constraints)
-- Layout (2–10 players)
-- Player rail shows: name, avatar, connected state, card count, active highlight, timer
-- Mobile: player rail scrollable/carousel; chat as bottom drawer
+**Key Maps:**
+```typescript
+socketRoomMap: Map<string, string>        // socketId -> roomCode
+socketPlayerMap: Map<string, {...}>       // socketId -> {playerId, playerSecret, avatarId}
+socketRateLimiters: Map<string, {...}>    // socketId -> {chat, action, room} limiters
+```
 
-**Phases**
-1. Scaffold monorepo (Bun), Vite client, Bun server, shared typings, basic room create/join
-2. Implement server game engine (deck, hands, rules validation, turn logic, special cards)
-3. Implement chess clock engine + timeout policy + clock sync
-4. Implement client gameplay UI (selection-first), socket wiring, snapshots, pending/ack UX
-5. Add motion system (react-spring/use-gesture), card animations, reduced-motion path
-6. Add UNO call/catch mechanics + UI affordances
-7. Add room-wide chat UI + server log + rate limiting
-8. Add avatar upload + URL fetch pipeline + safe serving
-9. Reconnect/disconnect skipping polish + last-player-connected win condition
-10. AI opponents (optional order: earlier if desired), then final polish/perf/deploy
+**Rate Limiting (per socket):**
+- `chat`: 3 messages/second
+- `action`: 10 game actions/second (playCard, drawCard, callUno, catchUno)
+- `room`: 2 room operations/5 seconds (create, join)
+
+**Input Validation:**
+- Room codes: 6 uppercase alphanumeric characters
+- Cards: Valid color (red/yellow/green/blue/wild) and value
+- Colors: null or valid UNO color
+- Display names: 1-24 characters, no control characters
+- Chat messages: 1-280 characters
+
+### Room Manager (`server/src/RoomManager.ts`)
+
+**Constants:**
+```typescript
+MAX_CHAT_HISTORY = 100          // Messages per room
+DEFAULT_TIME_PER_TURN_MS = 60000 // 1 minute
+DEFAULT_MAX_PLAYERS = 6
+MAX_ROOMS = 1000                // Server capacity limit
+ROOM_STALE_TTL_MS = 30 * 60 * 1000   // 30 minutes
+ROOM_CLEANUP_INTERVAL_MS = 5 * 60 * 1000 // 5 minutes
+```
+
+**Room Class:**
+- Manages players, game state, deck, discard pile, clocks
+- Handles AI players (up to 9 bots named "Bot Alpha" through "Bot Iota")
+- Implements full UNO rules including special cards
+- Clock sync broadcasts every 500ms during gameplay
+- Automatic deck reshuffling when empty (standard UNO rule)
+
+**Room Lifecycle:**
+1. Created via `createRoom(settings)` - returns Room with unique 6-char code
+2. Players join via `addPlayer(socketId, player)`
+3. Host starts game via `startGame()` - deals 7 cards each, sets up clocks
+4. Game plays until someone empties their hand or all humans disconnect
+5. Room deleted when no humans connected (immediately or via cleanup interval)
+
+**Game State Machine:**
+```
+waiting -> playing -> finished
+```
+
+**Win Conditions:**
+- Player plays their last card
+- All other human players disconnect ("last-player-connected")
+- All human players disconnect ("All human players disconnected")
+
+### Deck (`server/src/Deck.ts`)
+
+Standard UNO deck (108 cards):
+- 4 colors (red, yellow, green, blue): 0 (×1), 1-9 (×2 each)
+- Action cards per color: Skip (×2), Reverse (×2), Draw2 (×2)
+- Wild cards: Wild (×4), Wild Draw 4 (×4)
+
+**Deck Reshuffling:**
+When deck is empty, discard pile (except top card) is shuffled back into deck. Throws error only when both deck is empty AND discard pile has ≤1 card.
+
+### Rate Limiter (`server/src/RateLimiter.ts`)
+
+Token bucket algorithm:
+- Configurable max tokens and refill rate
+- Tokens refill continuously based on elapsed time
+- `tryConsume()`: Returns true if token available, false otherwise
+
+### Avatar System
+
+**AvatarStore (`server/src/AvatarStore.ts`):**
+- In-memory Map storage with UUID keys
+- Tracks avatars by room for cleanup
+- Stores: data (Uint8Array), contentType, width, height, roomCode, lastAccessed
+- **LRU Eviction**: MAX_AVATARS=5000 limit, evicts least-recently-used when full
+- `get()` updates lastAccessed timestamp for LRU tracking
+
+**ImagePipeline (`server/src/ImagePipeline.ts`):**
+- Center-crops to square
+- Resizes to 256×256
+- Re-encodes to same format (JPEG, PNG, or WebP)
+- Strips metadata
+
+**HTTP Handler (`server/src/httpHandler.ts`):**
+- `GET /health` - Health check with stats (status, uptime, rooms, players, avatars)
+- `GET /avatars/:avatarId` - Serve avatar image
+- `POST /avatar/upload` - Upload avatar (multipart/form-data, max 2MB)
+- `POST /avatar/from-url` - Fetch avatar from URL (HTTPS only, SSRF protection)
+
+**SSRF Protection:**
+- HTTPS only
+- DNS resolution check before fetch
+- Blocks localhost, private IPs (10.x, 172.16-31.x, 192.168.x, 127.x, 169.254.x)
+- Blocks IPv6 local addresses (::1, fc/fd prefixes, fe80)
+- No redirects allowed
+
+---
+
+## Socket Events
+
+### Client → Server
+
+| Event | Parameters | Description |
+|-------|------------|-------------|
+| `create_room` | `(actionId, settings, callback)` | Create new room with optional settings |
+| `join_room` | `(actionId, roomCode, displayName, avatarId?, callback)` | Join existing room |
+| `reconnect_room` | `(actionId, roomCode, playerId, playerSecret, callback)` | Rejoin after disconnect |
+| `start_game` | `(actionId, callback)` | Start game (host only) |
+| `playCard` | `(actionId, card, chosenColor, callback)` | Play a card |
+| `drawCard` | `(actionId, callback)` | Draw from deck |
+| `callUno` | `(actionId, callback)` | Call UNO on yourself |
+| `catchUno` | `(actionId, targetPlayerId, callback)` | Catch someone who didn't call UNO |
+| `sendChat` | `(actionId, message, callback)` | Send chat message |
+| `leaveRoom` | `()` | Leave current room |
+
+### Server → Client
+
+| Event | Payload | Description |
+|-------|---------|-------------|
+| `roomUpdated` | `RoomState` | Room state changed |
+| `playerJoined` | `PlayerPublic` | New player joined |
+| `playerLeft` | `playerId` | Player left/disconnected |
+| `gameStarted` | `void` | Game has started |
+| `gameStateUpdate` | `GameView` | Player-specific game view (includes hand) |
+| `clockSync` | `ClockSyncData` | Timer update (every 500ms) |
+| `timeOut` | `TimeOutEvent` | Player ran out of time |
+| `actionAck` | `{actionId, ok}` | Action acknowledgement |
+| `chatMessage` | `ChatMessage` | New chat message |
+| `chatHistory` | `ChatMessage[]` | Chat history on join |
+| `error` | `string` | Error message |
+
+---
+
+## Shared Types (`shared/src/index.ts`)
+
+```typescript
+type RoomSettings = {
+  maxPlayers: number;      // 2-10, default 6
+  aiPlayerCount: number;   // 0-9, default 0
+  timePerTurnMs: number;   // default 60000
+};
+
+type RoomState = {
+  id: string;
+  name: string;
+  players: PlayerPublic[];
+  gameStatus: 'waiting' | 'playing' | 'finished';
+  createdAt: number;
+  deckSize?: number;
+  discardPile?: Card[];
+  currentPlayerIndex?: number;
+  direction?: 1 | -1;
+  activeColor?: 'red' | 'yellow' | 'green' | 'blue';
+  gameEndedReason?: string;
+  unoWindow?: UnoWindow;
+  settings?: RoomSettings;
+};
+
+type Card = {
+  color: 'red' | 'yellow' | 'green' | 'blue' | 'wild';
+  value: string;  // '0'-'9', 'skip', 'reverse', 'draw2', 'wild', 'wild_draw4'
+};
+
+type PlayerPublic = {
+  id: string;
+  name: string;
+  isReady: boolean;
+  score?: number;
+  connected: boolean;
+  handCount: number;
+  avatarId?: string;
+  isAI?: boolean;
+};
+
+type PlayerPrivate = PlayerPublic & {
+  secret: string;
+  hand: Card[];
+};
+
+type GameView = {
+  room: RoomState;
+  me: PlayerPrivate;
+  otherPlayers: PlayerPublic[];
+};
+
+type ClockSyncData = {
+  activePlayerId: string;
+  timeRemainingMs: { [playerId: string]: number };
+};
+
+type UnoWindow = {
+  playerId: string;
+  called: boolean;
+};
+
+type ChatMessage = {
+  playerId: string;
+  playerName: string;
+  message: string;
+  timestamp: number;
+};
+```
+
+---
+
+## Client Architecture (`client/src/App.tsx`)
+
+### Views
+
+1. **Server Config** (`'server-config'`): Enter server URL, test connection
+2. **Lobby** (`'lobby'`): Enter name, avatar, room settings, create/join room
+3. **Room** (`'room'`): Waiting room or active game
+
+### Key Components
+
+**Error Boundary:**
+- Class component wrapping entire app
+- Catches React errors, shows friendly error screen
+- "Reload Game" button clears session and reloads
+
+**Game UI Components:**
+- `ChessClock` - Large clock with M:SS.cc format, urgency effects
+- `ClockChip` - Compact clock for carousel display
+- `ChessClockBar` - Horizontal carousel of all player clocks
+- `CardDisplay` - UNO Minimalista styled card
+- `CardBack` - Card back for opponent hands
+- `OpponentHand` - Fanned card backs (up to 12 visible)
+- `HandArea` - Player's hand with drag-to-play and keyboard selection
+- `ColorPickerModal` - Wild card color selection overlay
+- `ChatDrawer` - Collapsible room chat at bottom
+- `GameFinishedOverlay` - Game over modal with result
+
+**Card Icons (SVG):**
+- `SkipIcon` - Circle with diagonal line
+- `ReverseIcon` - Angular arrows
+- `Draw2Icon` - Two overlapping card outlines
+- `WildIcon` - Four-color ring
+- `WildDraw4Icon` - Four overlapping colored cards
+
+### State Management
+
+**localStorage Keys:**
+```typescript
+STORAGE_KEYS = {
+  PLAYER_SECRET: 'playerSecret',
+  PLAYER_ID: 'playerId',
+  ROOM_CODE: 'roomCode',
+  DISPLAY_NAME: 'displayName',
+  AVATAR_ID: 'avatarId',
+  SERVER_URL: 'serverUrl'
+}
+```
+
+**URL Parameters:**
+- `?server=<url>` - Pre-fill server URL
+- `?room=<code>` - Pre-fill room code
+- Parameters are cleaned from URL after processing
+
+### Keyboard Controls
+
+| Key | Action |
+|-----|--------|
+| `←` `→` | Select card in hand |
+| `↑` or `Enter` | Play selected card |
+| `↓` or `Space` | Draw card |
+| `/` | Open chat input overlay |
+| `Escape` | Close chat input |
+
+### Flying Chat (Niconico-style)
+
+- Messages fly across screen right-to-left
+- Random vertical position (10-70% from top)
+- Dynamic duration: `(screenWidth + 300) / 200` seconds (~200px/s for consistent speed)
+- Own messages appear instantly (optimistic UI, no server round-trip delay)
+- Other players' messages appear when received from server
+- Removed from DOM 500ms after animation completes
+
+### Socket Reconnection
+
+- Automatic reconnection on disconnect
+- Shows "Connection lost. Attempting to reconnect..." message
+- Attempts to rejoin room using stored credentials
+- Falls back to lobby if room no longer exists
+
+### Clock Interpolation
+
+- Client interpolates between server clock syncs (every 500ms)
+- Updates at ~27fps (37ms interval) for smooth centiseconds
+- Respects `prefers-reduced-motion` (falls back to 1000ms updates)
+
+---
+
+## UNO Game Rules
+
+### Card Matching
+A card can be played if:
+- Same color as top card (or active color after wild)
+- Same value as top card
+- Wild card (always playable)
+- Top card is wild/wild_draw4 (any card playable)
+
+### Special Cards
+
+| Card | Effect |
+|------|--------|
+| Skip | Next player loses turn |
+| Reverse | Direction changes (in 2-player: acts like Skip) |
+| Draw 2 | Next player draws 2, loses turn |
+| Wild | Choose color, normal turn advance |
+| Wild Draw 4 | Choose color, next player draws 4, loses turn |
+
+### UNO Call/Catch
+
+1. When player has 1 card after playing, UNO window opens
+2. Player can call `callUno` to protect themselves
+3. Any opponent can call `catchUno(targetPlayerId)` before window closes
+4. If caught: target draws 2 cards
+5. Window closes when next player takes action
+
+### Timeout Policy
+
+When a player's clock reaches 0:
+- They automatically draw 1 card
+- Turn advances to next player
+- `timeOut` event emitted with `policy: 'autoDrawAndSkip'`
+
+### AI Behavior
+
+AI players (1-2 second "thinking" delay):
+1. Find first playable card in hand
+2. For wilds: choose most common color in hand
+3. If no playable card: draw
+4. Always calls UNO when at 1 card
+
+---
+
+## Production Robustness
+
+### Server-side
+
+- **Global Error Handlers**: `uncaughtException` and `unhandledRejection` logged but don't crash server
+- **Max Room Limit**: 1000 concurrent rooms
+- **Room Cleanup**: Every 5 minutes, removes rooms with no connected humans that are either:
+  - Older than 30 minutes (stale)
+  - Game status is 'finished'
+- **Rate Limiting**: All socket events rate-limited per socket
+- **Input Validation**: Room codes, cards, colors, player IDs validated
+- **Timer Cleanup**: Room clocks stopped when room removed
+- **Memory Leak Prevention**: Rate limiters cleaned up on socket disconnect
+- **Graceful Shutdown**: SIGTERM/SIGINT handlers stop cleanup interval, disconnect sockets, close servers
+- **Avatar LRU Eviction**: MAX_AVATARS=5000, evicts least-recently-used when at capacity
+- **Health Endpoint**: `GET /health` returns `{ status, uptime, rooms, players, avatars }`
+
+### Client-side
+
+- **React Error Boundary**: Catches crashes, shows error screen with reload button
+- **Socket Auto-Reconnection**: Automatic rejoin on connection loss
+- **Session Recovery**: Uses localStorage to rejoin after page refresh
+
+---
+
+## Commands
+
+```bash
+# Development
+cd server && bun run dev    # Start server on port 3000
+cd client && bun run dev    # Start client on port 5173
+
+# Testing
+cd server && bun test       # Run 340 tests
+
+# Type checking
+cd client && bun run tsc --noEmit
+
+# Production build
+cd client && bun run build  # Outputs to dist/ (~293KB JS)
+
+# Docker (with Nix)
+nix build .#serverImage && docker load < result
+nix build .#clientImage && docker load < result
+docker-compose up -d
+```
+
+---
+
+## Test Coverage
+
+- **340 server tests pass**
+- **956 expect() calls**
+- Tests cover:
+  - Room creation/joining/reconnection
+  - Game flow (start, play, draw, win conditions)
+  - All card types and special effects
+  - UNO call/catch mechanics
+  - Clock timeout behavior
+  - AI player behavior
+  - Chat functionality
+  - Rate limiting
+  - Input validation
+  - Deck reshuffling
+
+---
+
+## Design Decisions
+
+1. **Server-authoritative**: All game logic runs on server to prevent cheating
+2. **Full snapshots**: Send complete game state after each action (not deltas)
+3. **Ephemeral everything**: No database, rooms deleted when empty
+4. **Clock precision**: Centiseconds displayed for urgency, interpolated client-side
+5. **Mobile-first**: Touch-friendly tap-to-select, drag-to-play optional
+6. **UNO Minimalista style**: Clean, minimal card design with thin fonts
+7. **Material Design 3**: Dark theme color palette
+8. **Keyboard controls**: Desktop users can play without mouse

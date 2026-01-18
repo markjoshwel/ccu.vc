@@ -108,7 +108,3 @@ input[type="range"]::-moz-range-thumb:hover {
     transform: translateX(calc(-100% - 100vw));
   }
 }
-
-.animate-fly-across {
-  animation: fly-across 8s linear forwards;
-}

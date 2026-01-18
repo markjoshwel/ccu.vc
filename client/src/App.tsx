@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, ChangeEvent } from 'react';
+import { useState, useEffect, useRef, useCallback, ChangeEvent, Component, ReactNode } from 'react';
 import { animated, useSprings } from '@react-spring/web';
 import { useDrag } from '@use-gesture/react';
 import { io, Socket } from 'socket.io-client';
@@ -14,6 +14,138 @@ import type {
   ChatMessage,
   RoomSettings
 } from 'shared';
+
+// ============================================================================
+// Error Boundary
+// ============================================================================
+
+interface ErrorBoundaryProps {
+  children: ReactNode;
+}
+
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error: Error | null;
+}
+
+class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  state: ErrorBoundaryState = { hasError: false, error: null };
+
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo): void {
+    console.error('React Error Boundary caught an error:', error, errorInfo);
+  }
+
+  handleReload = (): void => {
+    // Clear stored session data to prevent loops
+    localStorage.removeItem(STORAGE_KEYS.PLAYER_SECRET);
+    localStorage.removeItem(STORAGE_KEYS.PLAYER_ID);
+    localStorage.removeItem(STORAGE_KEYS.ROOM_CODE);
+    window.location.reload();
+  };
+
+  render(): ReactNode {
+    if (this.state.hasError) {
+      return (
+        <div 
+          style={{ 
+            minHeight: '100vh', 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center',
+            backgroundColor: THEME.surfaceDim,
+            padding: '1rem',
+          }}
+        >
+          <div 
+            style={{ 
+              backgroundColor: THEME.surfaceContainer,
+              borderColor: THEME.error,
+              borderWidth: '2px',
+              borderStyle: 'solid',
+              borderRadius: '1rem',
+              padding: '2rem',
+              maxWidth: '28rem',
+              width: '100%',
+              textAlign: 'center',
+            }}
+          >
+            <div 
+              style={{ 
+                width: '4rem', 
+                height: '4rem', 
+                margin: '0 auto 1rem',
+                backgroundColor: THEME.errorContainer,
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '1.5rem',
+              }}
+            >
+              <span role="img" aria-label="error">!</span>
+            </div>
+            <h2 
+              style={{ 
+                color: THEME.onSurface,
+                fontSize: '1.5rem',
+                fontWeight: 'bold',
+                marginBottom: '0.5rem',
+              }}
+            >
+              Something went wrong
+            </h2>
+            <p 
+              style={{ 
+                color: THEME.onSurfaceVariant,
+                marginBottom: '1.5rem',
+                fontSize: '0.875rem',
+              }}
+            >
+              The game encountered an unexpected error. Please reload to continue.
+            </p>
+            {this.state.error && (
+              <pre 
+                style={{ 
+                  backgroundColor: THEME.surfaceContainerHighest,
+                  color: THEME.error,
+                  padding: '0.75rem',
+                  borderRadius: '0.5rem',
+                  fontSize: '0.75rem',
+                  marginBottom: '1.5rem',
+                  overflow: 'auto',
+                  maxHeight: '6rem',
+                  textAlign: 'left',
+                }}
+              >
+                {this.state.error.message}
+              </pre>
+            )}
+            <button
+              onClick={this.handleReload}
+              style={{ 
+                backgroundColor: THEME.primary,
+                color: THEME.onPrimary,
+                padding: '0.75rem 2rem',
+                borderRadius: '0.75rem',
+                fontWeight: 'bold',
+                border: 'none',
+                cursor: 'pointer',
+              }}
+            >
+              Reload Game
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
 
 // ============================================================================
 // Constants & Types
@@ -1461,7 +1593,7 @@ function App() {
   // Flying chat overlay state
   const [showChatOverlay, setShowChatOverlay] = useState(false);
   const [chatInput, setChatInput] = useState('');
-  const [flyingMessages, setFlyingMessages] = useState<Array<{ id: number; message: string; playerName: string; top: number }>>([]);
+  const [flyingMessages, setFlyingMessages] = useState<Array<{ id: number; message: string; playerName: string; top: number; duration: number }>>([]);
   const chatInputRef = useRef<HTMLInputElement>(null);
   const flyingMessageIdRef = useRef(0);
 
@@ -1570,6 +1702,73 @@ function App() {
     }
   }, [serverUrl]);
 
+  // Socket disconnect/reconnect handling
+  const [isReconnecting, setIsReconnecting] = useState(false);
+  
+  useEffect(() => {
+    if (!socket) return;
+    
+    const handleDisconnect = (reason: string) => {
+      // Only show reconnecting state if we were in a room and it wasn't a manual disconnect
+      if (view === 'room' && reason !== 'io client disconnect') {
+        setIsReconnecting(true);
+        setError('Connection lost. Attempting to reconnect...');
+      }
+    };
+    
+    const handleConnect = () => {
+      if (isReconnecting && storedRoomCode && myPlayerId && myPlayerSecret) {
+        // Attempt to rejoin the room
+        const actionId = generateActionId();
+        setPendingActions((prev) => new Set(prev).add(actionId));
+        
+        socket.emit(
+          'reconnect_room',
+          actionId,
+          storedRoomCode,
+          myPlayerId,
+          myPlayerSecret,
+          (response: { success: boolean; error?: string }) => {
+            setIsReconnecting(false);
+            if (response.success) {
+              setError('');
+            } else {
+              // Reconnection failed - clear session and go to lobby
+              localStorage.removeItem(STORAGE_KEYS.PLAYER_SECRET);
+              localStorage.removeItem(STORAGE_KEYS.PLAYER_ID);
+              localStorage.removeItem(STORAGE_KEYS.ROOM_CODE);
+              setRoom(null);
+              setGameView(null);
+              setClockSync(null);
+              setChatMessages([]);
+              setView('lobby');
+              setError(response.error || 'Room no longer exists');
+            }
+          }
+        );
+      } else {
+        setIsReconnecting(false);
+        setError('');
+      }
+    };
+    
+    const handleConnectError = (err: Error) => {
+      if (isReconnecting) {
+        setError(`Reconnection failed: ${err.message}`);
+      }
+    };
+    
+    socket.on('disconnect', handleDisconnect);
+    socket.on('connect', handleConnect);
+    socket.on('connect_error', handleConnectError);
+    
+    return () => {
+      socket.off('disconnect', handleDisconnect);
+      socket.off('connect', handleConnect);
+      socket.off('connect_error', handleConnectError);
+    };
+  }, [socket, view, isReconnecting, storedRoomCode, myPlayerId, myPlayerSecret]);
+
   // Keyboard controls for gameplay
   useEffect(() => {
     if (view !== 'room' || room?.gameStatus !== 'playing') return;
@@ -1645,7 +1844,8 @@ function App() {
     }
   }, [handCards.length, selectedCardIndex]);
 
-  // Add flying messages when new chat arrives
+  // Add flying messages when new chat arrives from OTHER players
+  // (own messages are shown immediately in handleChatOverlaySubmit for zero delay)
   useEffect(() => {
     if (chatMessages.length === 0) return;
     const latestMessage = chatMessages[chatMessages.length - 1];
@@ -1653,21 +1853,28 @@ function App() {
     // Only add flying message if game is playing
     if (room?.gameStatus !== 'playing') return;
     
+    // Skip if this is the current player's message (already shown via optimistic UI)
+    if (latestMessage.playerId === myPlayerId) return;
+    
     const messageId = flyingMessageIdRef.current++;
     const randomTop = 10 + Math.random() * 60; // Random position 10-70% from top
+    // Calculate duration based on screen width: ~200px/s for readable speed
+    // Message travels from right edge to left edge + its own width (estimate ~300px for message)
+    const duration = (window.innerWidth + 300) / 200;
     
     setFlyingMessages(prev => [...prev, {
       id: messageId,
       message: latestMessage.message,
       playerName: latestMessage.playerName,
-      top: randomTop
+      top: randomTop,
+      duration
     }]);
 
-    // Remove after animation completes (8 seconds)
+    // Remove after animation completes + 500ms buffer
     setTimeout(() => {
       setFlyingMessages(prev => prev.filter(m => m.id !== messageId));
-    }, 8000);
-  }, [chatMessages.length, room?.gameStatus]);
+    }, duration * 1000 + 500);
+  }, [chatMessages.length, room?.gameStatus, myPlayerId]);
 
   // Actions
   const handleCreateRoom = () => {
@@ -1874,8 +2081,30 @@ function App() {
   };
 
   const handleChatOverlaySubmit = () => {
-    if (chatInput.trim() && socket) {
-      handleSendChat(chatInput.trim());
+    if (chatInput.trim() && socket && myPlayer) {
+      const message = chatInput.trim();
+      handleSendChat(message);
+      
+      // Immediately show flying message (optimistic UI - no server round-trip delay)
+      if (room?.gameStatus === 'playing') {
+        const messageId = flyingMessageIdRef.current++;
+        const randomTop = 10 + Math.random() * 60;
+        // Calculate duration based on screen width: ~200px/s for readable speed
+        const duration = (window.innerWidth + 300) / 200;
+        
+        setFlyingMessages(prev => [...prev, {
+          id: messageId,
+          message,
+          playerName: myPlayer.name,
+          top: randomTop,
+          duration
+        }]);
+        // Remove after animation completes + 500ms buffer
+        setTimeout(() => {
+          setFlyingMessages(prev => prev.filter(m => m.id !== messageId));
+        }, duration * 1000 + 500);
+      }
+      
       setChatInput('');
       setShowChatOverlay(false);
     }
@@ -2377,7 +2606,7 @@ function App() {
                 {flyingMessages.map(msg => (
                   <div
                     key={msg.id}
-                    className="absolute whitespace-nowrap animate-fly-across"
+                    className="absolute whitespace-nowrap"
                     style={{
                       top: `${msg.top}%`,
                       right: '-100%',
@@ -2385,6 +2614,7 @@ function App() {
                       color: '#FFFFFF',
                       fontWeight: 600,
                       fontSize: '1.1rem',
+                      animation: `fly-across ${msg.duration}s linear forwards`,
                     }}
                   >
                     <span style={{ color: THEME.primary }}>{msg.playerName}:</span> {msg.message}
@@ -2707,4 +2937,12 @@ function App() {
   );
 }
 
-export { App };
+function AppWithErrorBoundary() {
+  return (
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
+  );
+}
+
+export { AppWithErrorBoundary as App };
