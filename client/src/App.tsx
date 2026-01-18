@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, ChangeEvent } from 'react';
 import { io, Socket } from 'socket.io-client';
-import type { RoomState, PlayerPublic, ServerToClientEvents, ClientToServerEvents, Card, GameView } from 'shared';
+import type { RoomState, PlayerPublic, PlayerPrivate, ServerToClientEvents, ClientToServerEvents, Card, GameView } from 'shared';
 
 const STORAGE_KEYS = {
   PLAYER_SECRET: 'playerSecret',
@@ -515,8 +515,10 @@ function App() {
   if (view === 'room' && room) {
     const myPlayerId = localStorage.getItem(STORAGE_KEYS.PLAYER_ID);
     const allPlayers = gameView ? [...gameView.otherPlayers, gameView.me] : players;
+    const myPlayer = gameView ? (gameView.me as PlayerPrivate) : players.find((p) => p.id === myPlayerId);
     const topCard = room.discardPile && room.discardPile.length > 0 ? room.discardPile[room.discardPile.length - 1] : null;
     const myTurn = myPlayerId && room.currentPlayerIndex !== undefined && allPlayers[room.currentPlayerIndex]?.id === myPlayerId;
+    const orderedPlayers = allPlayers.map((p, index) => ({ player: p, isActive: room.currentPlayerIndex === index }));
     const isPlayPending = pendingActions.size > 0;
     const isPlayerPrivate = (player: any): player is { hand: Card[] } => 'hand' in player;
     const getPlayerHandCount = (player: any): number => {
@@ -566,21 +568,45 @@ function App() {
                 </div>
               </div>
 
-              <div className="players-list">
+              <div className="players-list" aria-label="Player order">
                 <h2>Players</h2>
-                {allPlayers.map((player, index) => (
-                  <div 
-                    key={player.id} 
-                    className={`player ${player.connected ? 'connected' : 'disconnected'} ${room.currentPlayerIndex === index ? 'active' : ''}`}
+                {orderedPlayers.map(({ player, isActive }) => (
+                  <div
+                    key={player.id}
+                    className={`player player-row ${player.connected ? 'connected' : 'disconnected'} ${isActive ? 'active-player' : ''}`}
+                    data-player-id={player.id}
                   >
-                    <span className="name">{player.name}</span>
-                    <span className="status">{player.connected ? 'Online' : 'Offline'}</span>
-                    <span className="hand-count">{getPlayerHandCount(player)} cards</span>
-                    {room.gameStatus === 'playing' && (
-                      <span className={`clock-time ${room.currentPlayerIndex === index ? 'active' : ''}`}>
-                        {formatTime(getPlayerTime(player.id))}
+                    <div className="player-identity">
+                      <div className="player-avatar">
+                        {player.avatarId ? (
+                          <img
+                            src={`http://localhost:3000/avatars/${player.avatarId}`}
+                            alt={`${player.name}'s avatar`}
+                            loading="lazy"
+                          />
+                        ) : (
+                          <div className="avatar-fallback" aria-hidden="true">
+                            {player.name.charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                      </div>
+                      <div className="player-text">
+                        <span className="name">{player.name}</span>
+                        <span className="status" aria-label={player.connected ? 'Online' : 'Offline'}>
+                          {player.connected ? 'Online' : 'Offline'}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="player-meta">
+                      <span className="hand-count" aria-label={`${getPlayerHandCount(player)} cards`}>
+                        {getPlayerHandCount(player)} cards
                       </span>
-                    )}
+                      {room.gameStatus === 'playing' && (
+                        <span className={`clock-time ${isActive ? 'active' : ''}`}>
+                          {formatTime(getPlayerTime(player.id))}
+                        </span>
+                      )}
+                    </div>
                     {room.gameStatus === 'playing' && room.unoWindow && room.unoWindow.playerId === player.id && !room.unoWindow.called && player.id !== myPlayerId && (
                       <button
                         onClick={() => handleCatchUno(player.id)}
@@ -684,12 +710,34 @@ function App() {
           </div>
 
           {room.gameStatus === 'waiting' && (
-            <div className="players-list">
+            <div className="players-list" aria-label="Players in lobby order">
               <h2>Players ({players.length})</h2>
               {players.map((player) => (
-                <div key={player.id} className={`player ${player.connected ? 'connected' : 'disconnected'}`}>
-                  <span className="name">{player.name}</span>
-                  <span className="status">{player.connected ? 'Online' : 'Offline'}</span>
+                <div key={player.id} className={`player player-row ${player.connected ? 'connected' : 'disconnected'}`} data-player-id={player.id}>
+                  <div className="player-identity">
+                    <div className="player-avatar">
+                      {player.avatarId ? (
+                        <img
+                          src={`http://localhost:3000/avatars/${player.avatarId}`}
+                          alt={`${player.name}'s avatar`}
+                          loading="lazy"
+                        />
+                      ) : (
+                        <div className="avatar-fallback" aria-hidden="true">
+                          {player.name.charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                    </div>
+                    <div className="player-text">
+                      <span className="name">{player.name}</span>
+                      <span className="status" aria-label={player.connected ? 'Online' : 'Offline'}>
+                        {player.connected ? 'Online' : 'Offline'}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="player-meta">
+                    <span className="hand-count">{player.handCount} cards</span>
+                  </div>
                 </div>
               ))}
             </div>

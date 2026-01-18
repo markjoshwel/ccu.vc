@@ -135,14 +135,71 @@ button:disabled {
   font-size: 14px;
 }
 
+.player-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid #e4e6eb;
+}
+
+.player-identity {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+.player-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #eef1f7;
+  border: 1px solid #dfe3ec;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.player-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.avatar-fallback {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #4a90e2, #3a7bc8);
+  color: white;
+  font-weight: 700;
+  font-size: 16px;
+}
+
+.player-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
 .player .name {
-  font-weight: 500;
+  font-weight: 600;
+  color: #1f2937;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .player .status {
   color: #666;
   font-size: 12px;
-  margin-left: 8px;
 }
 
 .player.connected .status {
@@ -151,6 +208,14 @@ button:disabled {
 
 .player.disconnected .status {
   color: #e74c3c;
+}
+
+.player-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
 }
 
 .loading {
@@ -245,6 +310,26 @@ button:disabled {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+.player.active-player {
+  border: 2px solid #4a90e2;
+  background: #e8f4fc;
+  box-shadow: 0 0 0 1px rgba(74, 144, 226, 0.1);
+}
+
+.player.active-player .name {
+  color: #2c5282;
+}
+
+.player.disconnected {
+  opacity: 0.6;
+  border-style: dashed;
+}
+
+.player.disconnected .avatar-fallback,
+.player.disconnected img {
+  filter: grayscale(0.6);
 }
 
 .avatar-url {
