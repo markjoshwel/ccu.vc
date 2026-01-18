@@ -10,6 +10,7 @@
     "typescript": "^5.0.0"
   },
   "scripts": {
+    "postinstall": "bunx bun2nix -o bun.nix",
     "install:all": "bun install",
     "build": "bun run --filter=\"*\" build",
     "typecheck": "bun run --filter=\"*\" typecheck"

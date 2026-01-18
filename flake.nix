@@ -4,60 +4,89 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     flake-utils.url = "github:numtide/flake-utils";
+    bun2nix.url = "github:nix-community/bun2nix";
+    bun2nix.inputs.nixpkgs.follows = "nixpkgs";
   };
 
-  outputs = { self, nixpkgs, flake-utils }:
+  nixConfig = {
+    extra-substituters = [
+      "https://cache.nixos.org"
+      "https://nix-community.cachix.org"
+    ];
+    extra-trusted-public-keys = [
+      "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY="
+      "nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs="
+    ];
+  };
+
+  outputs = { self, nixpkgs, flake-utils, bun2nix }:
     flake-utils.lib.eachDefaultSystem (system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
+        b2n = bun2nix.packages.${system}.default;
         
         # Version from package.json
         version = "2026.1.19";
 
-        # Client build
+        # Fetch bun dependencies using bun2nix
+        bunDeps = b2n.fetchBunDeps {
+          bunNix = ./bun.nix;
+        };
+
+        # Client build (React/Vite website)
         clientBuild = pkgs.stdenv.mkDerivation {
           pname = "ccu-client";
           inherit version;
           src = ./.;
 
-          nativeBuildInputs = with pkgs; [ bun nodejs ];
+          nativeBuildInputs = [
+            pkgs.bun
+            pkgs.nodejs
+            b2n.hook
+          ];
+
+          inherit bunDeps;
+
+          # Build from client subdirectory
+          bunRoot = "client";
 
           buildPhase = ''
-            export HOME=$(mktemp -d)
             cd client
-            bun install --frozen-lockfile
             bun run build
           '';
 
           installPhase = ''
             mkdir -p $out
-            cp -r dist/* $out/
+            cp -r client/dist/* $out/
           '';
         };
 
-        # Server build  
+        # Server build (TypeScript compiled with tsc)
         serverBuild = pkgs.stdenv.mkDerivation {
           pname = "ccu-server";
           inherit version;
           src = ./.;
 
-          nativeBuildInputs = with pkgs; [ bun nodejs ];
+          nativeBuildInputs = [
+            pkgs.bun
+            pkgs.nodejs
+            b2n.hook
+          ];
+
+          inherit bunDeps;
 
           buildPhase = ''
-            export HOME=$(mktemp -d)
-            bun install --frozen-lockfile
             cd server
             bun run build
           '';
 
           installPhase = ''
             mkdir -p $out/dist
-            mkdir -p $out/node_modules
-            cp -r dist/* $out/dist/
-            cp package.json $out/
-            # Copy shared types
-            mkdir -p $out/shared
-            cp -r ../shared/src $out/shared/
+            cp -r server/dist/* $out/dist/
+            cp server/package.json $out/
+            # Copy shared types (needed at runtime for type references)
+            mkdir -p $out/shared/src
+            cp -r shared/src/* $out/shared/src/
           '';
         };
 
@@ -126,6 +155,7 @@
             bun
             nodejs
             typescript
+            b2n
           ];
 
           shellHook = ''
@@ -139,6 +169,9 @@
             echo "Build Docker images:"
             echo "  nix build .#clientImage"
             echo "  nix build .#serverImage"
+            echo ""
+            echo "Regenerate bun.nix after updating dependencies:"
+            echo "  bunx bun2nix -o bun.nix"
           '';
         };
 
