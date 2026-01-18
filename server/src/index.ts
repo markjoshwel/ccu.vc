@@ -3,18 +3,15 @@ import { Server as SocketIOServer } from 'socket.io';
 import type { ClientToServerEvents, ServerToClientEvents } from 'shared';
 import { RoomManager } from './RoomManager';
 import { RateLimiter } from './RateLimiter';
+import { AvatarStore } from './AvatarStore';
+import { createHttpHandler } from './httpHandler';
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
-const httpServer = createServer((req, res) => {
-  if (req.url === '/health' && req.method === 'GET') {
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ status: 'ok' }));
-  } else {
-    res.writeHead(404);
-    res.end('Not Found');
-  }
-});
+const avatarStore = new AvatarStore();
+const httpHandler = createHttpHandler({ avatarStore });
+
+const httpServer = createServer(httpHandler);
 
 const io = new SocketIOServer<ClientToServerEvents, ServerToClientEvents>(httpServer, {
   cors: {

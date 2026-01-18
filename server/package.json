@@ -14,6 +14,7 @@
     "typescript": "^5.0.0"
   },
   "dependencies": {
+    "imagescript": "1.2.16",
     "shared": "workspace:*",
     "socket.io": "^4.8.3"
   }

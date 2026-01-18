@@ -1,8 +1,9 @@
 {
   "extends": "../tsconfig.json",
-  "include": ["src/**/*"],
+  "include": ["src/**/*", "*.test.ts"],
   "exclude": ["node_modules", "dist"],
   "compilerOptions": {
-    "moduleResolution": "bundler"
+    "moduleResolution": "bundler",
+    "types": ["bun"]
   }
 }
