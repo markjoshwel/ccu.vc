@@ -92,9 +92,6 @@
             cd server
             bun run build
             cd ..
-            
-            # Verify outputs exist
-            ls -la server/dist/
           '';
 
           installPhase = ''
