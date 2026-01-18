@@ -1,27 +1,32 @@
 # Agent Session Notes
 
-## Current Session: UI Revamp Complete
+## Current Session: Tabletop UI Revamp
 
 ### Overview
-Chess Clock UNO UI has been revamped with a game-like design:
-1. SVG card icons (UNO Minimalista style)
-2. Prominent chess clock with centisecond precision (M:SS.cc)
-3. Material Design 3-inspired color palette
-4. Better text readability with proper contrast
+Chess Clock UNO UI has been completely redesigned with a tabletop game feel:
+1. Green felt table background with radial gradient
+2. Opponents shown at top with fanned card backs
+3. Central play area with draw pile and discard pile
+4. Player hand at bottom with fanned cards
+5. UNO Minimalista card styling (Barlow font, thin lines, underlined 6/9)
 
 ### Session Summary
-- **UI Revamp Complete**: All major UI components updated
-- Fixed socket.join order bug (join before broadcast)
+- **Bug Fix**: Fixed UNO call crash (callback was null) - made all socket callbacks optional
+- **Bug Fix**: Fixed playCard signature order (chosenColor before callback)
+- **Tabletop UI**: Complete redesign of game view
+- **UNO Minimalista Cards**: Thin font, clean line icons, proper color ring for wild
+- **Opponent Card Backs**: Fanned display showing card count
+- **Fanned Hand**: Cards fan out in an arc at bottom
+- **Configurable Server URL**: Users can connect to any server, supports URL params
 - 340 server tests passing
-- AI players working
-- Room settings UI complete
 
 ### Codebase Structure
 ```
 ccu.vc/
 ├── client/           # Vite + React frontend
+│   ├── index.html    # Barlow font loaded from Google Fonts
 │   └── src/
-│       ├── App.tsx   # Main component (UI revamped)
+│       ├── App.tsx   # Main component (tabletop UI)
 │       ├── main.tsx  # Entry point
 │       └── index.css # Tailwind v4 import
 ├── server/           # Bun + Socket.io backend
@@ -38,72 +43,88 @@ ccu.vc/
 
 ### UI Components Implemented
 
-#### 1. SVG Card Icons
+#### 1. Server Configuration (server-config view)
+- First-time users see a server URL input dialog
+- URL parameter support: `?server=your-server.com` skips the dialog
+- Server URL is saved to localStorage
+- "Change" button in lobby to switch servers
+- Connection test before proceeding
+
+#### 2. SVG Card Icons (UNO Minimalista Style)
 Located in App.tsx as inline components:
-- `SkipIcon`: Circle with diagonal line (prohibition sign)
-- `ReverseIcon`: Two curved arrows forming loop
-- `Draw2Icon`: Two overlapping card rectangles
-- `WildIcon`: Four-segment color wheel (red/blue/green/yellow)
-- `WildDraw4Icon`: Four colored overlapping cards
-- `CardNumber`: Large centered digit for number cards
-- `CornerIndicator`: Corner value indicators (top-left, bottom-right rotated)
+- `SkipIcon`: Circle with diagonal line (thin stroke)
+- `ReverseIcon`: Angular arrows (sharp corners, not curved)
+- `Draw2Icon`: Two overlapping card outlines
+- `WildIcon`: Color ring with 4 arc segments (red/blue/green/yellow)
+- `WildDraw4Icon`: Four overlapping colored card outlines
+- `CardNumber`: Large thin digit (Barlow 200 weight), underlined for 6/9
+- `CornerIndicator`: Corner value (thin font, underlined 6/9)
+- `CardBack`: Card back with UNO logo for opponent hands
 
-#### 2. Chess Clock (ChessClock component)
-- Format: `M:SS.cc` (e.g., "0:58.42") - centisecond precision
-- Prominent display at top of game view
-- Visual urgency when < 10 seconds (red color, pulsing animation)
-- Player name label above time
-- Active player highlighted with scale and glow effect
-- Updates at ~27fps for smooth centisecond display
+#### 3. Opponent Hand Display (OpponentHand component)
+- Fanned card backs showing card count
+- Player name and timer badge
+- Active player highlighting
+- Positioned at top of table
 
-#### 3. Material Design 3 Color Palette (THEME constant)
+#### 4. Tabletop Layout
+- Green felt background with radial gradient
+- Subtle noise texture overlay
+- Direction indicator (↻ or ↺)
+- Central play area with:
+  - Draw pile (stacked card backs, clickable)
+  - Discard pile (top card displayed)
+  - Active color indicator (colored dot)
+
+#### 5. Fanned Hand (HandArea component)
+- Cards fan out in an arc
+- Overlapping cards with calculated offsets
+- Hover lift effect
+- Drag-to-play functionality
+- Plays on tap/click or drag-to-discard
+
+#### 6. Color Palette (THEME constant)
 ```typescript
 const THEME = {
-  surface: '#1C1B1F',
-  surfaceDim: '#141316',
-  surfaceContainer: '#211F26',
-  surfaceContainerHigh: '#2B2930',
-  surfaceContainerHighest: '#36343B',
-  onSurface: '#E6E1E5',
-  onSurfaceVariant: '#CAC4D0',
-  outline: '#938F99',
-  outlineVariant: '#49454F',
-  primary: '#D0BCFF',
-  onPrimary: '#381E72',
-  primaryContainer: '#4F378B',
-  onPrimaryContainer: '#EADDFF',
-  secondary: '#CCC2DC',
-  tertiary: '#EFB8C8',
-  error: '#F2B8B5',
-  errorContainer: '#8C1D18',
-  // Card colors (solid, vibrant)
-  cardRed: '#EF5350',
-  cardBlue: '#42A5F5',
-  cardGreen: '#66BB6A',
-  cardYellow: '#FFEE58',
-  cardWild: '#1C1B1F',
+  // UNO Minimalista card colors
+  cardRed: '#E53935',
+  cardBlue: '#1E88E5',
+  cardGreen: '#43A047',
+  cardYellow: '#FDD835',
+  cardWild: '#212121',
+  // Tabletop
+  tableGreen: '#1B5E20',
+  tableFelt: '#2E7D32',
+  // ... Material Design 3 colors
 };
+const CARD_FONT = "'Barlow', sans-serif";
 ```
-
-#### 4. Card Design (CardDisplay component)
-- Solid background colors (no gradients)
-- White icons/numbers with drop shadow
-- Corner indicators showing card value
-- Rounded corners (8-12px based on size)
-- Three sizes: sm (48x72), md (64x96), lg (80x120)
-- Yellow cards use dark text for contrast
 
 ### Card Values (from Deck.ts)
 - Colors: `red`, `yellow`, `green`, `blue`, `wild`
 - Values: `0-9`, `skip`, `reverse`, `draw2`, `wild`, `wild_draw4`
 
 ### Key UI Features
-- **Dark theme** with proper contrast ratios
-- **Inline styles** using THEME constants for consistency
-- **Responsive layout** with max-width container
-- **Active player highlighting** in player list and clock
-- **Urgency indicators** for low time (< 10s)
-- **Drag-and-drop** card playing with visual feedback
+- **Configurable server** - Users can point to any server URL
+- **URL parameter sharing** - `?server=host.com` for easy sharing
+- **Tabletop feel** - Green felt background, cards arranged around table
+- **UNO Minimalista styling** - Thin Barlow font, clean line icons
+- **Underlined 6/9** - To distinguish from each other
+- **Fanned cards** - Both player hand and opponent backs
+- **Active color indicator** - Colored dot on discard pile for wild cards
+- **Direction indicator** - Arrow showing play direction
+- **Drag-and-drop** - Drag cards to discard pile to play
+
+### How to Share a Game Link
+
+```
+https://your-hosted-client.com/?server=your-server.com:3000
+```
+
+This will:
+1. Skip the server configuration dialog
+2. Automatically connect to the specified server
+3. Save the server URL to localStorage for future visits
 
 ### How to Run
 
@@ -122,3 +143,15 @@ Open http://localhost:5173 in browser.
 - **956 expect() calls**
 - Client typecheck passes
 - Client builds successfully
+
+### Socket Event Signatures (Updated)
+```typescript
+// playCard: chosenColor comes BEFORE callback (Socket.io callback must be last)
+playCard: (actionId, card, chosenColor, callback?) => void
+
+// All callbacks are now optional (use callback?.() pattern)
+drawCard: (actionId, callback?) => void
+callUno: (actionId, callback?) => void
+catchUno: (actionId, targetPlayerId, callback?) => void
+sendChat: (actionId, message, callback?) => void
+```

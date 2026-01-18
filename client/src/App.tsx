@@ -24,12 +24,13 @@ const STORAGE_KEYS = {
   PLAYER_ID: 'playerId',
   ROOM_CODE: 'roomCode',
   DISPLAY_NAME: 'displayName',
-  AVATAR_ID: 'avatarId'
+  AVATAR_ID: 'avatarId',
+  SERVER_URL: 'serverUrl'
 } as const;
 
-const SERVER_URL = 'http://localhost:3000';
+const DEFAULT_SERVER_URL = 'http://localhost:3000';
 
-type AppView = 'lobby' | 'room';
+type AppView = 'server-config' | 'lobby' | 'room';
 
 // Material Design 3-inspired color palette
 const THEME = {
@@ -50,13 +51,19 @@ const THEME = {
   tertiary: '#EFB8C8',
   error: '#F2B8B5',
   errorContainer: '#8C1D18',
-  // Card colors (solid, vibrant)
-  cardRed: '#EF5350',
-  cardBlue: '#42A5F5',
-  cardGreen: '#66BB6A',
-  cardYellow: '#FFEE58',
-  cardWild: '#1C1B1F',
+  // UNO Minimalista card colors (true to the original)
+  cardRed: '#E53935',
+  cardBlue: '#1E88E5',
+  cardGreen: '#43A047',
+  cardYellow: '#FDD835',
+  cardWild: '#212121',
+  // Tabletop
+  tableGreen: '#1B5E20',
+  tableFelt: '#2E7D32',
 } as const;
+
+// Font for UNO Minimalista cards (thin, clean)
+const CARD_FONT = "'Barlow', sans-serif";
 
 // Card background colors (solid colors, no gradients for minimalist look)
 const CARD_COLORS: Record<string, string> = {
@@ -177,117 +184,135 @@ function useClockInterpolation(
 
 interface CardIconProps {
   className?: string;
+  color?: string;
 }
 
 // Skip icon: Circle with diagonal line (prohibition sign)
-function SkipIcon({ className = "w-10 h-10" }: CardIconProps) {
+function SkipIcon({ className = "w-10 h-10", color = "currentColor" }: CardIconProps) {
   return (
     <svg viewBox="0 0 24 24" fill="none" className={className}>
-      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" fill="none" />
-      <line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <circle cx="12" cy="12" r="9" stroke={color} strokeWidth="1.5" fill="none" />
+      <line x1="5.5" y1="5.5" x2="18.5" y2="18.5" stroke={color} strokeWidth="1.5" strokeLinecap="round" />
     </svg>
   );
 }
 
-// Reverse icon: Two curved arrows forming a loop
-function ReverseIcon({ className = "w-10 h-10" }: CardIconProps) {
+// Reverse icon: Angular arrows (UNO Minimalista style - sharp corners)
+function ReverseIcon({ className = "w-10 h-10", color = "currentColor" }: CardIconProps) {
   return (
     <svg viewBox="0 0 24 24" fill="none" className={className}>
+      {/* Top arrow pointing left */}
       <path
-        d="M7 10L4 7L7 4"
-        stroke="currentColor"
-        strokeWidth="2"
+        d="M8 6L4 10L8 14"
+        stroke={color}
+        strokeWidth="1.5"
         strokeLinecap="round"
         strokeLinejoin="round"
+        fill="none"
       />
       <path
-        d="M4 7H14C17.3137 7 20 9.68629 20 13"
-        stroke="currentColor"
-        strokeWidth="2"
+        d="M4 10H16"
+        stroke={color}
+        strokeWidth="1.5"
         strokeLinecap="round"
       />
+      {/* Bottom arrow pointing right */}
       <path
-        d="M17 14L20 17L17 20"
-        stroke="currentColor"
-        strokeWidth="2"
+        d="M16 10L20 14L16 18"
+        stroke={color}
+        strokeWidth="1.5"
         strokeLinecap="round"
         strokeLinejoin="round"
+        fill="none"
       />
       <path
-        d="M20 17H10C6.68629 17 4 14.3137 4 11"
-        stroke="currentColor"
-        strokeWidth="2"
+        d="M20 14H8"
+        stroke={color}
+        strokeWidth="1.5"
         strokeLinecap="round"
       />
     </svg>
   );
 }
 
-// Draw2 icon: Two overlapping card rectangles
-function Draw2Icon({ className = "w-10 h-10" }: CardIconProps) {
+// Draw2 icon: Two overlapping card outlines
+function Draw2Icon({ className = "w-10 h-10", color = "currentColor" }: CardIconProps) {
   return (
     <svg viewBox="0 0 24 24" fill="none" className={className}>
-      <rect x="3" y="5" width="12" height="16" rx="2" stroke="currentColor" strokeWidth="2" fill="none" />
-      <rect x="9" y="3" width="12" height="16" rx="2" stroke="currentColor" strokeWidth="2" fill="none" />
+      <rect x="2" y="5" width="12" height="16" rx="1.5" stroke={color} strokeWidth="1.5" fill="none" />
+      <rect x="8" y="3" width="12" height="16" rx="1.5" stroke={color} strokeWidth="1.5" fill="none" />
     </svg>
   );
 }
 
-// Wild icon: Four-segment color wheel
+// Wild icon: Color ring with 4 segments (as seen in image)
 function WildIcon({ className = "w-12 h-12" }: CardIconProps) {
   return (
     <svg viewBox="0 0 24 24" className={className}>
-      <circle cx="12" cy="12" r="10" stroke="white" strokeWidth="1.5" fill="none" />
-      <path d="M12 2A10 10 0 0 1 22 12H12V2Z" fill={THEME.cardRed} />
-      <path d="M22 12A10 10 0 0 1 12 22V12H22Z" fill={THEME.cardBlue} />
-      <path d="M12 22A10 10 0 0 1 2 12H12V22Z" fill={THEME.cardGreen} />
-      <path d="M2 12A10 10 0 0 1 12 2V12H2Z" fill={THEME.cardYellow} />
-      <circle cx="12" cy="12" r="3" fill="white" />
+      {/* Outer colored ring segments */}
+      <path d="M12 2 A10 10 0 0 1 22 12" stroke={THEME.cardRed} strokeWidth="2" fill="none" />
+      <path d="M22 12 A10 10 0 0 1 12 22" stroke={THEME.cardBlue} strokeWidth="2" fill="none" />
+      <path d="M12 22 A10 10 0 0 1 2 12" stroke={THEME.cardGreen} strokeWidth="2" fill="none" />
+      <path d="M2 12 A10 10 0 0 1 12 2" stroke={THEME.cardYellow} strokeWidth="2" fill="none" />
+      {/* Inner white circle */}
+      <circle cx="12" cy="12" r="6" stroke="white" strokeWidth="1.5" fill="none" />
     </svg>
   );
 }
 
-// WildDraw4 icon: Four overlapping colored cards
+// WildDraw4 icon: Four overlapping colored card outlines
 function WildDraw4Icon({ className = "w-12 h-12" }: CardIconProps) {
   return (
-    <svg viewBox="0 0 24 24" className={className}>
-      <rect x="2" y="6" width="10" height="14" rx="1.5" fill={THEME.cardRed} stroke="white" strokeWidth="0.5" />
-      <rect x="5" y="4" width="10" height="14" rx="1.5" fill={THEME.cardYellow} stroke="white" strokeWidth="0.5" />
-      <rect x="9" y="5" width="10" height="14" rx="1.5" fill={THEME.cardGreen} stroke="white" strokeWidth="0.5" />
-      <rect x="12" y="3" width="10" height="14" rx="1.5" fill={THEME.cardBlue} stroke="white" strokeWidth="0.5" />
+    <svg viewBox="0 0 28 24" className={className}>
+      <rect x="1" y="6" width="10" height="14" rx="1" stroke={THEME.cardRed} strokeWidth="1.5" fill="none" />
+      <rect x="5" y="4" width="10" height="14" rx="1" stroke={THEME.cardYellow} strokeWidth="1.5" fill="none" />
+      <rect x="10" y="5" width="10" height="14" rx="1" stroke={THEME.cardGreen} strokeWidth="1.5" fill="none" />
+      <rect x="15" y="3" width="10" height="14" rx="1" stroke={THEME.cardBlue} strokeWidth="1.5" fill="none" />
     </svg>
   );
 }
 
-// Number display component for cards
+// Number display component for cards (UNO Minimalista style - thin font, underlined 6/9)
 function CardNumber({ value, size = 'md' }: { value: string; size?: 'sm' | 'md' | 'lg' }) {
-  const sizeClasses = {
-    sm: 'text-xl',
-    md: 'text-3xl',
-    lg: 'text-4xl',
+  const sizeConfig = {
+    sm: { fontSize: '1.25rem', underlineOffset: '2px' },
+    md: { fontSize: '2rem', underlineOffset: '3px' },
+    lg: { fontSize: '2.75rem', underlineOffset: '4px' },
   };
+  const config = sizeConfig[size];
+  const needsUnderline = value === '6' || value === '9';
+  
   return (
-    <span className={`font-bold ${sizeClasses[size]} drop-shadow-md`} style={{ fontFamily: 'Arial Black, sans-serif' }}>
+    <span 
+      style={{ 
+        fontFamily: CARD_FONT,
+        fontWeight: 200,
+        fontSize: config.fontSize,
+        textDecoration: needsUnderline ? 'underline' : 'none',
+        textUnderlineOffset: config.underlineOffset,
+        letterSpacing: '-0.02em',
+      }}
+    >
       {value}
     </span>
   );
 }
 
 // Get the appropriate icon/content for a card value
-function CardContent({ value, size = 'md' }: { value: string; size?: 'sm' | 'md' | 'lg' }) {
+function CardContent({ value, size = 'md', color = 'currentColor' }: { value: string; size?: 'sm' | 'md' | 'lg'; color?: string }) {
   const iconSizes = {
     sm: 'w-6 h-6',
     md: 'w-10 h-10',
-    lg: 'w-12 h-12',
+    lg: 'w-14 h-14',
   };
 
   switch (value) {
     case 'skip':
-      return <SkipIcon className={iconSizes[size]} />;
+      return <SkipIcon className={iconSizes[size]} color={color} />;
     case 'reverse':
-      return <ReverseIcon className={iconSizes[size]} />;
+      return <ReverseIcon className={iconSizes[size]} color={color} />;
     case 'draw2':
-      return <Draw2Icon className={iconSizes[size]} />;
+      return <Draw2Icon className={iconSizes[size]} color={color} />;
     case 'wild':
       return <WildIcon className={iconSizes[size]} />;
     case 'wild_draw4':
@@ -297,23 +322,31 @@ function CardContent({ value, size = 'md' }: { value: string; size?: 'sm' | 'md'
   }
 }
 
-// Corner indicator for cards
+// Corner indicator for cards (UNO Minimalista style)
 function CornerIndicator({ value, position }: { value: string; position: 'top-left' | 'bottom-right' }) {
   const positionClasses = position === 'top-left' 
-    ? 'top-1 left-1.5' 
-    : 'bottom-1 right-1.5 rotate-180';
+    ? 'top-1.5 left-2' 
+    : 'bottom-1.5 right-2 rotate-180';
   
-  const displayValue = value === 'wild' ? 'W' 
+  const displayValue = value === 'wild' ? '' 
     : value === 'wild_draw4' ? '+4' 
     : value === 'draw2' ? '+2'
-    : value === 'skip' ? 'S'
-    : value === 'reverse' ? 'R'
+    : value === 'skip' ? '⊘'
+    : value === 'reverse' ? '⇅'
     : value;
+
+  const needsUnderline = value === '6' || value === '9';
 
   return (
     <span 
-      className={`absolute ${positionClasses} text-xs font-bold opacity-90`}
-      style={{ fontFamily: 'Arial, sans-serif' }}
+      className={`absolute ${positionClasses}`}
+      style={{ 
+        fontFamily: CARD_FONT,
+        fontWeight: 300,
+        fontSize: '0.75rem',
+        textDecoration: needsUnderline ? 'underline' : 'none',
+        textUnderlineOffset: '1px',
+      }}
     >
       {displayValue}
     </span>
@@ -388,9 +421,10 @@ interface PlayerAvatarProps {
   name: string;
   size?: 'sm' | 'md' | 'lg';
   connected?: boolean;
+  serverUrl?: string;
 }
 
-function PlayerAvatar({ avatarId, name, size = 'md', connected = true }: PlayerAvatarProps) {
+function PlayerAvatar({ avatarId, name, size = 'md', connected = true, serverUrl = '' }: PlayerAvatarProps) {
   const sizeClasses = {
     sm: 'w-8 h-8 text-sm',
     md: 'w-10 h-10 text-base',
@@ -406,9 +440,9 @@ function PlayerAvatar({ avatarId, name, size = 'md', connected = true }: PlayerA
         borderColor: THEME.outline 
       }}
     >
-      {avatarId ? (
+      {avatarId && serverUrl ? (
         <img
-          src={`${SERVER_URL}/avatars/${avatarId}`}
+          src={`${serverUrl}/avatars/${avatarId}`}
           alt={`${name}'s avatar`}
           className="w-full h-full object-cover"
           loading="lazy"
@@ -482,8 +516,154 @@ function CardDisplay({
       <CornerIndicator value={card.value} position="bottom-right" />
       
       {/* Center content */}
-      <CardContent value={card.value} size={size} />
+      <CardContent value={card.value} size={size} color={textColor} />
     </button>
+  );
+}
+
+// Card back for opponent hands
+interface CardBackProps {
+  size?: 'xs' | 'sm' | 'md';
+  rotation?: number;
+  style?: React.CSSProperties;
+}
+
+function CardBack({ size = 'sm', rotation = 0, style }: CardBackProps) {
+  const sizes = {
+    xs: { width: 28, height: 42, radius: 4 },
+    sm: { width: 36, height: 54, radius: 5 },
+    md: { width: 48, height: 72, radius: 6 },
+  };
+  const { width, height, radius } = sizes[size];
+
+  return (
+    <div
+      style={{
+        ...style,
+        width,
+        height,
+        borderRadius: radius,
+        transform: `rotate(${rotation}deg)`,
+        backgroundColor: '#1a1a1a',
+        border: '2px solid #333',
+        boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
+      }}
+      className="flex items-center justify-center"
+    >
+      {/* UNO back design - simple oval */}
+      <div 
+        style={{
+          width: width * 0.7,
+          height: height * 0.5,
+          borderRadius: '50%',
+          border: '2px solid #E53935',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <span 
+          style={{ 
+            fontFamily: CARD_FONT, 
+            fontWeight: 400, 
+            fontSize: size === 'xs' ? '6px' : size === 'sm' ? '8px' : '10px',
+            color: '#E53935',
+            letterSpacing: '0.1em',
+          }}
+        >
+          UNO
+        </span>
+      </div>
+    </div>
+  );
+}
+
+// Fanned opponent hand display
+interface OpponentHandProps {
+  cardCount: number;
+  position: 'top' | 'left' | 'right';
+  playerName: string;
+  isActive: boolean;
+  timeRemaining: number;
+}
+
+function OpponentHand({ cardCount, position, playerName, isActive, timeRemaining }: OpponentHandProps) {
+  const isUrgent = timeRemaining < 10000 && isActive;
+  
+  // Calculate fan spread based on card count
+  const maxSpread = position === 'top' ? 120 : 80; // degrees
+  const spreadPerCard = Math.min(15, maxSpread / Math.max(cardCount, 1));
+  const startAngle = -(cardCount - 1) * spreadPerCard / 2;
+  
+  const getCardStyle = (index: number): React.CSSProperties => {
+    const angle = startAngle + index * spreadPerCard;
+    const isVertical = position === 'left' || position === 'right';
+    
+    if (isVertical) {
+      // Cards fan out vertically
+      const yOffset = (index - (cardCount - 1) / 2) * 8;
+      return {
+        position: 'absolute',
+        transform: `translateY(${yOffset}px) rotate(${position === 'left' ? -10 : 10}deg)`,
+        zIndex: index,
+      };
+    } else {
+      // Cards fan out horizontally (top position)
+      const xOffset = (index - (cardCount - 1) / 2) * 12;
+      return {
+        position: 'absolute',
+        transform: `translateX(${xOffset}px) rotate(${angle * 0.3}deg)`,
+        zIndex: index,
+      };
+    }
+  };
+
+  return (
+    <div className="flex flex-col items-center gap-1">
+      {/* Player info */}
+      <div 
+        className={`px-3 py-1 rounded-lg text-xs font-medium transition-all ${isActive ? 'scale-105' : ''}`}
+        style={{ 
+          backgroundColor: isActive ? THEME.primaryContainer : THEME.surfaceContainerHigh,
+          color: isActive ? THEME.onPrimaryContainer : THEME.onSurfaceVariant,
+        }}
+      >
+        <span>{playerName}</span>
+        <span 
+          className={`ml-2 font-mono ${isUrgent ? 'text-red-400 animate-pulse' : ''}`}
+        >
+          {formatTimeCompact(timeRemaining)}
+        </span>
+      </div>
+      
+      {/* Fanned cards */}
+      <div 
+        className="relative flex items-center justify-center"
+        style={{ 
+          width: position === 'top' ? Math.max(80, cardCount * 14) : 50,
+          height: position === 'top' ? 50 : Math.max(60, cardCount * 10),
+        }}
+      >
+        {Array.from({ length: cardCount }).map((_, index) => (
+          <CardBack 
+            key={index} 
+            size="xs" 
+            style={getCardStyle(index)}
+          />
+        ))}
+      </div>
+      
+      {/* Card count badge */}
+      <div 
+        className="px-2 py-0.5 rounded-full text-xs font-medium"
+        style={{ 
+          backgroundColor: THEME.surfaceContainerHighest,
+          color: THEME.onSurface,
+        }}
+      >
+        {cardCount} card{cardCount !== 1 ? 's' : ''}
+      </div>
+    </div>
   );
 }
 
@@ -537,41 +717,195 @@ function ColorPickerModal({ onSelect, onCancel }: ColorPickerModalProps) {
   );
 }
 
-// Prominent Chess Clock display
+// Prominent Chess Clock display - large, with milliseconds for urgency
 interface ChessClockProps {
   timeMs: number;
   isActive: boolean;
   playerName: string;
-  isLow?: boolean;
+  position?: 'top' | 'bottom';
 }
 
-function ChessClock({ timeMs, isActive, playerName, isLow = false }: ChessClockProps) {
-  const urgentThreshold = 10000; // 10 seconds
+function ChessClock({ timeMs, isActive, playerName, position = 'top' }: ChessClockProps) {
+  const urgentThreshold = 30000; // 30 seconds - start showing urgency earlier
+  const criticalThreshold = 10000; // 10 seconds - critical
   const isUrgent = timeMs < urgentThreshold && isActive;
+  const isCritical = timeMs < criticalThreshold && isActive;
+  
+  // Format with milliseconds for that chess clock feel
+  const totalSeconds = Math.floor(timeMs / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  const centiseconds = Math.floor((timeMs % 1000) / 10);
   
   return (
     <div 
-      className={`flex flex-col items-center p-4 rounded-xl transition-all duration-200 ${isActive ? 'scale-105' : 'opacity-60'}`}
-      style={{ 
-        backgroundColor: isActive ? THEME.primaryContainer : THEME.surfaceContainerHigh,
-        boxShadow: isActive ? '0 4px 20px rgba(208, 188, 255, 0.3)' : 'none',
-      }}
+      className={`flex flex-col items-center transition-all duration-200 ${isActive ? 'scale-105' : 'opacity-50'}`}
     >
+      {/* Player name label */}
       <span 
-        className="text-xs font-medium uppercase tracking-wider mb-1"
-        style={{ color: isActive ? THEME.onPrimaryContainer : THEME.onSurfaceVariant }}
+        className={`text-xs font-semibold uppercase tracking-widest ${position === 'bottom' ? 'order-2 mt-1' : 'mb-1'}`}
+        style={{ color: isActive ? THEME.primary : THEME.onSurfaceVariant }}
       >
         {playerName}
       </span>
-      <span 
-        className={`font-mono text-3xl font-bold tabular-nums ${isUrgent ? 'animate-pulse' : ''}`}
+      
+      {/* Clock display - styled like a real chess clock */}
+      <div 
+        className={`relative px-4 py-2 rounded-lg ${isCritical ? 'animate-pulse' : ''}`}
         style={{ 
-          color: isUrgent ? THEME.error : isActive ? THEME.primary : THEME.onSurfaceVariant,
-          textShadow: isUrgent ? '0 0 10px rgba(242, 184, 181, 0.5)' : 'none',
+          backgroundColor: isActive 
+            ? (isCritical ? 'rgba(242, 184, 181, 0.2)' : 'rgba(208, 188, 255, 0.15)') 
+            : 'rgba(0, 0, 0, 0.3)',
+          border: isActive 
+            ? `2px solid ${isCritical ? THEME.error : THEME.primary}` 
+            : '2px solid transparent',
+          boxShadow: isActive 
+            ? `0 0 20px ${isCritical ? 'rgba(242, 184, 181, 0.4)' : 'rgba(208, 188, 255, 0.3)'}` 
+            : 'none',
         }}
       >
-        {formatTime(timeMs)}
+        {/* Main time display */}
+        <div className="flex items-baseline font-mono tabular-nums">
+          {/* Minutes:Seconds */}
+          <span 
+            className="text-3xl md:text-4xl font-bold"
+            style={{ 
+              color: isCritical ? THEME.error : isActive ? '#FFFFFF' : THEME.onSurfaceVariant,
+              textShadow: isCritical ? '0 0 10px rgba(242, 184, 181, 0.8)' : 'none',
+            }}
+          >
+            {minutes}:{seconds.toString().padStart(2, '0')}
+          </span>
+          
+          {/* Centiseconds - smaller, always visible for urgency */}
+          <span 
+            className="text-lg md:text-xl font-bold ml-0.5"
+            style={{ 
+              color: isCritical ? THEME.error : isActive ? 'rgba(255,255,255,0.7)' : THEME.outline,
+              textShadow: isCritical ? '0 0 8px rgba(242, 184, 181, 0.6)' : 'none',
+            }}
+          >
+            .{centiseconds.toString().padStart(2, '0')}
+          </span>
+        </div>
+        
+        {/* Active indicator dot */}
+        {isActive && (
+          <div 
+            className={`absolute -top-1 -right-1 w-3 h-3 rounded-full ${isCritical ? 'animate-ping' : ''}`}
+            style={{ 
+              backgroundColor: isCritical ? THEME.error : THEME.primary,
+              boxShadow: `0 0 8px ${isCritical ? THEME.error : THEME.primary}`,
+            }}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Compact clock for carousel display
+interface ClockChipProps {
+  timeMs: number;
+  isActive: boolean;
+  playerName: string;
+  isMe: boolean;
+}
+
+function ClockChip({ timeMs, isActive, playerName, isMe }: ClockChipProps) {
+  const criticalThreshold = 10000; // 10 seconds
+  const urgentThreshold = 30000; // 30 seconds
+  const isCritical = timeMs < criticalThreshold;
+  const isUrgent = timeMs < urgentThreshold;
+  
+  // Format with centiseconds
+  const totalSeconds = Math.floor(timeMs / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  const centiseconds = Math.floor((timeMs % 1000) / 10);
+  
+  return (
+    <div 
+      className={`flex flex-col items-center px-3 py-2 rounded-xl transition-all duration-300 flex-shrink-0
+                  ${isActive ? 'scale-110 z-10' : 'scale-95'}`}
+      style={{ 
+        backgroundColor: isActive 
+          ? (isCritical ? 'rgba(242, 184, 181, 0.25)' : 'rgba(208, 188, 255, 0.2)') 
+          : 'rgba(0, 0, 0, 0.3)',
+        border: isActive 
+          ? `2px solid ${isCritical ? THEME.error : THEME.primary}` 
+          : '2px solid rgba(255,255,255,0.1)',
+        boxShadow: isActive 
+          ? `0 0 20px ${isCritical ? 'rgba(242, 184, 181, 0.5)' : 'rgba(208, 188, 255, 0.4)'}` 
+          : 'none',
+        minWidth: isActive ? '140px' : '100px',
+      }}
+    >
+      {/* Player name */}
+      <span 
+        className="text-[10px] font-semibold uppercase tracking-wider truncate max-w-full"
+        style={{ color: isActive ? (isMe ? THEME.primary : '#FFFFFF') : THEME.onSurfaceVariant }}
+      >
+        {isMe ? 'You' : playerName}
       </span>
+      
+      {/* Time display */}
+      <div className={`flex items-baseline font-mono tabular-nums ${isCritical && isActive ? 'animate-pulse' : ''}`}>
+        <span 
+          className={`font-bold ${isActive ? 'text-2xl' : 'text-lg'}`}
+          style={{ 
+            color: isCritical && isActive ? THEME.error : isActive ? '#FFFFFF' : THEME.onSurfaceVariant,
+            textShadow: isCritical && isActive ? '0 0 8px rgba(242, 184, 181, 0.8)' : 'none',
+          }}
+        >
+          {minutes}:{seconds.toString().padStart(2, '0')}
+        </span>
+        <span 
+          className={`font-bold ${isActive ? 'text-sm' : 'text-xs'}`}
+          style={{ 
+            color: isCritical && isActive ? THEME.error : isActive ? 'rgba(255,255,255,0.7)' : THEME.outline,
+          }}
+        >
+          .{centiseconds.toString().padStart(2, '0')}
+        </span>
+      </div>
+      
+      {/* Active turn indicator */}
+      {isActive && (
+        <span 
+          className="text-[9px] uppercase tracking-widest mt-0.5"
+          style={{ color: isCritical ? THEME.error : THEME.primary }}
+        >
+          {isMe ? 'Your Turn' : 'Playing'}
+        </span>
+      )}
+    </div>
+  );
+}
+
+// Carousel of all players' chess clocks
+interface ChessClockBarProps {
+  players: Array<{ id: string; name: string }>;
+  currentPlayerId: string | undefined;
+  interpolatedTime: Record<string, number>;
+  myPlayerId: string | null;
+}
+
+function ChessClockBar({ players, currentPlayerId, interpolatedTime, myPlayerId }: ChessClockBarProps) {
+  return (
+    <div 
+      className="flex justify-center items-center gap-2 py-3 px-4 overflow-x-auto"
+      style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)' }}
+    >
+      {players.map((player) => (
+        <ClockChip
+          key={player.id}
+          timeMs={interpolatedTime[player.id] || 0}
+          isActive={player.id === currentPlayerId}
+          playerName={player.name}
+          isMe={player.id === myPlayerId}
+        />
+      ))}
     </div>
   );
 }
@@ -584,6 +918,7 @@ interface PlayerRowProps {
   showCatch: boolean;
   onCatch: () => void;
   isPending: boolean;
+  serverUrl: string;
 }
 
 function PlayerRow({
@@ -593,7 +928,8 @@ function PlayerRow({
   isPlaying,
   showCatch,
   onCatch,
-  isPending
+  isPending,
+  serverUrl
 }: PlayerRowProps) {
   const isUrgent = timeRemaining < 10000 && isActive;
   
@@ -610,6 +946,7 @@ function PlayerRow({
         avatarId={player.avatarId}
         name={player.name}
         connected={player.connected}
+        serverUrl={serverUrl}
       />
 
       <div className="flex-1 min-w-0">
@@ -939,41 +1276,60 @@ function HandArea({
   };
 
   return (
-    <div className="mt-4">
-      <h3 
-        className="text-sm font-semibold uppercase tracking-wider mb-3"
-        style={{ color: THEME.onSurfaceVariant }}
+    <div className="py-4">
+      {/* Fanned hand display */}
+      <div 
+        className="flex justify-center items-end"
+        style={{ minHeight: 120 }}
       >
-        Your Hand
-      </h3>
-      <div className="flex flex-wrap gap-2 justify-center">
-        {cards.map((card, index) => (
-          <animated.div
-            key={index}
-            {...bind(card, index)}
-            style={{
-              x: springs[index].x,
-              y: springs[index].y,
-              scale: springs[index].scale,
-              rotateZ: springs[index].rotateZ,
-              zIndex: draggingIndex === index ? 50 : 1
-            }}
-            className="cursor-grab active:cursor-grabbing"
-          >
-            <CardDisplay
-              card={card}
-              onClick={() => handleCardClick(card, index)}
-              disabled={!myTurn || isPending}
-              selected={selectedIndex === index}
-              dragging={draggingIndex === index}
-            />
-          </animated.div>
-        ))}
+        {cards.map((card, index) => {
+          // Calculate fan positioning
+          const totalCards = cards.length;
+          const centerIndex = (totalCards - 1) / 2;
+          const offset = index - centerIndex;
+          
+          // Fan angle: cards spread out from center
+          const maxAngle = Math.min(30, totalCards * 3); // More cards = wider fan
+          const angle = (offset / Math.max(totalCards - 1, 1)) * maxAngle;
+          
+          // Horizontal offset: overlap cards
+          const cardWidth = 64;
+          const overlapAmount = Math.max(20, 50 - totalCards * 2); // Less overlap with more cards
+          const xOffset = offset * overlapAmount;
+          
+          // Vertical curve: center cards slightly lower (arc effect)
+          const yOffset = Math.abs(offset) * 3;
+          
+          return (
+            <animated.div
+              key={index}
+              {...bind(card, index)}
+              style={{
+                x: springs[index].x,
+                y: springs[index].y,
+                scale: springs[index].scale,
+                rotateZ: springs[index].rotateZ,
+                zIndex: draggingIndex === index ? 100 : selectedIndex === index ? 50 : index,
+                marginLeft: index === 0 ? 0 : -cardWidth + overlapAmount,
+                transform: `rotate(${angle}deg) translateY(${yOffset}px)`,
+              }}
+              className="cursor-grab active:cursor-grabbing transition-transform hover:-translate-y-2"
+            >
+              <CardDisplay
+                card={card}
+                onClick={() => handleCardClick(card, index)}
+                disabled={!myTurn || isPending}
+                selected={selectedIndex === index}
+                dragging={draggingIndex === index}
+              />
+            </animated.div>
+          );
+        })}
       </div>
       {isOverDiscard && (
         <p 
           className="text-center text-sm mt-3 font-medium"
-          style={{ color: THEME.cardGreen }}
+          style={{ color: '#90EE90' }}
         >
           Release to play card
         </p>
@@ -986,15 +1342,56 @@ function HandArea({
 // Main App Component
 // ============================================================================
 
+// Helper to get server URL from various sources
+function getInitialServerUrl(): { url: string; source: 'url' | 'storage' | 'none' } {
+  // 1. Check URL parameters first (highest priority)
+  const urlParams = new URLSearchParams(window.location.search);
+  const serverFromUrl = urlParams.get('server');
+  if (serverFromUrl) {
+    // Normalize: add https:// if no protocol specified
+    const normalizedUrl = serverFromUrl.match(/^https?:\/\//) 
+      ? serverFromUrl 
+      : `https://${serverFromUrl}`;
+    return { url: normalizedUrl, source: 'url' };
+  }
+  
+  // 2. Check localStorage
+  const savedServerUrl = localStorage.getItem(STORAGE_KEYS.SERVER_URL);
+  if (savedServerUrl) {
+    return { url: savedServerUrl, source: 'storage' };
+  }
+  
+  // 3. No server configured
+  return { url: '', source: 'none' };
+}
+
 function App() {
-  // State
-  const [view, setView] = useState<AppView>('lobby');
+  // Server configuration - check URL params, then localStorage
+  const initialServer = getInitialServerUrl();
+  const [serverUrl, setServerUrl] = useState<string>(initialServer.url);
+  const [serverUrlInput, setServerUrlInput] = useState(initialServer.url || DEFAULT_SERVER_URL);
+  const [isTestingConnection, setIsTestingConnection] = useState(false);
+  const [connectionError, setConnectionError] = useState('');
+
+  // State - skip config if we have a server from URL or storage
+  const [view, setView] = useState<AppView>(initialServer.source !== 'none' ? 'lobby' : 'server-config');
   const [displayName, setDisplayName] = useState('');
   const [joinRoomCode, setJoinRoomCode] = useState('');
   const [avatarId, setAvatarId] = useState<string | null>(null);
   const [avatarUrlInput, setAvatarUrlInput] = useState('');
   const [avatarUploadError, setAvatarUploadError] = useState('');
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  
+  // If server came from URL param, save it to localStorage
+  useEffect(() => {
+    if (initialServer.source === 'url' && initialServer.url) {
+      localStorage.setItem(STORAGE_KEYS.SERVER_URL, initialServer.url);
+      // Clean the URL params after saving
+      const url = new URL(window.location.href);
+      url.searchParams.delete('server');
+      window.history.replaceState({}, '', url.toString());
+    }
+  }, []);
 
   // Room settings
   const [maxPlayers, setMaxPlayers] = useState(6);
@@ -1082,6 +1479,9 @@ function App() {
 
   // Reconnection on mount
   useEffect(() => {
+    // Skip if we don't have a server URL configured
+    if (!serverUrl) return;
+    
     if (myPlayerSecret && myPlayerId && storedRoomCode) {
       const storedDisplayName = localStorage.getItem(STORAGE_KEYS.DISPLAY_NAME);
       const storedAvatarId = localStorage.getItem(STORAGE_KEYS.AVATAR_ID);
@@ -1091,7 +1491,7 @@ function App() {
         setAvatarId(storedAvatarId);
         setLoading(true);
 
-        const newSocket = io(SERVER_URL);
+        const newSocket = io(serverUrl);
         setupSocketListeners(newSocket);
 
         newSocket.on('connect', () => {
@@ -1120,7 +1520,7 @@ function App() {
         setSocket(newSocket);
       }
     }
-  }, []);
+  }, [serverUrl]);
 
   // Actions
   const handleCreateRoom = () => {
@@ -1137,7 +1537,7 @@ function App() {
       aiPlayerCount
     };
 
-    const newSocket = io(SERVER_URL);
+    const newSocket = io(serverUrl);
     setupSocketListeners(newSocket);
 
     newSocket.on('connect', () => {
@@ -1183,7 +1583,7 @@ function App() {
     setLoading(true);
     setError('');
 
-    const newSocket = io(SERVER_URL);
+    const newSocket = io(serverUrl);
     setupSocketListeners(newSocket);
 
     newSocket.on('connect', () => {
@@ -1334,7 +1734,7 @@ function App() {
       const formData = new FormData();
       formData.append('file', file);
 
-      const res = await fetch(`${SERVER_URL}/avatar/upload`, {
+      const res = await fetch(`${serverUrl}/avatar/upload`, {
         method: 'POST',
         body: formData
       });
@@ -1363,7 +1763,7 @@ function App() {
     setIsUploadingAvatar(true);
 
     try {
-      const res = await fetch(`${SERVER_URL}/avatar/from-url`, {
+      const res = await fetch(`${serverUrl}/avatar/from-url`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url: avatarUrlInput.trim() })
@@ -1388,6 +1788,147 @@ function App() {
     return <LoadingScreen />;
   }
 
+  // Server Configuration View
+  if (view === 'server-config') {
+    const handleConnect = async () => {
+      const urlToTest = serverUrlInput.trim();
+      if (!urlToTest) {
+        setConnectionError('Please enter a server URL');
+        return;
+      }
+
+      // Normalize URL
+      const normalizedUrl = urlToTest.match(/^https?:\/\//) 
+        ? urlToTest 
+        : `https://${urlToTest}`;
+
+      setIsTestingConnection(true);
+      setConnectionError('');
+
+      try {
+        // Test connection with a simple socket connect
+        const testSocket = io(normalizedUrl, { 
+          timeout: 5000,
+          reconnection: false 
+        });
+
+        await new Promise<void>((resolve, reject) => {
+          const timeout = setTimeout(() => {
+            testSocket.disconnect();
+            reject(new Error('Connection timed out'));
+          }, 5000);
+
+          testSocket.on('connect', () => {
+            clearTimeout(timeout);
+            testSocket.disconnect();
+            resolve();
+          });
+
+          testSocket.on('connect_error', (err) => {
+            clearTimeout(timeout);
+            testSocket.disconnect();
+            reject(err);
+          });
+        });
+
+        // Connection successful - save and proceed
+        localStorage.setItem(STORAGE_KEYS.SERVER_URL, normalizedUrl);
+        setServerUrl(normalizedUrl);
+        setView('lobby');
+      } catch (err) {
+        setConnectionError(`Failed to connect: ${(err as Error).message}`);
+      } finally {
+        setIsTestingConnection(false);
+      }
+    };
+
+    return (
+      <div 
+        className="min-h-screen flex items-center justify-center p-4"
+        style={{ backgroundColor: THEME.surfaceDim }}
+      >
+        <div className="max-w-md w-full">
+          <div className="text-center mb-8">
+            <h1 
+              className="text-4xl font-bold mb-2"
+              style={{ color: THEME.onSurface, fontFamily: CARD_FONT }}
+            >
+              Chess Clock UNO
+            </h1>
+            <p style={{ color: THEME.onSurfaceVariant }}>Connect to a game server</p>
+          </div>
+
+          <div 
+            className="rounded-2xl p-6 shadow-2xl border"
+            style={{ backgroundColor: THEME.surfaceContainer, borderColor: THEME.outlineVariant }}
+          >
+            {connectionError && (
+              <div 
+                className="rounded-xl p-3 mb-4 border"
+                style={{ 
+                  backgroundColor: `${THEME.errorContainer}33`,
+                  borderColor: THEME.errorContainer 
+                }}
+              >
+                <span className="text-sm" style={{ color: THEME.error }}>{connectionError}</span>
+              </div>
+            )}
+
+            <div className="mb-6">
+              <label 
+                className="block text-sm font-medium mb-2"
+                style={{ color: THEME.onSurface }}
+              >
+                Server URL
+              </label>
+              <input
+                type="text"
+                value={serverUrlInput}
+                onChange={(e) => setServerUrlInput(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleConnect()}
+                placeholder="https://your-server.com or localhost:3000"
+                className="w-full px-4 py-3 rounded-xl border outline-none transition-colors"
+                style={{
+                  backgroundColor: THEME.surfaceContainerHigh,
+                  borderColor: THEME.outline,
+                  color: THEME.onSurface,
+                }}
+              />
+              <p className="text-xs mt-2" style={{ color: THEME.onSurfaceVariant }}>
+                Enter the URL of a Chess Clock UNO server. Ask your host for the address!
+              </p>
+            </div>
+
+            <button
+              onClick={handleConnect}
+              disabled={isTestingConnection}
+              className="w-full py-4 font-bold text-lg rounded-xl transition-all duration-150 
+                         disabled:opacity-50 shadow-lg hover:opacity-90"
+              style={{ backgroundColor: THEME.primary, color: THEME.onPrimary }}
+            >
+              {isTestingConnection ? 'Connecting...' : 'Connect'}
+            </button>
+
+            <div className="mt-6 pt-6 border-t" style={{ borderColor: THEME.outlineVariant }}>
+              <p className="text-sm text-center" style={{ color: THEME.onSurfaceVariant }}>
+                Want to host your own server?
+              </p>
+              <a 
+                href="https://github.com/markjoshwel/ccu" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="block text-center text-sm mt-1 hover:underline"
+                style={{ color: THEME.primary }}
+              >
+                View instructions on GitHub
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // Room View
   if (view === 'room' && room) {
     const showUnoButton =
@@ -1402,20 +1943,20 @@ function App() {
 
     return (
       <div 
-        className="min-h-screen p-4"
+        className="min-h-screen p-2 md:p-4"
         style={{ backgroundColor: THEME.surfaceDim }}
       >
-        <div className="max-w-2xl mx-auto">
+        <div className={room.gameStatus === 'playing' ? 'max-w-5xl mx-auto' : 'max-w-2xl mx-auto'}>
           {/* Header */}
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-3">
             <div>
               <h1 
-                className="text-xl font-bold"
-                style={{ color: THEME.onSurface }}
+                className="text-lg md:text-xl font-bold"
+                style={{ color: THEME.onSurface, fontFamily: CARD_FONT }}
               >
                 Chess Clock UNO
               </h1>
-              <p style={{ color: THEME.onSurfaceVariant }}>
+              <p className="text-sm" style={{ color: THEME.onSurfaceVariant }}>
                 Room: <span className="font-mono" style={{ color: THEME.primary }}>{room.id}</span>
               </p>
             </div>
@@ -1467,6 +2008,7 @@ function App() {
                       avatarId={player.avatarId}
                       name={player.name}
                       connected={player.connected}
+                      serverUrl={serverUrl}
                     />
                     <span className="font-medium" style={{ color: THEME.onSurface }}>{player.name}</span>
                     {idx === 0 && (
@@ -1507,159 +2049,171 @@ function App() {
             </div>
           )}
 
-          {/* Playing */}
+          {/* Playing - Tabletop View */}
           {room.gameStatus === 'playing' && topCard && (
-            <div className="space-y-4">
-              {/* Prominent Chess Clock */}
+            <div 
+              className="relative rounded-3xl overflow-hidden flex flex-col"
+              style={{ 
+                background: `radial-gradient(ellipse at center, ${THEME.tableFelt} 0%, ${THEME.tableGreen} 100%)`,
+                minHeight: '70vh',
+                boxShadow: 'inset 0 0 100px rgba(0,0,0,0.3)',
+              }}
+            >
+              {/* Table felt texture overlay */}
               <div 
-                className="rounded-2xl p-4 border"
-                style={{ backgroundColor: THEME.surfaceContainer, borderColor: THEME.outlineVariant }}
-              >
-                <div className="flex justify-center gap-4">
-                  {allPlayers.slice(0, 2).map((player, idx) => (
-                    <ChessClock
-                      key={player.id}
-                      timeMs={interpolatedTime[player.id] || 0}
-                      isActive={room.currentPlayerIndex === idx}
-                      playerName={player.name}
-                    />
-                  ))}
-                </div>
-                {allPlayers.length > 2 && (
-                  <div className="flex justify-center gap-2 mt-3 flex-wrap">
-                    {allPlayers.slice(2).map((player, idx) => {
-                      const actualIdx = idx + 2;
-                      const isActive = room.currentPlayerIndex === actualIdx;
-                      return (
-                        <div 
-                          key={player.id}
-                          className="px-3 py-1 rounded-lg text-sm font-mono"
-                          style={{ 
-                            backgroundColor: isActive ? THEME.primaryContainer : THEME.surfaceContainerHigh,
-                            color: isActive ? THEME.primary : THEME.onSurfaceVariant,
-                          }}
-                        >
-                          {player.name}: {formatTimeCompact(interpolatedTime[player.id] || 0)}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
+                className="absolute inset-0 opacity-10 pointer-events-none"
+                style={{ 
+                  backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 100 100\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'noise\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.8\' numOctaves=\'4\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23noise)\'/%3E%3C/svg%3E")',
+                }}
+              />
+
+              {/* PROMINENT CHESS CLOCK BAR - Top of table */}
+              <ChessClockBar
+                players={allPlayers.map(p => ({ id: p.id, name: p.name }))}
+                currentPlayerId={activePlayer?.id}
+                interpolatedTime={interpolatedTime}
+                myPlayerId={myPlayerId}
+              />
+
+              {/* Opponents at top */}
+              <div className="flex justify-center gap-6 pt-2 px-4">
+                {allPlayers
+                  .filter((p) => p.id !== myPlayerId)
+                  .map((player) => {
+                    const playerIdx = allPlayers.findIndex((p) => p.id === player.id);
+                    return (
+                      <OpponentHand
+                        key={player.id}
+                        cardCount={getPlayerHandCount(player)}
+                        position="top"
+                        playerName={player.name}
+                        isActive={room.currentPlayerIndex === playerIdx}
+                        timeRemaining={interpolatedTime[player.id] || 0}
+                      />
+                    );
+                  })}
               </div>
 
-              {/* Discard Pile & Active Color */}
-              <div
-                ref={discardRef}
-                className="rounded-2xl p-6 border"
-                style={{ backgroundColor: THEME.surfaceContainer, borderColor: THEME.outlineVariant }}
-              >
-                <div className="flex items-center justify-between mb-4">
-                  <span 
-                    className="text-sm font-medium uppercase tracking-wider"
-                    style={{ color: THEME.onSurfaceVariant }}
+              {/* Center play area */}
+              <div className="flex items-center justify-center py-8">
+                <div className="flex items-center gap-8">
+                  {/* Draw pile */}
+                  <button
+                    onClick={handleDrawCard}
+                    disabled={!myTurn || isPending}
+                    className="relative transition-transform hover:scale-105 active:scale-95 disabled:opacity-70"
+                    title="Draw a card"
                   >
-                    Discard Pile
-                  </span>
-                  {room.activeColor && (
-                    <div 
-                      className="px-4 py-1.5 rounded-full font-bold text-sm capitalize"
-                      style={{ 
-                        backgroundColor: CARD_COLORS[room.activeColor],
-                        color: room.activeColor === 'yellow' ? '#1C1B1F' : '#FFFFFF',
-                      }}
-                    >
-                      {room.activeColor}
+                    <div className="relative">
+                      {/* Stack effect */}
+                      <CardBack size="md" style={{ position: 'absolute', top: 4, left: 2 }} />
+                      <CardBack size="md" style={{ position: 'absolute', top: 2, left: 1 }} />
+                      <CardBack size="md" />
                     </div>
-                  )}
-                </div>
+                    <div 
+                      className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-xs font-medium px-2 py-0.5 rounded"
+                      style={{ backgroundColor: 'rgba(0,0,0,0.5)', color: '#fff' }}
+                    >
+                      Draw
+                    </div>
+                  </button>
 
-                <div className="flex justify-center">
-                  <CardDisplay card={topCard} size="lg" disabled />
+                  {/* Discard pile */}
+                  <div 
+                    ref={discardRef}
+                    className="relative"
+                  >
+                    <CardDisplay card={topCard} size="lg" disabled />
+                    {/* Active color indicator */}
+                    {room.activeColor && (
+                      <div 
+                        className="absolute -top-3 -right-3 w-8 h-8 rounded-full border-2 border-white shadow-lg"
+                        style={{ backgroundColor: CARD_COLORS[room.activeColor] }}
+                        title={`Active color: ${room.activeColor}`}
+                      />
+                    )}
+                    <div 
+                      className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-xs font-medium px-2 py-0.5 rounded whitespace-nowrap"
+                      style={{ backgroundColor: 'rgba(0,0,0,0.5)', color: '#fff' }}
+                    >
+                      {myTurn ? 'Your turn' : `${activePlayer?.name}'s turn`}
+                    </div>
+                  </div>
                 </div>
-
-                <p 
-                  className="text-center text-sm mt-4"
-                  style={{ color: THEME.onSurfaceVariant }}
-                >
-                  {myTurn ? 'Drag a card here or tap to play' : `${activePlayer?.name || 'Opponent'}'s turn`}
-                </p>
               </div>
 
-              {/* UNO Button */}
+              {/* Direction indicator */}
+              <div 
+                className="absolute top-1/2 left-4 -translate-y-1/2 text-4xl opacity-30"
+                style={{ color: '#fff' }}
+              >
+                {room.direction === 1 ? '↻' : '↺'}
+              </div>
+
+              {/* UNO Button - floating */}
               {showUnoButton && (
                 <button
                   onClick={handleCallUno}
                   disabled={isPending}
-                  className="w-full py-5 font-bold text-3xl uppercase tracking-widest 
-                             rounded-xl animate-pulse hover:animate-none disabled:opacity-50 shadow-lg"
-                  style={{ backgroundColor: THEME.cardRed, color: '#FFFFFF' }}
+                  className="absolute top-1/2 right-4 -translate-y-1/2 px-6 py-4 font-bold text-2xl uppercase 
+                             rounded-2xl animate-bounce hover:animate-none disabled:opacity-50 shadow-2xl"
+                  style={{ 
+                    backgroundColor: THEME.cardRed, 
+                    color: '#FFFFFF',
+                    fontFamily: CARD_FONT,
+                  }}
                 >
-                  {isPending ? 'Calling...' : 'UNO!'}
+                  UNO!
                 </button>
               )}
 
-              {/* Players List */}
+              {/* Catch UNO buttons */}
+              {allPlayers.map((player, idx) => {
+                const showCatch = !!(
+                  room.unoWindow &&
+                  room.unoWindow.playerId === player.id &&
+                  !room.unoWindow.called &&
+                  player.id !== myPlayerId
+                );
+                if (!showCatch) return null;
+                return (
+                  <button
+                    key={player.id}
+                    onClick={() => handleCatchUno(player.id)}
+                    disabled={isPending}
+                    className="absolute top-4 right-4 px-4 py-2 font-bold text-lg uppercase 
+                               rounded-xl animate-pulse disabled:opacity-50 shadow-xl"
+                    style={{ backgroundColor: THEME.cardYellow, color: '#000' }}
+                  >
+                    Catch {player.name}!
+                  </button>
+                );
+              })}
+
+              {/* My hand at bottom with my clock */}
               <div 
-                className="rounded-2xl p-4 border"
-                style={{ backgroundColor: THEME.surfaceContainer, borderColor: THEME.outlineVariant }}
+                className="mt-auto px-4 pb-4"
+                style={{ backgroundColor: 'rgba(0,0,0,0.3)' }}
               >
-                <h2 
-                  className="text-sm font-semibold uppercase tracking-wider mb-3"
-                  style={{ color: THEME.onSurfaceVariant }}
-                >
-                  Players
-                </h2>
-                <div className="space-y-2">
-                  {allPlayers.map((player, idx) => (
-                    <PlayerRow
-                      key={player.id}
-                      player={player}
-                      isActive={room.currentPlayerIndex === idx}
-                      timeRemaining={interpolatedTime[player.id] || 0}
-                      isPlaying={room.gameStatus === 'playing'}
-                      showCatch={
-                        !!(
-                          room.unoWindow &&
-                          room.unoWindow.playerId === player.id &&
-                          !room.unoWindow.called &&
-                          player.id !== myPlayerId
-                        )
-                      }
-                      onCatch={() => handleCatchUno(player.id)}
-                      isPending={isPending}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              {/* Hand */}
-              {handCards.length > 0 && (
-                <div 
-                  className="rounded-2xl p-4 border"
-                  style={{ backgroundColor: THEME.surfaceContainer, borderColor: THEME.outlineVariant }}
-                >
-                  <HandArea
-                    cards={handCards}
-                    myTurn={myTurn}
-                    isPending={isPending}
-                    onPlayCard={(card) => handlePlayCard(card)}
-                    discardRef={discardRef}
-                    reducedMotion={reducedMotion}
+                {/* My prominent clock display */}
+                <div className="flex justify-center py-2">
+                  <ChessClock
+                    timeMs={interpolatedTime[myPlayerId || ''] || 0}
+                    isActive={myTurn}
+                    playerName={myTurn ? "YOUR TURN" : "Your Time"}
+                    position="bottom"
                   />
-
-                  {/* Draw Button */}
-                  {myTurn && (
-                    <button
-                      onClick={handleDrawCard}
-                      disabled={isPending}
-                      className="w-full mt-4 py-3 font-medium rounded-xl transition-colors disabled:opacity-50"
-                      style={{ backgroundColor: THEME.surfaceContainerHighest, color: THEME.onSurface }}
-                    >
-                      {isPending ? 'Drawing...' : 'Draw Card'}
-                    </button>
-                  )}
                 </div>
-              )}
+                
+                <HandArea
+                  cards={handCards}
+                  myTurn={myTurn}
+                  isPending={isPending}
+                  onPlayCard={(card) => handlePlayCard(card)}
+                  discardRef={discardRef}
+                  reducedMotion={reducedMotion}
+                />
+              </div>
             </div>
           )}
 
@@ -1685,7 +2239,7 @@ function App() {
         <div className="text-center mb-8">
           <h1 
             className="text-4xl font-bold mb-2"
-            style={{ color: THEME.onSurface }}
+            style={{ color: THEME.onSurface, fontFamily: CARD_FONT }}
           >
             Chess Clock UNO
           </h1>
@@ -1696,6 +2250,36 @@ function App() {
           className="rounded-2xl p-6 shadow-2xl border"
           style={{ backgroundColor: THEME.surfaceContainer, borderColor: THEME.outlineVariant }}
         >
+          {/* Server indicator */}
+          <div 
+            className="flex items-center justify-between mb-4 p-3 rounded-xl"
+            style={{ backgroundColor: THEME.surfaceContainerHigh }}
+          >
+            <div className="flex-1 min-w-0">
+              <p className="text-xs uppercase tracking-wider" style={{ color: THEME.onSurfaceVariant }}>
+                Connected to
+              </p>
+              <p 
+                className="text-sm font-mono truncate" 
+                style={{ color: THEME.onSurface }}
+                title={serverUrl}
+              >
+                {serverUrl.replace(/^https?:\/\//, '')}
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                localStorage.removeItem(STORAGE_KEYS.SERVER_URL);
+                setServerUrl('');
+                setView('server-config');
+              }}
+              className="ml-3 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors hover:opacity-80"
+              style={{ backgroundColor: THEME.surfaceContainerHighest, color: THEME.onSurfaceVariant }}
+            >
+              Change
+            </button>
+          </div>
+
           <ErrorMessage message={error} onDismiss={() => setError('')} />
 
           {/* Display Name */}
@@ -1734,7 +2318,7 @@ function App() {
                 className="flex items-center gap-3 mb-3 p-3 rounded-xl"
                 style={{ backgroundColor: `${THEME.cardGreen}22` }}
               >
-                <PlayerAvatar avatarId={avatarId} name={displayName || 'You'} size="lg" />
+                <PlayerAvatar avatarId={avatarId} name={displayName || 'You'} size="lg" serverUrl={serverUrl} />
                 <div className="flex-1">
                   <p className="text-sm font-medium" style={{ color: THEME.cardGreen }}>Avatar selected</p>
                 </div>
