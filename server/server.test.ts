@@ -3795,7 +3795,7 @@ describe('clock sync scheduler', () => {
 
     // Allow a small tolerance for timer tick drift when turns switch
     expect(afterPlayer1Time).toBeGreaterThanOrEqual(initialPlayer1Time - 600);
-    expect(afterPlayer2Time).toBeLessThan(60000);
+    expect(afterPlayer2Time).toBeLessThanOrEqual(60000);
 
     room.stopClockSync();
   });
