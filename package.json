@@ -1,6 +1,6 @@
 {
   "name": "ccu-vc",
-  "version": "0.0.1",
+  "version": "2026.1.19",
   "workspaces": [
     "client",
     "server",

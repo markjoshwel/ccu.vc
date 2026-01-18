@@ -1,24 +1,41 @@
 # Agent Session Notes
 
-## Current Session: Tabletop UI Revamp
+## Version: v2026.1.19
 
 ### Overview
-Chess Clock UNO UI has been completely redesigned with a tabletop game feel:
-1. Green felt table background with radial gradient
-2. Opponents shown at top with fanned card backs
-3. Central play area with draw pile and discard pile
-4. Player hand at bottom with fanned cards
-5. UNO Minimalista card styling (Barlow font, thin lines, underlined 6/9)
+Chess Clock UNO - Real-time multiplayer UNO with chess clock mechanics, keyboard controls, and niconico-style flying chat.
 
-### Session Summary
-- **Bug Fix**: Fixed UNO call crash (callback was null) - made all socket callbacks optional
-- **Bug Fix**: Fixed playCard signature order (chosenColor before callback)
-- **Tabletop UI**: Complete redesign of game view
-- **UNO Minimalista Cards**: Thin font, clean line icons, proper color ring for wild
-- **Opponent Card Backs**: Fanned display showing card count
-- **Fanned Hand**: Cards fan out in an arc at bottom
-- **Configurable Server URL**: Users can connect to any server, supports URL params
-- 340 server tests passing
+### Recent Changes (v2026.1.19)
+
+#### Keyboard Controls
+- **Arrow Left/Right**: Select card in hand
+- **Arrow Up / Enter**: Play selected card
+- **Arrow Down / Space**: Draw card from pile
+- **/** (slash): Open chat overlay
+- **Escape**: Close chat overlay
+- Keybinds help displayed at bottom of game screen (desktop only)
+
+#### Flying Chat (Niconico-style)
+- Messages fly across the screen right-to-left like niconico/bilibili
+- Press `/` to open floating chat input overlay
+- Messages visible without scrolling down
+- 8-second animation across screen
+- Original ChatDrawer still available at bottom
+
+#### Opponent Hand Visualization
+- Card backs now fanned out like player's hand
+- Up to 12 cards shown individually
+- Overflow indicator (+N) for hands larger than 12
+- More intuitive count visualization than just a number
+
+#### Range Slider Fix
+- Added `step={1}` and `Math.round()` for proper integer rounding
+
+#### Deployment
+- Added `flake.nix` for Nix-based builds and Docker images
+- Added `docker-compose.yml` for container deployment
+- Added `Caddyfile` for reverse proxy configuration
+- Added `DEPLOY.md` with deployment documentation
 
 ### Codebase Structure
 ```
@@ -28,7 +45,7 @@ ccu.vc/
 │   └── src/
 │       ├── App.tsx   # Main component (tabletop UI)
 │       ├── main.tsx  # Entry point
-│       └── index.css # Tailwind v4 import
+│       └── index.css # Tailwind v4 + custom utilities
 ├── server/           # Bun + Socket.io backend
 │   └── src/
 │       ├── index.ts      # Server entry, socket handlers
@@ -38,93 +55,57 @@ ccu.vc/
 ├── shared/           # Shared TypeScript types
 │   └── src/
 │       └── index.ts  # Types for Room, Player, Card, Events
+├── flake.nix         # Nix flake for builds & Docker images
+├── docker-compose.yml # Container orchestration
+├── Caddyfile         # Reverse proxy config
+├── DEPLOY.md         # Deployment documentation
 └── AGENTS.md         # This file
 ```
 
-### UI Components Implemented
+### UI Components
 
-#### 1. Server Configuration (server-config view)
-- First-time users see a server URL input dialog
-- URL parameter support: `?server=your-server.com` skips the dialog
-- Server URL is saved to localStorage
-- "Change" button in lobby to switch servers
-- Connection test before proceeding
+#### Chess Clock Components
+- `ChessClock`: Large clock with M:SS.cc format, urgency effects, active indicator
+- `ClockChip`: Compact clock for carousel display
+- `ChessClockBar`: Horizontal carousel of all players' clocks
 
-#### 2. SVG Card Icons (UNO Minimalista Style)
-Located in App.tsx as inline components:
-- `SkipIcon`: Circle with diagonal line (thin stroke)
-- `ReverseIcon`: Angular arrows (sharp corners, not curved)
-- `Draw2Icon`: Two overlapping card outlines
-- `WildIcon`: Color ring with 4 arc segments (red/blue/green/yellow)
-- `WildDraw4Icon`: Four overlapping colored card outlines
-- `CardNumber`: Large thin digit (Barlow 200 weight), underlined for 6/9
-- `CornerIndicator`: Corner value (thin font, underlined 6/9)
+#### Card Components
+- `CardDisplay`: Renders a card with UNO Minimalista styling
 - `CardBack`: Card back with UNO logo for opponent hands
+- `CardNumber`, `CardContent`, `CornerIndicator`: Card internals
+- `SkipIcon`, `ReverseIcon`, `Draw2Icon`, `WildIcon`, `WildDraw4Icon`: SVG icons
 
-#### 3. Opponent Hand Display (OpponentHand component)
-- Fanned card backs showing card count
-- Player name and timer badge
-- Active player highlighting
-- Positioned at top of table
+#### Layout Components
+- `OpponentHand`: Fanned card backs (up to 12 visible) with player info
+- `HandArea`: Player's hand with drag-to-play and keyboard selection
+- `ColorPickerModal`: Wild card color selection (overlay)
+- `ErrorMessage`: Floating toast notification
+- `ChatDrawer`: Collapsible room chat
+- `RangeSlider`: Styled range input with filled track
 
-#### 4. Tabletop Layout
-- Green felt background with radial gradient
-- Subtle noise texture overlay
-- Direction indicator (↻ or ↺)
-- Central play area with:
-  - Draw pile (stacked card backs, clickable)
-  - Discard pile (top card displayed)
-  - Active color indicator (colored dot)
+#### Input Components
+- `RangeSlider`: Custom styled range input with gradient fill
 
-#### 5. Fanned Hand (HandArea component)
-- Cards fan out in an arc
-- Overlapping cards with calculated offsets
-- Hover lift effect
-- Drag-to-play functionality
-- Plays on tap/click or drag-to-discard
+### Keyboard Controls Reference
+| Key | Action |
+|-----|--------|
+| `←` `→` | Select card in hand |
+| `↑` or `Enter` | Play selected card |
+| `↓` or `Space` | Draw card |
+| `/` | Open chat input |
+| `Escape` | Close chat input |
 
-#### 6. Color Palette (THEME constant)
-```typescript
-const THEME = {
-  // UNO Minimalista card colors
-  cardRed: '#E53935',
-  cardBlue: '#1E88E5',
-  cardGreen: '#43A047',
-  cardYellow: '#FDD835',
-  cardWild: '#212121',
-  // Tabletop
-  tableGreen: '#1B5E20',
-  tableFelt: '#2E7D32',
-  // ... Material Design 3 colors
-};
-const CARD_FONT = "'Barlow', sans-serif";
+### CSS Animations Added
+```css
+/* Flying chat message animation (niconico-style) */
+@keyframes fly-across {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(calc(-100% - 100vw)); }
+}
+.animate-fly-across {
+  animation: fly-across 8s linear forwards;
+}
 ```
-
-### Card Values (from Deck.ts)
-- Colors: `red`, `yellow`, `green`, `blue`, `wild`
-- Values: `0-9`, `skip`, `reverse`, `draw2`, `wild`, `wild_draw4`
-
-### Key UI Features
-- **Configurable server** - Users can point to any server URL
-- **URL parameter sharing** - `?server=host.com` for easy sharing
-- **Tabletop feel** - Green felt background, cards arranged around table
-- **UNO Minimalista styling** - Thin Barlow font, clean line icons
-- **Underlined 6/9** - To distinguish from each other
-- **Fanned cards** - Both player hand and opponent backs
-- **Active color indicator** - Colored dot on discard pile for wild cards
-- **Direction indicator** - Arrow showing play direction
-- **Drag-and-drop** - Drag cards to discard pile to play
-
-### How to Share a Game Link
-
-```
-https://your-hosted-client.com/?server=your-server.com:3000
-```
-
-This will:
-1. Skip the server configuration dialog
-2. Automatically connect to the specified server
-3. Save the server URL to localStorage for future visits
 
 ### How to Run
 
@@ -138,13 +119,26 @@ cd client && bun run dev
 
 Open http://localhost:5173 in browser.
 
-### Test Results (Last Run)
+### Deployment
+
+See `DEPLOY.md` for full instructions. Quick start:
+
+```bash
+# Build Docker images with Nix
+nix build .#serverImage && docker load < result
+nix build .#clientImage && docker load < result
+
+# Start with Docker Compose
+docker-compose up -d
+```
+
+### Test Results
 - **340 server tests pass**
 - **956 expect() calls**
 - Client typecheck passes
-- Client builds successfully
+- Client builds successfully (~290KB JS)
 
-### Socket Event Signatures (Updated)
+### Socket Event Signatures
 ```typescript
 // playCard: chosenColor comes BEFORE callback (Socket.io callback must be last)
 playCard: (actionId, card, chosenColor, callback?) => void
@@ -155,3 +149,13 @@ callUno: (actionId, callback?) => void
 catchUno: (actionId, targetPlayerId, callback?) => void
 sendChat: (actionId, message, callback?) => void
 ```
+
+### Key Technical Decisions
+- Error messages use `fixed` positioning to avoid layout shifts
+- Clock updates at ~27fps (37ms interval) for smooth centiseconds
+- Background color set on html/body to prevent white flash
+- URL params cleaned after processing to keep URLs clean
+- Mobile breakpoint uses Tailwind's `md:` prefix (768px)
+- Keyboard controls only active when not typing in input fields
+- Flying messages removed after 8s animation completes
+- Opponent cards capped at 12 visible for performance

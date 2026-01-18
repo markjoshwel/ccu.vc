@@ -5,12 +5,14 @@ A web-based multiplayer UNO game with chess clock time pressure. Built with Reac
 ## Features
 
 - **Multiplayer UNO** - 2-10 players per room
-- **Chess Clock Timer** - Each player has limited time per turn (60 seconds default)
+- **Chess Clock Timer** - Each player has limited time with millisecond display for urgency
 - **Real-time Gameplay** - Server-authoritative game state with Socket.io
 - **UNO Mechanics** - Call UNO when you have one card, catch opponents who forget
+- **AI Opponents** - Add bot players when starting a game
 - **Room Chat** - Chat with other players in your room
 - **Custom Avatars** - Upload an image or use a URL
-- **Responsive Design** - Works on desktop and mobile
+- **Mobile Responsive** - Works on desktop and mobile devices
+- **Share Links** - Invite players with `?server=...&room=...` URLs
 - **Reduced Motion Support** - Respects `prefers-reduced-motion`
 
 ## Tech Stack
@@ -28,7 +30,7 @@ ccu.vc/
 │   └── src/
 │       ├── App.tsx   # Main application component
 │       ├── main.tsx  # Entry point
-│       └── index.css # Tailwind imports
+│       └── index.css # Tailwind imports + utilities
 ├── server/           # Bun + Socket.io backend
 │   └── src/
 │       ├── index.ts      # Server entry & socket handlers
@@ -65,6 +67,24 @@ cd client && bun run dev
 
 Open http://localhost:5173 in your browser.
 
+## Sharing Game Links
+
+You can share links that include both server and room code:
+
+```
+https://your-client.com/?server=your-server.com&room=ABCD
+```
+
+This will:
+1. Automatically connect to the specified server
+2. Pre-fill the room code in the join form
+3. User just enters their name and joins
+
+Server-only links are also supported:
+```
+https://your-client.com/?server=your-server.com
+```
+
 ## Other Commands
 
 ```bash
@@ -92,6 +112,16 @@ cd server && bun test
 - **Ephemeral Rooms**: Rooms exist only while players are connected
 - **Reconnection**: Players can rejoin using stored credentials
 - **Hidden Information**: Server only sends each player their own hand
+- **Configurable Server**: Client can connect to any server URL
+
+## UI Features
+
+- **Chess Clock Display**: Prominent clocks with M:SS.cc format
+- **Clock Carousel**: All players' times visible at top of game
+- **Urgency Effects**: Clocks pulse red when time is low
+- **Tabletop Design**: Green felt background with card arrangements
+- **UNO Minimalista Cards**: Clean, modern card styling
+- **Drag-and-Drop**: Drag cards to the discard pile to play
 
 ## Contributing
 

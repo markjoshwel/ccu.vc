@@ -1,0 +1,63 @@
+# Caddyfile for Chess Clock UNO
+# 
+# Usage:
+#   1. Replace YOUR_DOMAIN with your actual domain
+#   2. Place this file in your Caddy config directory
+#   3. Run: caddy reload
+#
+# Caddy automatically handles HTTPS certificates via Let's Encrypt
+
+# Client - main domain
+YOUR_DOMAIN {
+    root * /usr/share/nginx/html
+    file_server
+    
+    # SPA routing - serve index.html for all non-file routes
+    try_files {path} /index.html
+    
+    # Cache static assets
+    @static {
+        path *.js *.css *.png *.jpg *.jpeg *.gif *.ico *.svg *.woff *.woff2
+    }
+    header @static Cache-Control "public, max-age=31536000, immutable"
+    
+    # Don't cache HTML
+    @html {
+        path *.html
+    }
+    header @html Cache-Control "no-store, no-cache, must-revalidate"
+    
+    # Gzip compression
+    encode gzip
+}
+
+# API/WebSocket server - subdomain
+api.YOUR_DOMAIN {
+    reverse_proxy localhost:3000
+    
+    # Enable WebSocket support (Caddy handles this automatically, but explicit is clearer)
+    # WebSocket upgrade is automatic in Caddy v2
+}
+
+# Alternative: Single domain with path-based routing
+# YOUR_DOMAIN {
+#     # API routes
+#     handle /socket.io/* {
+#         reverse_proxy localhost:3000
+#     }
+#     handle /avatar/* {
+#         reverse_proxy localhost:3000
+#     }
+#     handle /health {
+#         reverse_proxy localhost:3000
+#     }
+#     
+#     # Client (SPA)
+#     handle {
+#         root * /usr/share/nginx/html
+#         file_server
+#         try_files {path} /index.html
+#     }
+#     
+#     encode gzip
+# }

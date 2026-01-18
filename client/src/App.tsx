@@ -357,6 +357,34 @@ function CornerIndicator({ value, position }: { value: string; position: 'top-le
 // Components
 // ============================================================================
 
+// Custom range slider with filled track
+interface RangeSliderProps {
+  min: number;
+  max: number;
+  value: number;
+  onChange: (value: number) => void;
+}
+
+function RangeSlider({ min, max, value, onChange }: RangeSliderProps) {
+  const percentage = ((value - min) / (max - min)) * 100;
+  
+  return (
+    <input
+      type="range"
+      min={min}
+      max={max}
+      step={1}
+      value={value}
+      onChange={(e) => onChange(Math.round(Number(e.target.value)))}
+      className="w-full"
+      style={{
+        background: `linear-gradient(to right, ${THEME.primary} 0%, ${THEME.primary} ${percentage}%, ${THEME.outlineVariant} ${percentage}%, ${THEME.outlineVariant} 100%)`,
+        borderRadius: '4px',
+      }}
+    />
+  );
+}
+
 interface LoadingScreenProps {
   message?: string;
 }
@@ -396,17 +424,17 @@ function ErrorMessage({ message, onDismiss }: ErrorMessageProps) {
 
   return (
     <div 
-      className="rounded-xl p-3 mb-4 flex items-center justify-between border"
+      className="fixed top-4 left-1/2 -translate-x-1/2 z-50 rounded-xl p-3 flex items-center gap-3 border shadow-2xl animate-in fade-in slide-in-from-top-2 duration-200 max-w-md"
       style={{ 
-        backgroundColor: `${THEME.errorContainer}33`,
-        borderColor: THEME.errorContainer 
+        backgroundColor: THEME.errorContainer,
+        borderColor: THEME.error 
       }}
     >
-      <span className="text-sm" style={{ color: THEME.error }}>{message}</span>
+      <span className="text-sm font-medium" style={{ color: THEME.error }}>{message}</span>
       {onDismiss && (
         <button
           onClick={onDismiss}
-          className="ml-2 text-lg leading-none hover:opacity-70 transition-opacity"
+          className="text-lg leading-none hover:opacity-70 transition-opacity flex-shrink-0"
           style={{ color: THEME.error }}
         >
           &times;
@@ -590,36 +618,13 @@ interface OpponentHandProps {
 function OpponentHand({ cardCount, position, playerName, isActive, timeRemaining }: OpponentHandProps) {
   const isUrgent = timeRemaining < 10000 && isActive;
   
-  // Calculate fan spread based on card count
-  const maxSpread = position === 'top' ? 120 : 80; // degrees
-  const spreadPerCard = Math.min(15, maxSpread / Math.max(cardCount, 1));
-  const startAngle = -(cardCount - 1) * spreadPerCard / 2;
+  // Fan cards like the player's hand for intuitive count visualization
+  // Show individual cards up to a limit, then stack the rest
+  const maxVisibleCards = Math.min(cardCount, 12);
+  const hasOverflow = cardCount > 12;
   
-  const getCardStyle = (index: number): React.CSSProperties => {
-    const angle = startAngle + index * spreadPerCard;
-    const isVertical = position === 'left' || position === 'right';
-    
-    if (isVertical) {
-      // Cards fan out vertically
-      const yOffset = (index - (cardCount - 1) / 2) * 8;
-      return {
-        position: 'absolute',
-        transform: `translateY(${yOffset}px) rotate(${position === 'left' ? -10 : 10}deg)`,
-        zIndex: index,
-      };
-    } else {
-      // Cards fan out horizontally (top position)
-      const xOffset = (index - (cardCount - 1) / 2) * 12;
-      return {
-        position: 'absolute',
-        transform: `translateX(${xOffset}px) rotate(${angle * 0.3}deg)`,
-        zIndex: index,
-      };
-    }
-  };
-
   return (
-    <div className="flex flex-col items-center gap-1">
+    <div className="flex flex-col items-center gap-1 pb-2">
       {/* Player info */}
       <div 
         className={`px-3 py-1 rounded-lg text-xs font-medium transition-all ${isActive ? 'scale-105' : ''}`}
@@ -636,32 +641,48 @@ function OpponentHand({ cardCount, position, playerName, isActive, timeRemaining
         </span>
       </div>
       
-      {/* Fanned cards */}
+      {/* Fanned cards - similar to player's hand */}
       <div 
-        className="relative flex items-center justify-center"
-        style={{ 
-          width: position === 'top' ? Math.max(80, cardCount * 14) : 50,
-          height: position === 'top' ? 50 : Math.max(60, cardCount * 10),
-        }}
+        className="flex justify-center items-end px-2"
+        style={{ minHeight: 56, paddingTop: 4 }}
       >
-        {Array.from({ length: cardCount }).map((_, index) => (
-          <CardBack 
-            key={index} 
-            size="xs" 
-            style={getCardStyle(index)}
-          />
-        ))}
-      </div>
-      
-      {/* Card count badge */}
-      <div 
-        className="px-2 py-0.5 rounded-full text-xs font-medium"
-        style={{ 
-          backgroundColor: THEME.surfaceContainerHighest,
-          color: THEME.onSurface,
-        }}
-      >
-        {cardCount} card{cardCount !== 1 ? 's' : ''}
+        {Array.from({ length: maxVisibleCards }).map((_, index) => {
+          const totalCards = maxVisibleCards;
+          const centerIndex = (totalCards - 1) / 2;
+          const offset = index - centerIndex;
+          
+          // Fan angle: cards spread out from center (reduced angle to prevent clipping)
+          const maxAngle = Math.min(15, totalCards * 1.5);
+          const angle = (offset / Math.max(totalCards - 1, 1)) * maxAngle;
+          
+          // Overlap amount based on card count
+          const cardWidth = 32; // xs card width
+          const overlapAmount = Math.max(10, 22 - totalCards);
+          
+          // Vertical curve: center cards slightly lower (arc effect)
+          const yOffset = Math.abs(offset) * 1;
+          
+          return (
+            <div
+              key={index}
+              style={{
+                marginLeft: index === 0 ? 0 : -cardWidth + overlapAmount,
+                transform: `rotate(${angle}deg) translateY(${yOffset}px)`,
+                zIndex: index,
+              }}
+            >
+              <CardBack size="xs" />
+            </div>
+          );
+        })}
+        {hasOverflow && (
+          <div 
+            className="ml-1 px-1.5 py-0.5 rounded text-xs font-bold"
+            style={{ backgroundColor: THEME.primaryContainer, color: THEME.onPrimaryContainer }}
+          >
+            +{cardCount - 12}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -894,7 +915,7 @@ interface ChessClockBarProps {
 function ChessClockBar({ players, currentPlayerId, interpolatedTime, myPlayerId }: ChessClockBarProps) {
   return (
     <div 
-      className="flex justify-center items-center gap-2 py-3 px-4 overflow-x-auto"
+      className="flex justify-start md:justify-center items-center gap-2 py-2 md:py-3 px-2 md:px-4 overflow-x-auto scrollbar-hide"
       style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)' }}
     >
       {players.map((player) => (
@@ -1191,6 +1212,8 @@ interface HandAreaProps {
   onPlayCard: (card: Card, index: number) => void;
   discardRef: React.RefObject<HTMLDivElement>;
   reducedMotion: boolean;
+  selectedCardIndex: number | null;
+  onSelectedCardIndexChange: (index: number | null) => void;
 }
 
 function HandArea({
@@ -1199,9 +1222,10 @@ function HandArea({
   isPending,
   onPlayCard,
   discardRef,
-  reducedMotion
+  reducedMotion,
+  selectedCardIndex,
+  onSelectedCardIndexChange
 }: HandAreaProps) {
-  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
   const [isOverDiscard, setIsOverDiscard] = useState(false);
 
@@ -1218,7 +1242,7 @@ function HandArea({
       if (!myTurn || isPending) return;
 
       if (event?.type === 'pointerdown') {
-        setSelectedIndex(index);
+        onSelectedCardIndexChange(index);
       }
 
       setDraggingIndex(active ? index : null);
@@ -1264,7 +1288,7 @@ function HandArea({
           }
         }
 
-        setSelectedIndex(null);
+        onSelectedCardIndexChange(null);
       }
     },
     { threshold: 8, pointer: { touch: true }, filterTaps: true }
@@ -1276,11 +1300,11 @@ function HandArea({
   };
 
   return (
-    <div className="py-4">
+    <div className="py-2 md:py-4 overflow-x-auto scrollbar-hide">
       {/* Fanned hand display */}
       <div 
         className="flex justify-center items-end"
-        style={{ minHeight: 120 }}
+        style={{ minHeight: 100 }}
       >
         {cards.map((card, index) => {
           // Calculate fan positioning
@@ -1288,13 +1312,13 @@ function HandArea({
           const centerIndex = (totalCards - 1) / 2;
           const offset = index - centerIndex;
           
-          // Fan angle: cards spread out from center
-          const maxAngle = Math.min(30, totalCards * 3); // More cards = wider fan
+          // Fan angle: cards spread out from center (reduced on mobile)
+          const maxAngle = Math.min(25, totalCards * 2.5);
           const angle = (offset / Math.max(totalCards - 1, 1)) * maxAngle;
           
-          // Horizontal offset: overlap cards
+          // Horizontal offset: overlap cards more on mobile
           const cardWidth = 64;
-          const overlapAmount = Math.max(20, 50 - totalCards * 2); // Less overlap with more cards
+          const overlapAmount = Math.max(15, 40 - totalCards * 2);
           const xOffset = offset * overlapAmount;
           
           // Vertical curve: center cards slightly lower (arc effect)
@@ -1309,7 +1333,7 @@ function HandArea({
                 y: springs[index].y,
                 scale: springs[index].scale,
                 rotateZ: springs[index].rotateZ,
-                zIndex: draggingIndex === index ? 100 : selectedIndex === index ? 50 : index,
+                zIndex: draggingIndex === index ? 100 : selectedCardIndex === index ? 50 : index,
                 marginLeft: index === 0 ? 0 : -cardWidth + overlapAmount,
                 transform: `rotate(${angle}deg) translateY(${yOffset}px)`,
               }}
@@ -1319,7 +1343,7 @@ function HandArea({
                 card={card}
                 onClick={() => handleCardClick(card, index)}
                 disabled={!myTurn || isPending}
-                selected={selectedIndex === index}
+                selected={selectedCardIndex === index}
                 dragging={draggingIndex === index}
               />
             </animated.div>
@@ -1342,53 +1366,67 @@ function HandArea({
 // Main App Component
 // ============================================================================
 
-// Helper to get server URL from various sources
-function getInitialServerUrl(): { url: string; source: 'url' | 'storage' | 'none' } {
-  // 1. Check URL parameters first (highest priority)
+// Helper to get initial params from URL
+function getInitialUrlParams(): { 
+  serverUrl: string; 
+  serverSource: 'url' | 'storage' | 'none';
+  roomCode: string | null;
+} {
   const urlParams = new URLSearchParams(window.location.search);
+  
+  // Get room code from URL
+  const roomFromUrl = urlParams.get('room')?.toUpperCase() || null;
+  
+  // Get server URL
   const serverFromUrl = urlParams.get('server');
   if (serverFromUrl) {
     // Normalize: add https:// if no protocol specified
     const normalizedUrl = serverFromUrl.match(/^https?:\/\//) 
       ? serverFromUrl 
       : `https://${serverFromUrl}`;
-    return { url: normalizedUrl, source: 'url' };
+    return { serverUrl: normalizedUrl, serverSource: 'url', roomCode: roomFromUrl };
   }
   
-  // 2. Check localStorage
+  // Check localStorage for server
   const savedServerUrl = localStorage.getItem(STORAGE_KEYS.SERVER_URL);
   if (savedServerUrl) {
-    return { url: savedServerUrl, source: 'storage' };
+    return { serverUrl: savedServerUrl, serverSource: 'storage', roomCode: roomFromUrl };
   }
   
-  // 3. No server configured
-  return { url: '', source: 'none' };
+  // No server configured
+  return { serverUrl: '', serverSource: 'none', roomCode: roomFromUrl };
 }
 
 function App() {
   // Server configuration - check URL params, then localStorage
-  const initialServer = getInitialServerUrl();
-  const [serverUrl, setServerUrl] = useState<string>(initialServer.url);
-  const [serverUrlInput, setServerUrlInput] = useState(initialServer.url || DEFAULT_SERVER_URL);
+  const initialParams = getInitialUrlParams();
+  const [serverUrl, setServerUrl] = useState<string>(initialParams.serverUrl);
+  const [serverUrlInput, setServerUrlInput] = useState(initialParams.serverUrl || DEFAULT_SERVER_URL);
   const [isTestingConnection, setIsTestingConnection] = useState(false);
   const [connectionError, setConnectionError] = useState('');
 
   // State - skip config if we have a server from URL or storage
-  const [view, setView] = useState<AppView>(initialServer.source !== 'none' ? 'lobby' : 'server-config');
+  const [view, setView] = useState<AppView>(initialParams.serverSource !== 'none' ? 'lobby' : 'server-config');
   const [displayName, setDisplayName] = useState('');
-  const [joinRoomCode, setJoinRoomCode] = useState('');
+  const [joinRoomCode, setJoinRoomCode] = useState(initialParams.roomCode || '');
   const [avatarId, setAvatarId] = useState<string | null>(null);
   const [avatarUrlInput, setAvatarUrlInput] = useState('');
   const [avatarUploadError, setAvatarUploadError] = useState('');
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   
-  // If server came from URL param, save it to localStorage
+  // If server/room came from URL param, save server to localStorage and clean URL
   useEffect(() => {
-    if (initialServer.source === 'url' && initialServer.url) {
-      localStorage.setItem(STORAGE_KEYS.SERVER_URL, initialServer.url);
-      // Clean the URL params after saving
+    const urlParams = new URLSearchParams(window.location.search);
+    const hasUrlParams = urlParams.has('server') || urlParams.has('room');
+    
+    if (hasUrlParams) {
+      if (initialParams.serverSource === 'url' && initialParams.serverUrl) {
+        localStorage.setItem(STORAGE_KEYS.SERVER_URL, initialParams.serverUrl);
+      }
+      // Clean the URL params after processing
       const url = new URL(window.location.href);
       url.searchParams.delete('server');
+      url.searchParams.delete('room');
       window.history.replaceState({}, '', url.toString());
     }
   }, []);
@@ -1416,6 +1454,16 @@ function App() {
 
   const reducedMotion = useReducedMotion();
   const interpolatedTime = useClockInterpolation(clockSync, reducedMotion);
+
+  // Keyboard navigation state
+  const [selectedCardIndex, setSelectedCardIndex] = useState<number | null>(null);
+  
+  // Flying chat overlay state
+  const [showChatOverlay, setShowChatOverlay] = useState(false);
+  const [chatInput, setChatInput] = useState('');
+  const [flyingMessages, setFlyingMessages] = useState<Array<{ id: number; message: string; playerName: string; top: number }>>([]);
+  const chatInputRef = useRef<HTMLInputElement>(null);
+  const flyingMessageIdRef = useRef(0);
 
   // Derived state
   const myPlayerId = localStorage.getItem(STORAGE_KEYS.PLAYER_ID);
@@ -1521,6 +1569,105 @@ function App() {
       }
     }
   }, [serverUrl]);
+
+  // Keyboard controls for gameplay
+  useEffect(() => {
+    if (view !== 'room' || room?.gameStatus !== 'playing') return;
+    
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore if typing in an input field (except chat overlay)
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
+        // Allow Escape to close chat overlay
+        if (e.key === 'Escape' && showChatOverlay) {
+          setShowChatOverlay(false);
+          setChatInput('');
+        }
+        return;
+      }
+
+      // "/" to open chat overlay
+      if (e.key === '/') {
+        e.preventDefault();
+        setShowChatOverlay(true);
+        setTimeout(() => chatInputRef.current?.focus(), 0);
+        return;
+      }
+
+      // Escape to close chat overlay
+      if (e.key === 'Escape' && showChatOverlay) {
+        setShowChatOverlay(false);
+        setChatInput('');
+        return;
+      }
+
+      // Card navigation and actions (only when chat is closed)
+      if (!showChatOverlay && handCards.length > 0) {
+        if (e.key === 'ArrowLeft') {
+          e.preventDefault();
+          setSelectedCardIndex(prev => {
+            if (prev === null) return handCards.length - 1;
+            return prev > 0 ? prev - 1 : handCards.length - 1;
+          });
+        } else if (e.key === 'ArrowRight') {
+          e.preventDefault();
+          setSelectedCardIndex(prev => {
+            if (prev === null) return 0;
+            return prev < handCards.length - 1 ? prev + 1 : 0;
+          });
+        } else if (e.key === 'ArrowUp' || e.key === 'Enter') {
+          // Play selected card
+          e.preventDefault();
+          if (selectedCardIndex !== null && myTurn && !isPending) {
+            const card = handCards[selectedCardIndex];
+            if (card) {
+              handlePlayCard(card);
+            }
+          }
+        } else if (e.key === 'ArrowDown' || e.key === ' ') {
+          // Draw card
+          e.preventDefault();
+          if (myTurn && !isPending) {
+            handleDrawCard();
+          }
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [view, room?.gameStatus, handCards.length, selectedCardIndex, myTurn, isPending, showChatOverlay]);
+
+  // Reset selected card when hand changes
+  useEffect(() => {
+    if (selectedCardIndex !== null && selectedCardIndex >= handCards.length) {
+      setSelectedCardIndex(handCards.length > 0 ? handCards.length - 1 : null);
+    }
+  }, [handCards.length, selectedCardIndex]);
+
+  // Add flying messages when new chat arrives
+  useEffect(() => {
+    if (chatMessages.length === 0) return;
+    const latestMessage = chatMessages[chatMessages.length - 1];
+    
+    // Only add flying message if game is playing
+    if (room?.gameStatus !== 'playing') return;
+    
+    const messageId = flyingMessageIdRef.current++;
+    const randomTop = 10 + Math.random() * 60; // Random position 10-70% from top
+    
+    setFlyingMessages(prev => [...prev, {
+      id: messageId,
+      message: latestMessage.message,
+      playerName: latestMessage.playerName,
+      top: randomTop
+    }]);
+
+    // Remove after animation completes (8 seconds)
+    setTimeout(() => {
+      setFlyingMessages(prev => prev.filter(m => m.id !== messageId));
+    }, 8000);
+  }, [chatMessages.length, room?.gameStatus]);
 
   // Actions
   const handleCreateRoom = () => {
@@ -1724,6 +1871,14 @@ function App() {
         setError(response.error || 'Failed to send message');
       }
     });
+  };
+
+  const handleChatOverlaySubmit = () => {
+    if (chatInput.trim() && socket) {
+      handleSendChat(chatInput.trim());
+      setChatInput('');
+      setShowChatOverlay(false);
+    }
   };
 
   const handleAvatarUpload = async (file: File) => {
@@ -2076,7 +2231,7 @@ function App() {
               />
 
               {/* Opponents at top */}
-              <div className="flex justify-center gap-6 pt-2 px-4">
+              <div className="flex justify-center gap-2 md:gap-6 pt-2 pb-1 px-2 md:px-4 overflow-x-auto overflow-y-visible scrollbar-hide">
                 {allPlayers
                   .filter((p) => p.id !== myPlayerId)
                   .map((player) => {
@@ -2095,8 +2250,8 @@ function App() {
               </div>
 
               {/* Center play area */}
-              <div className="flex items-center justify-center py-8">
-                <div className="flex items-center gap-8">
+              <div className="flex-1 flex items-center justify-center py-4 md:py-8">
+                <div className="flex items-center gap-4 md:gap-8">
                   {/* Draw pile */}
                   <button
                     onClick={handleDrawCard}
@@ -2106,12 +2261,12 @@ function App() {
                   >
                     <div className="relative">
                       {/* Stack effect */}
-                      <CardBack size="md" style={{ position: 'absolute', top: 4, left: 2 }} />
-                      <CardBack size="md" style={{ position: 'absolute', top: 2, left: 1 }} />
-                      <CardBack size="md" />
+                      <CardBack size="sm" style={{ position: 'absolute', top: 4, left: 2 }} />
+                      <CardBack size="sm" style={{ position: 'absolute', top: 2, left: 1 }} />
+                      <CardBack size="sm" />
                     </div>
                     <div 
-                      className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-xs font-medium px-2 py-0.5 rounded"
+                      className="absolute -bottom-5 left-1/2 -translate-x-1/2 text-[10px] md:text-xs font-medium px-2 py-0.5 rounded"
                       style={{ backgroundColor: 'rgba(0,0,0,0.5)', color: '#fff' }}
                     >
                       Draw
@@ -2123,17 +2278,17 @@ function App() {
                     ref={discardRef}
                     className="relative"
                   >
-                    <CardDisplay card={topCard} size="lg" disabled />
+                    <CardDisplay card={topCard} size="md" disabled />
                     {/* Active color indicator */}
                     {room.activeColor && (
                       <div 
-                        className="absolute -top-3 -right-3 w-8 h-8 rounded-full border-2 border-white shadow-lg"
+                        className="absolute -top-2 -right-2 w-6 h-6 md:w-8 md:h-8 rounded-full border-2 border-white shadow-lg"
                         style={{ backgroundColor: CARD_COLORS[room.activeColor] }}
                         title={`Active color: ${room.activeColor}`}
                       />
                     )}
                     <div 
-                      className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-xs font-medium px-2 py-0.5 rounded whitespace-nowrap"
+                      className="absolute -bottom-5 left-1/2 -translate-x-1/2 text-[10px] md:text-xs font-medium px-2 py-0.5 rounded whitespace-nowrap"
                       style={{ backgroundColor: 'rgba(0,0,0,0.5)', color: '#fff' }}
                     >
                       {myTurn ? 'Your turn' : `${activePlayer?.name}'s turn`}
@@ -2144,7 +2299,7 @@ function App() {
 
               {/* Direction indicator */}
               <div 
-                className="absolute top-1/2 left-4 -translate-y-1/2 text-4xl opacity-30"
+                className="absolute top-1/2 left-2 md:left-4 -translate-y-1/2 text-2xl md:text-4xl opacity-30"
                 style={{ color: '#fff' }}
               >
                 {room.direction === 1 ? '↻' : '↺'}
@@ -2155,8 +2310,8 @@ function App() {
                 <button
                   onClick={handleCallUno}
                   disabled={isPending}
-                  className="absolute top-1/2 right-4 -translate-y-1/2 px-6 py-4 font-bold text-2xl uppercase 
-                             rounded-2xl animate-bounce hover:animate-none disabled:opacity-50 shadow-2xl"
+                  className="absolute top-1/2 right-2 md:right-4 -translate-y-1/2 px-4 py-3 md:px-6 md:py-4 font-bold text-xl md:text-2xl uppercase 
+                             rounded-xl md:rounded-2xl animate-bounce hover:animate-none disabled:opacity-50 shadow-2xl"
                   style={{ 
                     backgroundColor: THEME.cardRed, 
                     color: '#FFFFFF',
@@ -2181,8 +2336,8 @@ function App() {
                     key={player.id}
                     onClick={() => handleCatchUno(player.id)}
                     disabled={isPending}
-                    className="absolute top-4 right-4 px-4 py-2 font-bold text-lg uppercase 
-                               rounded-xl animate-pulse disabled:opacity-50 shadow-xl"
+                    className="absolute top-2 right-2 md:top-4 md:right-4 px-3 py-1.5 md:px-4 md:py-2 font-bold text-sm md:text-lg uppercase 
+                               rounded-lg md:rounded-xl animate-pulse disabled:opacity-50 shadow-xl"
                     style={{ backgroundColor: THEME.cardYellow, color: '#000' }}
                   >
                     Catch {player.name}!
@@ -2192,11 +2347,11 @@ function App() {
 
               {/* My hand at bottom with my clock */}
               <div 
-                className="mt-auto px-4 pb-4"
+                className="mt-auto px-2 md:px-4 pb-2 md:pb-4"
                 style={{ backgroundColor: 'rgba(0,0,0,0.3)' }}
               >
                 {/* My prominent clock display */}
-                <div className="flex justify-center py-2">
+                <div className="flex justify-center py-1 md:py-2">
                   <ChessClock
                     timeMs={interpolatedTime[myPlayerId || ''] || 0}
                     isActive={myTurn}
@@ -2212,7 +2367,85 @@ function App() {
                   onPlayCard={(card) => handlePlayCard(card)}
                   discardRef={discardRef}
                   reducedMotion={reducedMotion}
+                  selectedCardIndex={selectedCardIndex}
+                  onSelectedCardIndexChange={setSelectedCardIndex}
                 />
+              </div>
+
+              {/* Flying chat messages (niconico-style) */}
+              <div className="absolute inset-0 pointer-events-none overflow-hidden">
+                {flyingMessages.map(msg => (
+                  <div
+                    key={msg.id}
+                    className="absolute whitespace-nowrap animate-fly-across"
+                    style={{
+                      top: `${msg.top}%`,
+                      right: '-100%',
+                      textShadow: '2px 2px 4px rgba(0,0,0,0.8), -1px -1px 2px rgba(0,0,0,0.5)',
+                      color: '#FFFFFF',
+                      fontWeight: 600,
+                      fontSize: '1.1rem',
+                    }}
+                  >
+                    <span style={{ color: THEME.primary }}>{msg.playerName}:</span> {msg.message}
+                  </div>
+                ))}
+              </div>
+
+              {/* Chat input overlay */}
+              {showChatOverlay && (
+                <div className="absolute bottom-24 left-1/2 -translate-x-1/2 z-50">
+                  <div 
+                    className="flex gap-2 p-3 rounded-xl shadow-2xl border"
+                    style={{ 
+                      backgroundColor: 'rgba(28, 27, 31, 0.95)',
+                      borderColor: THEME.outlineVariant,
+                      backdropFilter: 'blur(8px)',
+                    }}
+                  >
+                    <input
+                      ref={chatInputRef}
+                      type="text"
+                      value={chatInput}
+                      onChange={(e) => setChatInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          handleChatOverlaySubmit();
+                        } else if (e.key === 'Escape') {
+                          setShowChatOverlay(false);
+                          setChatInput('');
+                        }
+                      }}
+                      placeholder="Type a message..."
+                      className="w-64 px-3 py-2 rounded-lg focus:outline-none focus:ring-2"
+                      style={{ 
+                        backgroundColor: THEME.surfaceContainerHighest,
+                        color: THEME.onSurface,
+                      }}
+                    />
+                    <button
+                      onClick={handleChatOverlaySubmit}
+                      disabled={!chatInput.trim()}
+                      className="px-4 py-2 font-medium rounded-lg transition-colors disabled:opacity-50"
+                      style={{ backgroundColor: THEME.primary, color: THEME.onPrimary }}
+                    >
+                      Send
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Keybinds help */}
+              <div 
+                className="absolute bottom-2 left-1/2 -translate-x-1/2 text-xs opacity-60 whitespace-nowrap"
+                style={{ color: '#fff' }}
+              >
+                <span className="hidden md:inline">
+                  <kbd className="px-1 py-0.5 rounded bg-black/30">←</kbd> <kbd className="px-1 py-0.5 rounded bg-black/30">→</kbd> select card · 
+                  <kbd className="px-1 py-0.5 rounded bg-black/30">↑</kbd> play · 
+                  <kbd className="px-1 py-0.5 rounded bg-black/30">↓</kbd> draw · 
+                  <kbd className="px-1 py-0.5 rounded bg-black/30">/</kbd> chat
+                </span>
               </div>
             </div>
           )}
@@ -2396,19 +2629,11 @@ function App() {
                   <label className="text-sm" style={{ color: THEME.onSurfaceVariant }}>Max Players</label>
                   <span className="text-sm font-medium" style={{ color: THEME.onSurface }}>{maxPlayers}</span>
                 </div>
-                <input
-                  type="range"
-                  min="2"
-                  max="10"
+                <RangeSlider
+                  min={2}
+                  max={10}
                   value={maxPlayers}
-                  onChange={(e) => setMaxPlayers(parseInt(e.target.value))}
-                  className="w-full h-2 rounded-lg appearance-none cursor-pointer
-                             [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 
-                             [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full 
-                             [&::-webkit-slider-thumb]:cursor-pointer"
-                  style={{ 
-                    backgroundColor: THEME.outlineVariant,
-                  }}
+                  onChange={setMaxPlayers}
                 />
               </div>
 
@@ -2418,19 +2643,11 @@ function App() {
                   <label className="text-sm" style={{ color: THEME.onSurfaceVariant }}>AI Opponents</label>
                   <span className="text-sm font-medium" style={{ color: THEME.onSurface }}>{aiPlayerCount}</span>
                 </div>
-                <input
-                  type="range"
-                  min="0"
+                <RangeSlider
+                  min={0}
                   max={Math.min(9, maxPlayers - 1)}
                   value={aiPlayerCount}
-                  onChange={(e) => setAiPlayerCount(parseInt(e.target.value))}
-                  className="w-full h-2 rounded-lg appearance-none cursor-pointer
-                             [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 
-                             [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full 
-                             [&::-webkit-slider-thumb]:cursor-pointer"
-                  style={{ 
-                    backgroundColor: THEME.outlineVariant,
-                  }}
+                  onChange={setAiPlayerCount}
                 />
                 {aiPlayerCount > 0 && (
                   <p className="text-xs mt-1" style={{ color: THEME.onSurfaceVariant }}>
