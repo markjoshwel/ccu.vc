@@ -160,7 +160,7 @@ const STORAGE_KEYS = {
   SERVER_URL: 'serverUrl'
 } as const;
 
-const DEFAULT_SERVER_URL = 'http://localhost:3000';
+const DEFAULT_SERVER_URL = 'https://server.ccu.joshwel.co';
 
 type AppView = 'server-config' | 'lobby' | 'room';
 
@@ -2298,7 +2298,7 @@ function App() {
                 Want to host your own server?
               </p>
               <a 
-                href="https://github.com/markjoshwel/ccu" 
+                href="https://github.com/markjoshwel/ccu.vc" 
                 target="_blank" 
                 rel="noopener noreferrer"
                 className="block text-center text-sm mt-1 hover:underline"
