@@ -136,7 +136,7 @@
 
           copyToRoot = pkgs.buildEnv {
             name = "ccu-server-root";
-            paths = [ pkgs.bun serverBuild ];
+            paths = [ pkgs.bun pkgs.curl serverBuild ];
             pathsToLink = [ "/bin" ];
           };
 
@@ -148,10 +148,10 @@
 
           config = {
             Cmd = [ "${pkgs.bun}/bin/bun" "run" "/app/dist/index.js" ];
-            ExposedPorts = { "3000/tcp" = {}; };
+            ExposedPorts = { "12122/tcp" = {}; };
             WorkingDir = "/app";
             Env = [
-              "PORT=3000"
+              "PORT=12122"
               "AVATAR_DIR=/app/avatars"
             ];
           };
