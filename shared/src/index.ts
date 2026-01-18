@@ -60,6 +60,11 @@ export type ClockSyncData = {
   timeRemainingMs: { [playerId: string]: number };
 };
 
+export type TimeOutEvent = {
+  playerId: string;
+  policy: 'autoDrawAndSkip';
+};
+
 export type ServerToClientEvents = {
   roomUpdated: (room: RoomState) => void;
   playerJoined: (player: PlayerPublic) => void;
@@ -67,6 +72,7 @@ export type ServerToClientEvents = {
   gameStarted: () => void;
   gameStateUpdate: (view: GameView) => void;
   clockSync: (data: ClockSyncData) => void;
+  timeOut: (data: TimeOutEvent) => void;
   error: (message: string) => void;
   actionAck: (data: { actionId: string; ok: boolean }) => void;
 };

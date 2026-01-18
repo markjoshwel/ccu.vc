@@ -1,4 +1,4 @@
-import type { RoomState, PlayerPublic, PlayerPrivate, Card, GameView, ClockSyncData } from 'shared';
+import type { RoomState, PlayerPublic, PlayerPrivate, Card, GameView, ClockSyncData, TimeOutEvent } from 'shared';
 import { Deck } from './Deck';
 
 type RoomCode = string;
@@ -20,6 +20,7 @@ export class Room {
   timeRemainingMs: { [playerId: string]: number };
   clockSyncIntervalId?: ReturnType<typeof setInterval>;
   onClockSync?: (data: ClockSyncData) => void;
+  onTimeOut?: (data: TimeOutEvent) => void;
 
   constructor(code: RoomCode) {
     this.code = code;
@@ -389,9 +390,26 @@ export class Room {
       if (this.state.gameStatus === 'playing') {
         const activePlayerId = this.playerOrder[this.currentPlayerIndex];
         this.timeRemainingMs[activePlayerId] = Math.max(0, this.timeRemainingMs[activePlayerId] - 500);
-        
+
         if (this.onClockSync) {
           this.onClockSync(this.getClockSyncData());
+        }
+
+        if (this.timeRemainingMs[activePlayerId] === 0) {
+          const player = this.players.get(activePlayerId);
+          if (player && this.deck && !this.deck.isEmpty()) {
+            const drawnCard = this.deck.draw();
+            if (drawnCard) {
+              player.hand.push(drawnCard);
+              this.updateState();
+            }
+          }
+
+          this.advanceTurn();
+
+          if (this.onTimeOut) {
+            this.onTimeOut({ playerId: activePlayerId, policy: 'autoDrawAndSkip' });
+          }
         }
       }
     }, 500);

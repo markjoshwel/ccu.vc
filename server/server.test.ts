@@ -3146,3 +3146,112 @@ describe('clock sync scheduler', () => {
     room.stopClockSync();
   });
 });
+
+describe('timeout detection', () => {
+  it('should emit timeOut event when player time reaches zero', async () => {
+    const manager = new RoomManager();
+    const room = manager.createRoom();
+
+    const socketId1 = 'socket1';
+    const playerId1 = 'player1';
+    const player1 = { id: playerId1, name: 'Player 1', isReady: false, secret: 'secret1', connected: true, hand: [], handCount: 0 };
+
+    const socketId2 = 'socket2';
+    const playerId2 = 'player2';
+    const player2 = { id: playerId2, name: 'Player 2', isReady: false, secret: 'secret2', connected: true, hand: [], handCount: 0 };
+
+    room.addPlayer(socketId1, player1);
+    room.addPlayer(socketId2, player2);
+
+    const timeOutCalls: any[] = [];
+    room.onTimeOut = (data) => {
+      timeOutCalls.push(data);
+    };
+
+    room.startGame();
+
+    expect(room.timeRemainingMs[playerId1]).toBe(60000);
+
+    room.timeRemainingMs[playerId1] = 500;
+
+    await new Promise(resolve => setTimeout(resolve, 600));
+
+    expect(timeOutCalls).toHaveLength(1);
+    expect(timeOutCalls[0].playerId).toBe(playerId1);
+    expect(timeOutCalls[0].policy).toBe('autoDrawAndSkip');
+
+    room.stopClockSync();
+  });
+
+  it('should draw exactly 1 card when player times out', async () => {
+    const manager = new RoomManager();
+    const room = manager.createRoom();
+
+    const socketId1 = 'socket1';
+    const playerId1 = 'player1';
+    const player1 = { id: playerId1, name: 'Player 1', isReady: false, secret: 'secret1', connected: true, hand: [], handCount: 0 };
+
+    const socketId2 = 'socket2';
+    const playerId2 = 'player2';
+    const player2 = { id: playerId2, name: 'Player 2', isReady: false, secret: 'secret2', connected: true, hand: [], handCount: 0 };
+
+    room.addPlayer(socketId1, player1);
+    room.addPlayer(socketId2, player2);
+
+    const timeOutCalls: any[] = [];
+    room.onTimeOut = (data) => {
+      timeOutCalls.push(data);
+    };
+
+    room.startGame();
+
+    const initialHandSize = room.players.get(playerId1)!.hand.length;
+    const initialDeckSize = room.deck!.size;
+
+    room.timeRemainingMs[playerId1] = 500;
+
+    await new Promise(resolve => setTimeout(resolve, 600));
+
+    expect(room.players.get(playerId1)!.hand.length).toBe(initialHandSize + 1);
+    expect(room.deck!.size).toBe(initialDeckSize - 1);
+    expect(timeOutCalls).toHaveLength(1);
+
+    room.stopClockSync();
+  });
+
+  it('should advance turn immediately when player times out', async () => {
+    const manager = new RoomManager();
+    const room = manager.createRoom();
+
+    const socketId1 = 'socket1';
+    const playerId1 = 'player1';
+    const player1 = { id: playerId1, name: 'Player 1', isReady: false, secret: 'secret1', connected: true, hand: [], handCount: 0 };
+
+    const socketId2 = 'socket2';
+    const playerId2 = 'player2';
+    const player2 = { id: playerId2, name: 'Player 2', isReady: false, secret: 'secret2', connected: true, hand: [], handCount: 0 };
+
+    room.addPlayer(socketId1, player1);
+    room.addPlayer(socketId2, player2);
+
+    const timeOutCalls: any[] = [];
+    room.onTimeOut = (data) => {
+      timeOutCalls.push(data);
+    };
+
+    room.startGame();
+
+    expect(room.currentPlayerIndex).toBe(0);
+    expect(room.playerOrder[room.currentPlayerIndex]).toBe(playerId1);
+
+    room.timeRemainingMs[playerId1] = 500;
+
+    await new Promise(resolve => setTimeout(resolve, 600));
+
+    expect(room.currentPlayerIndex).toBe(1);
+    expect(room.playerOrder[room.currentPlayerIndex]).toBe(playerId2);
+    expect(timeOutCalls).toHaveLength(1);
+
+    room.stopClockSync();
+  });
+});

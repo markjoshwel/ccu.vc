@@ -109,11 +109,17 @@ io.on('connection', (socket) => {
     roomManager.handlePlayerConnection(roomCode, socket.id, player);
     socketRoomMap.set(socket.id, roomCode);
     socketPlayerMap.set(socket.id, { playerId, playerSecret });
-    
+
     room.onClockSync = (data) => {
       io.to(roomCode).emit('clockSync', data);
     };
-    
+
+    room.onTimeOut = (data) => {
+      io.to(roomCode).emit('timeOut', data);
+      io.to(roomCode).emit('roomUpdated', room.state);
+      broadcastGameStateUpdate(roomCode);
+    };
+
     io.to(roomCode).emit('roomUpdated', room.state);
     const playerPublic = { id: player.id, name: player.name, isReady: player.isReady, connected: player.connected, handCount: player.hand.length };
     io.to(roomCode).emit('playerJoined', playerPublic as any);
@@ -135,6 +141,17 @@ io.on('connection', (socket) => {
     
     socketRoomMap.set(socket.id, roomCode);
     socketPlayerMap.set(socket.id, { playerId, playerSecret });
+
+    room.onClockSync = (data) => {
+      io.to(roomCode).emit('clockSync', data);
+    };
+
+    room.onTimeOut = (data) => {
+      io.to(roomCode).emit('timeOut', data);
+      io.to(roomCode).emit('roomUpdated', room.state);
+      broadcastGameStateUpdate(roomCode);
+    };
+
     io.to(roomCode).emit('roomUpdated', room.state);
     socket.join(roomCode);
     broadcastGameStateUpdate(roomCode);
