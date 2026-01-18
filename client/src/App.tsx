@@ -464,10 +464,6 @@ function App() {
           <h1>Room {room.id}</h1>
           <div className="room-code">{roomCode || joinRoomCode}</div>
 
-          <button className="chat-toggle" onClick={toggleChat}>
-            Chat {unreadCount > 0 && <span className="badge">{unreadCount}</span>}
-          </button>
-          
           {room.gameStatus === 'playing' && topCard && (
             <div className="game-area">
               <div className="discard-area">
@@ -552,43 +548,51 @@ function App() {
             </button>
           )}
 
-          <div className={`chat-drawer ${isChatOpen ? 'open' : ''}`}>
-            <div className="chat-header">
-              <div>
-                <div className="chat-title">Room Chat</div>
-                <div className="chat-subtitle">Messages are visible to everyone</div>
-              </div>
-              <button className="chat-close" onClick={toggleChat}>
-                {isChatOpen ? 'Close' : 'Open'}
-              </button>
-            </div>
-            <div className="chat-messages" ref={chatListRef}>
-              {chatMessages.map((msg, index) => (
-                <div key={index} className={`chat-message ${msg.playerId === myPlayerId ? 'me' : ''}`}>
-                  <div className="chat-meta">
-                    <span className="chat-author">{msg.playerName}</span>
-                    <span className="chat-time">{new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                  </div>
-                  <div className="chat-text">{msg.message}</div>
+          <div className="chat-shell">
+            <button className="chat-toggle" onClick={toggleChat} aria-expanded={isChatOpen} aria-controls="room-chat">
+              <span>Room Chat</span>
+              {unreadCount > 0 && <span className="badge" aria-label={`${unreadCount} unread messages`}>{unreadCount}</span>}
+              <span className="chat-toggle-state">{isChatOpen ? 'Hide' : 'Show'}</span>
+            </button>
+
+            <div id="room-chat" className={`chat-drawer ${isChatOpen ? 'open' : ''}`}>
+              <div className="chat-header">
+                <div>
+                  <div className="chat-title">Room Chat</div>
+                  <div className="chat-subtitle">Messages are visible to everyone</div>
                 </div>
-              ))}
-            </div>
-            <div className="chat-input-row">
-              <input
-                type="text"
-                value={chatInput}
-                onChange={(e) => setChatInput(e.target.value)}
-                placeholder="Type a message"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    handleSendChat();
-                  }
-                }}
-              />
-              <button onClick={handleSendChat} disabled={!chatInput.trim() || pendingActions.size > 0}>
-                Send
-              </button>
+                <button className="chat-close" onClick={toggleChat}>
+                  {isChatOpen ? 'Close' : 'Open'}
+                </button>
+              </div>
+              <div className="chat-messages" ref={chatListRef}>
+                {chatMessages.map((msg, index) => (
+                  <div key={index} className={`chat-message ${msg.playerId === myPlayerId ? 'me' : ''}`}>
+                    <div className="chat-meta">
+                      <span className="chat-author">{msg.playerName}</span>
+                      <span className="chat-time">{new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                    </div>
+                    <div className="chat-text">{msg.message}</div>
+                  </div>
+                ))}
+              </div>
+              <div className="chat-input-row">
+                <input
+                  type="text"
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                  placeholder="Type a message"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleSendChat();
+                    }
+                  }}
+                />
+                <button onClick={handleSendChat} disabled={!chatInput.trim() || pendingActions.size > 0}>
+                  Send
+                </button>
+              </div>
             </div>
           </div>
 
