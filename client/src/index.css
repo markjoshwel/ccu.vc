@@ -235,6 +235,28 @@ button:disabled {
   margin-left: auto;
 }
 
+.player .clock-time {
+  font-family: monospace;
+  font-size: 14px;
+  margin-left: 16px;
+  font-weight: bold;
+  transition: all 0.5s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .player .clock-time {
+    transition: none;
+  }
+}
+
+.player .clock-time.active {
+  color: #4a90e2;
+}
+
+.player .clock-time:not(.active) {
+  color: #999;
+}
+
 .player.active {
   border: 2px solid #4a90e2;
   background: #e8f4fc;
@@ -351,4 +373,23 @@ button:disabled {
 
 .cancel-btn:hover {
   background: #bbb;
+}
+
+.clock-tick {
+  animation: pulse 0.3s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .clock-tick {
+    animation: none;
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
 }

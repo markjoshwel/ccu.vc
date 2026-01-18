@@ -29,6 +29,49 @@ function App() {
   const [gameView, setGameView] = useState<GameView | null>(null);
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [pendingWildCard, setPendingWildCard] = useState<Card | null>(null);
+  const [clockSync, setClockSync] = useState<import('shared').ClockSyncData | null>(null);
+  const [interpolatedTime, setInterpolatedTime] = useState<{ [playerId: string]: number }>({});
+  const [reducedMotion, setReducedMotion] = useState(false);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    setReducedMotion(mediaQuery.matches);
+
+    const handler = (event: MediaQueryListEvent) => setReducedMotion(event.matches);
+    mediaQuery.addEventListener('change', handler);
+    return () => mediaQuery.removeEventListener('change', handler);
+  }, []);
+
+  useEffect(() => {
+    if (!clockSync) return;
+
+    const updateInterval = reducedMotion ? 1000 : 100;
+    let lastSyncTime = Date.now();
+    let lastSecond = -1;
+
+    const updateInterpolatedTime = () => {
+      const now = Date.now();
+      const elapsed = now - lastSyncTime;
+      const currentSecond = Math.floor(elapsed / 1000);
+      
+      setInterpolatedTime((prev) => {
+        const newInterpolatedTime: { [playerId: string]: number } = {};
+        
+        for (const [playerId, timeRemainingMs] of Object.entries(clockSync.timeRemainingMs)) {
+          const remainingTime = Math.max(0, timeRemainingMs - elapsed);
+          newInterpolatedTime[playerId] = remainingTime;
+        }
+        
+        return newInterpolatedTime;
+      });
+
+      lastSyncTime = now;
+      lastSecond = currentSecond;
+    };
+
+    const intervalId = setInterval(updateInterpolatedTime, updateInterval);
+    return () => clearInterval(intervalId);
+  }, [clockSync, reducedMotion]);
 
   useEffect(() => {
     const storedSecret = localStorage.getItem(STORAGE_KEYS.PLAYER_SECRET);
@@ -76,6 +119,10 @@ function App() {
       newSocket.on('gameStateUpdate', (updatedGameView) => {
         setGameView(updatedGameView);
         setRoom(updatedGameView.room);
+      });
+
+      newSocket.on('clockSync', (data) => {
+        setClockSync(data);
       });
 
       newSocket.on('error', (message) => {
@@ -199,6 +246,10 @@ function App() {
       setRoom(updatedGameView.room);
     });
 
+    newSocket.on('clockSync', (data) => {
+      setClockSync(data);
+    });
+
     newSocket.on('error', (message) => {
       setError(message);
       setLoading(false);
@@ -216,6 +267,8 @@ function App() {
     setRoom(null);
     setPlayers([]);
     setGameView(null);
+    setClockSync(null);
+    setInterpolatedTime({});
     setView('lobby');
     setLoading(false);
     setError('');
@@ -263,10 +316,10 @@ function App() {
 
   const handleDrawCard = () => {
     if (!socket) return;
-    
+
     const actionId = generateActionId();
     setPendingActions((prev) => new Set(prev).add(actionId));
-    
+
     socket.emit('drawCard', actionId, (response) => {
       if (!response.success) {
         setError(response.error || 'Failed to draw card');
@@ -301,6 +354,23 @@ function App() {
       return player.handCount || 0;
     };
 
+    const formatTime = (ms: number): string => {
+      const seconds = Math.ceil(ms / 1000);
+      const minutes = Math.floor(seconds / 60);
+      const remainingSeconds = seconds % 60;
+      return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+    };
+
+    const getPlayerTime = (playerId: string): number => {
+      if (interpolatedTime[playerId] !== undefined) {
+        return interpolatedTime[playerId];
+      }
+      if (clockSync?.timeRemainingMs[playerId] !== undefined) {
+        return clockSync.timeRemainingMs[playerId];
+      }
+      return 0;
+    };
+
     return (
       <div className="container">
         <div className="card">
@@ -332,6 +402,11 @@ function App() {
                     <span className="name">{player.name}</span>
                     <span className="status">{player.connected ? 'Online' : 'Offline'}</span>
                     <span className="hand-count">{getPlayerHandCount(player)} cards</span>
+                    {room.gameStatus === 'playing' && (
+                      <span className={`clock-time ${room.currentPlayerIndex === index ? 'active' : ''}`}>
+                        {formatTime(getPlayerTime(player.id))}
+                      </span>
+                    )}
                   </div>
                 ))}
               </div>
