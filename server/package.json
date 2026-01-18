@@ -3,7 +3,7 @@
   "version": "2026.1.19",
   "type": "module",
   "scripts": {
-    "build": "tsc --outDir dist",
+    "build": "tsc -p tsconfig.build.json --outDir dist",
     "typecheck": "tsc --noEmit",
     "dev": "bun run src/index.ts",
     "test": "bun test"

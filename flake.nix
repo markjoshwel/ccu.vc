@@ -51,6 +51,12 @@
           bunRoot = "client";
 
           buildPhase = ''
+            # Build shared types first (dependency for client)
+            cd shared
+            bun run build
+            cd ..
+            
+            # Build client
             cd client
             bun run build
           '';
@@ -76,6 +82,12 @@
           inherit bunDeps;
 
           buildPhase = ''
+            # Build shared types first (dependency for server)
+            cd shared
+            bun run build
+            cd ..
+            
+            # Build server
             cd server
             bun run build
           '';
