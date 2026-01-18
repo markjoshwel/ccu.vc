@@ -57,7 +57,276 @@ describe('server', () => {
   });
 });
 
+describe('sendChat socket event', () => {
+  let server: ReturnType<typeof createServer>;
+  let io: SocketIOServer<ClientToServerEvents, ServerToClientEvents>;
+  let port: number;
+  let roomManager: RoomManager;
+  let socketRoomMap: Map<string, string>;
+  let socketPlayerMap: Map<string, { playerId: string; playerSecret: string }>;
+  let playerRateLimiters: Map<string, RateLimiter>;
+
+  function validateDisplayName(displayName: string): { valid: boolean; error?: string } {
+    const trimmed = displayName.trim();
+
+    if (trimmed.length === 0) {
+      return { valid: false, error: 'Display name cannot be empty' };
+    }
+
+    if (trimmed.length > 24) {
+      return { valid: false, error: 'Display name must be 24 characters or less' };
+    }
+
+    if (/[\x00-\x1F\x7F]/.test(trimmed)) {
+      return { valid: false, error: 'Display name cannot contain control characters' };
+    }
+
+    return { valid: true };
+  }
+
+  function generatePlayerSecret(): string {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let secret = '';
+    for (let i = 0; i < 32; i++) {
+      secret += chars[Math.floor(Math.random() * chars.length)];
+    }
+    return secret;
+  }
+
+  beforeAll(() => {
+    port = 3004;
+    server = createServer((req, res) => {
+      res.writeHead(404);
+      res.end('Not Found');
+    });
+
+    io = new SocketIOServer<ClientToServerEvents, ServerToClientEvents>(server, {
+      cors: {
+        origin: '*',
+        methods: ['GET', 'POST']
+      }
+    });
+
+    roomManager = new RoomManager();
+    socketRoomMap = new Map();
+    socketPlayerMap = new Map();
+    playerRateLimiters = new Map();
+
+    io.on('connection', (socket) => {
+      socket.on('create_room', (actionId: string, callback: (response: { roomCode: string }) => void) => {
+        const room = roomManager.createRoom();
+        socket.emit('actionAck', { actionId, ok: true });
+        callback({ roomCode: room.code });
+      });
+
+      socket.on('join_room', (
+        actionId: string,
+        roomCode: string,
+        displayName: string,
+        callback: (response: { playerId: string; playerSecret: string } | { error: string }) => void
+      ) => {
+        const validation = validateDisplayName(displayName);
+
+        if (!validation.valid) {
+          socket.emit('actionAck', { actionId, ok: false });
+          callback({ error: validation.error || 'Invalid display name' });
+          return;
+        }
+
+        const room = roomManager.getRoom(roomCode);
+
+        if (!room) {
+          socket.emit('actionAck', { actionId, ok: false });
+          callback({ error: 'Room not found' });
+          return;
+        }
+
+        const playerId = `player_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+        const playerSecret = generatePlayerSecret();
+
+        const player = {
+          id: playerId,
+          name: displayName.trim(),
+          isReady: false,
+          secret: playerSecret,
+          connected: true,
+          hand: [],
+          handCount: 0
+        };
+
+        roomManager.handlePlayerConnection(roomCode, socket.id, player);
+        socketRoomMap.set(socket.id, roomCode);
+        socketPlayerMap.set(socket.id, { playerId, playerSecret });
+
+        io.to(roomCode).emit('roomUpdated', room.state);
+        const playerPublic = { id: player.id, name: player.name, isReady: player.isReady, connected: player.connected, handCount: player.hand.length };
+        io.to(roomCode).emit('playerJoined', playerPublic as any);
+        socket.join(roomCode);
+
+        socket.emit('actionAck', { actionId, ok: true });
+        callback({ playerId, playerSecret });
+      });
+
+      socket.on('sendChat', (
+        actionId: string,
+        message: string,
+        callback: (response: { success: boolean; error?: string }) => void
+      ) => {
+        const roomCode = socketRoomMap.get(socket.id);
+
+        if (!roomCode) {
+          socket.emit('actionAck', { actionId, ok: false });
+          callback({ success: false, error: 'Not in a room' });
+          return;
+        }
+
+        if (message.length > 280) {
+          socket.emit('actionAck', { actionId, ok: false });
+          callback({ success: false, error: 'Message exceeds 280 characters' });
+          return;
+        }
+
+        const playerData = socketPlayerMap.get(socket.id);
+        if (!playerData) {
+          socket.emit('actionAck', { actionId, ok: false });
+          callback({ success: false, error: 'Player not found' });
+          return;
+        }
+
+        let rateLimiter = playerRateLimiters.get(playerData.playerId);
+        if (!rateLimiter) {
+          rateLimiter = new RateLimiter(3, 1);
+          playerRateLimiters.set(playerData.playerId, rateLimiter);
+        }
+
+        if (!rateLimiter.tryConsume()) {
+          socket.emit('actionAck', { actionId, ok: false });
+          callback({ success: false, error: 'Rate limit exceeded' });
+          return;
+        }
+
+        const room = roomManager.getRoom(roomCode);
+        const player = room?.players.get(playerData.playerId);
+
+        if (!room || !player) {
+          socket.emit('actionAck', { actionId, ok: false });
+          callback({ success: false, error: 'Room or player not found' });
+          return;
+        }
+
+        io.to(roomCode).emit('chatMessage', {
+          playerId: playerData.playerId,
+          playerName: player.name,
+          message,
+          timestamp: Date.now()
+        });
+        socket.emit('actionAck', { actionId, ok: true });
+        callback({ success: true });
+      });
+
+      socket.on('disconnect', () => {
+        const roomId = socketRoomMap.get(socket.id);
+        if (roomId) {
+          const playerData = socketPlayerMap.get(socket.id);
+          const playerId = playerData?.playerId || socket.id;
+          roomManager.handlePlayerDisconnection(roomId, socket.id, playerId);
+          socketRoomMap.delete(socket.id);
+          socketPlayerMap.delete(socket.id);
+        }
+      });
+    });
+
+    server.listen(port);
+  });
+
+  afterAll(() => {
+    io.close();
+    server.close();
+  });
+
+  const connectClient = () => ioClient(`http://localhost:${port}`) as any;
+
+  const createRoomOnServer = (client: any) => new Promise<{ roomCode: string }>((resolve) => {
+    client.emit('create_room', 'action-create', (response: { roomCode: string }) => {
+      resolve(response);
+    });
+  });
+
+  const joinRoomOnServer = (client: any, roomCode: string, displayName: string) => new Promise<{ playerId: string; playerSecret: string }>((resolve, reject) => {
+    client.emit('join_room', 'action-join', roomCode, displayName, (response: { playerId: string; playerSecret: string } | { error: string }) => {
+      if ('error' in response) {
+        reject(new Error(response.error));
+      } else {
+        resolve(response);
+      }
+    });
+  });
+
+  const sendChatFromClient = (client: any, message: string) => new Promise<{ success: boolean; error?: string }>((resolve) => {
+    client.emit('sendChat', 'action-chat', message, (response: { success: boolean; error?: string }) => {
+      resolve(response);
+    });
+  });
+
+  it('broadcasts chatMessage to all sockets in the room', async () => {
+    const host = connectClient();
+    const guest = connectClient();
+
+    const { roomCode } = await createRoomOnServer(host);
+    const { playerId } = await joinRoomOnServer(host, roomCode, 'HostPlayer');
+    await joinRoomOnServer(guest, roomCode, 'GuestPlayer');
+
+    const receivedByHost = new Promise<any>((resolve) => host.on('chatMessage', resolve));
+    const receivedByGuest = new Promise<any>((resolve) => guest.on('chatMessage', resolve));
+
+    const sendResult = await sendChatFromClient(host, 'Hello room');
+    expect(sendResult.success).toBe(true);
+
+    const [hostMessage, guestMessage] = await Promise.all([receivedByHost, receivedByGuest]);
+
+    expect(hostMessage.message).toBe('Hello room');
+    expect(guestMessage.message).toBe('Hello room');
+    expect(hostMessage.playerId).toBe(playerId);
+    expect(hostMessage.playerName).toBe('HostPlayer');
+    expect(typeof hostMessage.timestamp).toBe('number');
+
+    host.disconnect();
+    guest.disconnect();
+  });
+
+  it('enforces message length and per-player rate limits', async () => {
+    const client = connectClient();
+
+    const { roomCode } = await createRoomOnServer(client);
+    await joinRoomOnServer(client, roomCode, 'Chatter');
+
+    const longMessageResponse = await sendChatFromClient(client, 'x'.repeat(281));
+    expect(longMessageResponse.success).toBe(false);
+    expect(longMessageResponse.error).toBe('Message exceeds 280 characters');
+
+    const first = await sendChatFromClient(client, 'first');
+    const second = await sendChatFromClient(client, 'second');
+    const third = await sendChatFromClient(client, 'third');
+
+    expect(first.success).toBe(true);
+    expect(second.success).toBe(true);
+    expect(third.success).toBe(true);
+
+    const fourth = await sendChatFromClient(client, 'fourth');
+    expect(fourth.success).toBe(false);
+    expect(fourth.error).toBe('Rate limit exceeded');
+
+    await new Promise((resolve) => setTimeout(resolve, 1100));
+
+    const afterWait = await sendChatFromClient(client, 'after-wait');
+    expect(afterWait.success).toBe(true);
+
+    client.disconnect();
+  });
+});
+
 describe('RoomManager', () => {
+
   describe('room code format', () => {
     it('should create a room with a 6-character code', () => {
       const manager = new RoomManager();
