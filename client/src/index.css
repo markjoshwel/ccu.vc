@@ -239,6 +239,34 @@ button:disabled {
   font-family: monospace;
   font-size: 14px;
   margin-left: 16px;
+}
+
+.avatar-inputs {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.avatar-url {
+  display: flex;
+  gap: 8px;
+}
+
+.avatar-url button {
+  width: auto;
+  padding: 0 12px;
+}
+
+.avatar-selected {
+  font-size: 13px;
+  color: #2c7a4b;
+}
+
+
+.player .clock-time {
+  font-family: monospace;
+  font-size: 14px;
+  margin-left: 16px;
   font-weight: bold;
   transition: all 0.5s ease;
 }

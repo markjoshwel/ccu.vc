@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, ChangeEvent } from 'react';
 import { io, Socket } from 'socket.io-client';
 import type { RoomState, PlayerPublic, ServerToClientEvents, ClientToServerEvents, Card, GameView } from 'shared';
 
@@ -6,7 +6,8 @@ const STORAGE_KEYS = {
   PLAYER_SECRET: 'playerSecret',
   PLAYER_ID: 'playerId',
   ROOM_CODE: 'roomCode',
-  DISPLAY_NAME: 'displayName'
+  DISPLAY_NAME: 'displayName',
+  AVATAR_ID: 'avatarId'
 };
 
 type AppView = 'lobby' | 'room';
@@ -20,6 +21,10 @@ function App() {
   const [displayName, setDisplayName] = useState('');
   const [roomCode, setRoomCode] = useState('');
   const [joinRoomCode, setJoinRoomCode] = useState('');
+  const [avatarId, setAvatarId] = useState<string | null>(null);
+  const [avatarUploadError, setAvatarUploadError] = useState('');
+  const [avatarUrlInput, setAvatarUrlInput] = useState('');
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [room, setRoom] = useState<RoomState | null>(null);
   const [players, setPlayers] = useState<PlayerPublic[]>([]);
   const [loading, setLoading] = useState(false);
@@ -81,9 +86,11 @@ function App() {
     const storedPlayerId = localStorage.getItem(STORAGE_KEYS.PLAYER_ID);
     const storedRoomCode = localStorage.getItem(STORAGE_KEYS.ROOM_CODE);
     const storedDisplayName = localStorage.getItem(STORAGE_KEYS.DISPLAY_NAME);
+    const storedAvatarId = localStorage.getItem(STORAGE_KEYS.AVATAR_ID);
 
     if (storedSecret && storedPlayerId && storedRoomCode && storedDisplayName) {
       setDisplayName(storedDisplayName);
+      setAvatarId(storedAvatarId);
       setLoading(true);
 
       const newSocket = io('http://localhost:3000');
@@ -172,13 +179,18 @@ function App() {
 
     newSocket.emit('create_room', (response: { roomCode: string }) => {
       localStorage.setItem(STORAGE_KEYS.DISPLAY_NAME, displayName);
+      if (avatarId) {
+        localStorage.setItem(STORAGE_KEYS.AVATAR_ID, avatarId);
+      } else {
+        localStorage.removeItem(STORAGE_KEYS.AVATAR_ID);
+      }
       setJoinRoomCode(response.roomCode);
     });
 
     newSocket.on('connect', () => {
       const joinActionId = generateActionId();
       setPendingActions((prev) => new Set(prev).add(joinActionId));
-      newSocket.emit('join_room', joinActionId, joinRoomCode || roomCode, displayName, (response: { error: string } | { playerId: string; playerSecret: string }) => {
+      newSocket.emit('join_room', joinActionId, joinRoomCode || roomCode, displayName, avatarId, (response: { error: string } | { playerId: string; playerSecret: string }) => {
         if ('error' in response) {
           setError(response.error);
           setLoading(false);
@@ -186,6 +198,11 @@ function App() {
           localStorage.setItem(STORAGE_KEYS.PLAYER_SECRET, response.playerSecret);
           localStorage.setItem(STORAGE_KEYS.PLAYER_ID, response.playerId);
           localStorage.setItem(STORAGE_KEYS.ROOM_CODE, joinRoomCode || roomCode);
+          if (avatarId) {
+            localStorage.setItem(STORAGE_KEYS.AVATAR_ID, avatarId);
+          } else {
+            localStorage.removeItem(STORAGE_KEYS.AVATAR_ID);
+          }
         }
       });
     });
@@ -244,7 +261,7 @@ function App() {
     newSocket.on('connect', () => {
       const joinActionId = generateActionId();
       setPendingActions((prev) => new Set(prev).add(joinActionId));
-      newSocket.emit('join_room', joinActionId, joinRoomCode, displayName, (response: { error: string } | { playerId: string; playerSecret: string }) => {
+      newSocket.emit('join_room', joinActionId, joinRoomCode, displayName, avatarId, (response: { error: string } | { playerId: string; playerSecret: string }) => {
         if ('error' in response) {
           setError(response.error);
           setLoading(false);
@@ -254,6 +271,11 @@ function App() {
           localStorage.setItem(STORAGE_KEYS.PLAYER_SECRET, response.playerSecret);
           localStorage.setItem(STORAGE_KEYS.PLAYER_ID, response.playerId);
           localStorage.setItem(STORAGE_KEYS.ROOM_CODE, joinRoomCode);
+          if (avatarId) {
+            localStorage.setItem(STORAGE_KEYS.AVATAR_ID, avatarId);
+          } else {
+            localStorage.removeItem(STORAGE_KEYS.AVATAR_ID);
+          }
         }
       });
     });
@@ -286,6 +308,7 @@ function App() {
     localStorage.removeItem(STORAGE_KEYS.PLAYER_SECRET);
     localStorage.removeItem(STORAGE_KEYS.PLAYER_ID);
     localStorage.removeItem(STORAGE_KEYS.ROOM_CODE);
+    localStorage.removeItem(STORAGE_KEYS.AVATAR_ID);
     socket?.disconnect();
     setSocket(null);
     setRoom(null);
@@ -414,6 +437,70 @@ function App() {
 
   const isCreatePending = pendingActions.size > 0;
   const isJoinPending = pendingActions.size > 0;
+
+  const handleAvatarUpload = async (file: File) => {
+    setAvatarUploadError('');
+    setIsUploadingAvatar(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch('http://localhost:3000/avatar/upload', {
+        method: 'POST',
+        body: formData
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || 'Upload failed');
+      }
+      const json = await res.json();
+      if (!json.avatarId) {
+        throw new Error('Upload did not return avatarId');
+      }
+      setAvatarId(json.avatarId);
+      setAvatarUrlInput('');
+    } catch (err) {
+      setAvatarUploadError((err as Error).message || 'Failed to upload avatar');
+    } finally {
+      setIsUploadingAvatar(false);
+    }
+  };
+
+  const handleAvatarUrlSubmit = async () => {
+    if (!avatarUrlInput.trim()) {
+      setAvatarUploadError('Please enter an image URL');
+      return;
+    }
+    setAvatarUploadError('');
+    setIsUploadingAvatar(true);
+    try {
+      const res = await fetch('http://localhost:3000/avatar/from-url', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: avatarUrlInput.trim() })
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || 'URL upload failed');
+      }
+      const json = await res.json();
+      if (!json.avatarId) {
+        throw new Error('Request did not return avatarId');
+      }
+      setAvatarId(json.avatarId);
+      setAvatarUrlInput('');
+    } catch (err) {
+      setAvatarUploadError((err as Error).message || 'Failed to add avatar from URL');
+    } finally {
+      setIsUploadingAvatar(false);
+    }
+  };
+
+  const handleAvatarFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      void handleAvatarUpload(file);
+    }
+  };
 
   if (loading) {
     return (
@@ -644,6 +731,28 @@ function App() {
             onChange={(e) => setDisplayName(e.target.value)}
             placeholder="Enter your name"
           />
+        </div>
+        <div className="form-group">
+          <label>Avatar (optional)</label>
+          <div className="avatar-inputs">
+            <div className="avatar-file">
+              <input type="file" accept="image/png,image/jpeg,image/webp" onChange={handleAvatarFileChange} disabled={isUploadingAvatar} />
+            </div>
+            <div className="avatar-url">
+              <input
+                type="url"
+                value={avatarUrlInput}
+                onChange={(e) => setAvatarUrlInput(e.target.value)}
+                placeholder="https://example.com/avatar.png"
+                disabled={isUploadingAvatar}
+              />
+              <button type="button" onClick={handleAvatarUrlSubmit} disabled={isUploadingAvatar || !avatarUrlInput.trim()}>
+                {isUploadingAvatar ? 'Adding...' : 'Use URL'}
+              </button>
+            </div>
+            {avatarId && <div className="avatar-selected">Avatar selected</div>}
+            {avatarUploadError && <div className="error" style={{ textAlign: 'left' }}>{avatarUploadError}</div>}
+          </div>
         </div>
         <button onClick={handleCreateRoom} disabled={loading || isCreatePending} data-pending={isCreatePending}>
           {isCreatePending ? 'Creating...' : 'Create Room'}

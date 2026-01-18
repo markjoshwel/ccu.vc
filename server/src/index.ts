@@ -23,7 +23,7 @@ const io = new SocketIOServer<ClientToServerEvents, ServerToClientEvents>(httpSe
 const roomManager = new RoomManager();
 
 const socketRoomMap = new Map<string, string>();
-const socketPlayerMap = new Map<string, { playerId: string; playerSecret: string }>();
+const socketPlayerMap = new Map<string, { playerId: string; playerSecret: string; avatarId?: string }>();
 const playerRateLimiters = new Map<string, RateLimiter>();
 
 function broadcastGameStateUpdate(roomCode: string): void {
@@ -75,7 +75,14 @@ io.on('connection', (socket) => {
     callback({ roomCode: room.code });
   });
   
-  socket.on('join_room', (actionId: string, roomCode: string, displayName: string, callback: (response: { playerId: string; playerSecret: string } | { error: string }) => void) => {
+  socket.on('join_room', (...args) => {
+    const [actionId, roomCode, displayName, maybeAvatarOrCallback, maybeCallback] = args as Parameters<ClientToServerEvents['join_room']>;
+
+    const avatarId = typeof maybeAvatarOrCallback === 'function' ? undefined : maybeAvatarOrCallback ?? undefined;
+    const callback = (typeof maybeAvatarOrCallback === 'function'
+      ? maybeAvatarOrCallback
+      : maybeCallback) as (response: { playerId: string; playerSecret: string } | { error: string }) => void;
+
     const validation = validateDisplayName(displayName);
     
     if (!validation.valid) {
@@ -102,7 +109,8 @@ io.on('connection', (socket) => {
       secret: playerSecret,
       connected: true,
       hand: [],
-      handCount: 0
+      handCount: 0,
+      avatarId: avatarId ?? undefined
     };
     
     roomManager.handlePlayerConnection(roomCode, socket.id, player);
@@ -120,7 +128,7 @@ io.on('connection', (socket) => {
     };
 
     io.to(roomCode).emit('roomUpdated', room.state);
-    const playerPublic = { id: player.id, name: player.name, isReady: player.isReady, connected: player.connected, handCount: player.hand.length };
+    const playerPublic = { id: player.id, name: player.name, isReady: player.isReady, connected: player.connected, handCount: player.hand.length, avatarId: player.avatarId };
     io.to(roomCode).emit('playerJoined', playerPublic as any);
     socket.join(roomCode);
     broadcastGameStateUpdate(roomCode);

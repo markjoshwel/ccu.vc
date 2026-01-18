@@ -30,6 +30,7 @@ export type PlayerPublic = {
   score?: number;
   connected: boolean;
   handCount: number;
+  avatarId?: string;
 };
 
 export type PlayerPrivate = {
@@ -40,6 +41,7 @@ export type PlayerPrivate = {
   secret: string;
   connected: boolean;
   hand: Card[];
+  avatarId?: string;
 };
 
 export type GameView = {
@@ -48,9 +50,15 @@ export type GameView = {
   otherPlayers: PlayerPublic[];
 };
 
+type JoinRoomCallback = (response: { playerId: string; playerSecret: string } | { error: string }) => void;
+
+type JoinRoomArgs =
+  | [actionId: string, roomCode: string, displayName: string, callback: JoinRoomCallback]
+  | [actionId: string, roomCode: string, displayName: string, avatarId: string | null | undefined, callback: JoinRoomCallback];
+
 export type ClientToServerEvents = {
   create_room: (actionId: string, callback: (response: { roomCode: string }) => void) => void;
-  join_room: (actionId: string, roomCode: string, displayName: string, callback: (response: { playerId: string; playerSecret: string } | { error: string }) => void) => void;
+  join_room: (...args: JoinRoomArgs) => void;
   reconnect_room: (actionId: string, roomCode: string, playerId: string, playerSecret: string, callback: (response: { success: boolean; error?: string }) => void) => void;
   joinRoom: (roomId: string) => void;
   leaveRoom: () => void;

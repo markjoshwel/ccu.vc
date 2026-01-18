@@ -3,7 +3,7 @@ import { Deck } from './Deck';
 
 type RoomCode = string;
 
-type StoredPlayer = PlayerPublic & { secret: string; connected: boolean; hand: Card[] };
+type StoredPlayer = PlayerPublic & { secret: string; connected: boolean; hand: Card[]; avatarId?: string };
 
 export class Room {
   code: RoomCode;
@@ -83,7 +83,8 @@ export class Room {
       isReady: p.isReady,
       score: p.score,
       connected: p.connected,
-      handCount: p.hand.length
+      handCount: p.hand.length,
+      avatarId: p.avatarId
     }));
     this.state.deckSize = this.deck?.size || 0;
     this.state.discardPile = this.discardPile;
@@ -152,7 +153,8 @@ export class Room {
       score: requestingPlayer.score,
       secret: requestingPlayer.secret,
       connected: requestingPlayer.connected,
-      hand: requestingPlayer.hand
+      hand: requestingPlayer.hand,
+      avatarId: requestingPlayer.avatarId
     };
 
     const otherPlayers: PlayerPublic[] = Array.from(this.players.values())
@@ -163,7 +165,8 @@ export class Room {
         isReady: p.isReady,
         score: p.score,
         connected: p.connected,
-        handCount: p.hand.length
+        handCount: p.hand.length,
+        avatarId: p.avatarId
       }));
 
     return {

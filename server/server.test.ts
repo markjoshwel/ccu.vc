@@ -126,8 +126,11 @@ describe('sendChat socket event', () => {
         actionId: string,
         roomCode: string,
         displayName: string,
-        callback: (response: { playerId: string; playerSecret: string } | { error: string }) => void
+        avatarIdOrCallback: string | null | undefined | ((response: { playerId: string; playerSecret: string } | { error: string }) => void),
+        maybeCallback?: (response: { playerId: string; playerSecret: string } | { error: string }) => void
       ) => {
+        const avatarId = typeof avatarIdOrCallback === 'function' ? undefined : avatarIdOrCallback ?? undefined;
+        const callback = (typeof avatarIdOrCallback === 'function' ? avatarIdOrCallback : maybeCallback)!;
         const validation = validateDisplayName(displayName);
 
         if (!validation.valid) {
@@ -154,7 +157,8 @@ describe('sendChat socket event', () => {
           secret: playerSecret,
           connected: true,
           hand: [],
-          handCount: 0
+          handCount: 0,
+          avatarId
         };
 
         roomManager.handlePlayerConnection(roomCode, socket.id, player);
@@ -162,7 +166,7 @@ describe('sendChat socket event', () => {
         socketPlayerMap.set(socket.id, { playerId, playerSecret });
 
         io.to(roomCode).emit('roomUpdated', room.state);
-        const playerPublic = { id: player.id, name: player.name, isReady: player.isReady, connected: player.connected, handCount: player.hand.length };
+        const playerPublic = { id: player.id, name: player.name, isReady: player.isReady, connected: player.connected, handCount: player.hand.length, avatarId: player.avatarId };
         io.to(roomCode).emit('playerJoined', playerPublic as any);
         socket.join(roomCode);
 
