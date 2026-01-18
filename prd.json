@@ -397,8 +397,9 @@
         "quality gate: `bun --filter server run typecheck` exits with code 0"
       ],
       "priority": 26,
-      "passes": false,
-      "notes": "Catching does not affect clocks; it is a side action."
+      "passes": true,
+      "notes": "Catching does not affect clocks; it is a side action.",
+      "completionNotes": "Completed by agent"
     },
     {
       "id": "US-027",
@@ -411,8 +412,9 @@
         "quality gate: `bun --filter client run typecheck` exits with code 0"
       ],
       "priority": 27,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "",
+      "completionNotes": "Completed by agent"
     },
     {
       "id": "US-028",
@@ -544,6 +546,6 @@
     }
   ],
   "metadata": {
-    "updatedAt": "2026-01-18T07:21:03.902Z"
+    "updatedAt": "2026-01-18T12:32:28.686Z"
   }
 }
