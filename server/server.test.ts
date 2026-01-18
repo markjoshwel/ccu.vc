@@ -1431,6 +1431,301 @@ describe('Deck', () => {
   });
 });
 
+describe('UNO window', () => {
+  it('should open UNO window when player reaches 1 card', () => {
+    const manager = new RoomManager();
+    const room = manager.createRoom();
+    
+    const socketId1 = 'socket1';
+    const playerId1 = 'player1';
+    const player1 = { id: playerId1, name: 'Player 1', isReady: false, secret: 'secret1', connected: true, hand: [], handCount: 0 };
+    
+    const socketId2 = 'socket2';
+    const playerId2 = 'player2';
+    const player2 = { id: playerId2, name: 'Player 2', isReady: false, secret: 'secret2', connected: true, hand: [], handCount: 0 };
+    
+    room.addPlayer(socketId1, player1);
+    room.addPlayer(socketId2, player2);
+    
+    let seed = 42;
+    const rng = () => {
+      let s = seed;
+      seed = (s * 1103515245 + 12345) % 0x80000000;
+      return seed / 0x80000000;
+    };
+    
+    room.startGame(rng);
+    
+    expect(room.state.gameStatus).toBe('playing');
+    expect(room.unoWindow).toBeUndefined();
+    
+    const player1Hand = room.players.get(playerId1)!.hand;
+    const player2Hand = room.players.get(playerId2)!.hand;
+    
+    expect(player1Hand.length).toBe(7);
+    expect(player2Hand.length).toBe(7);
+    
+    const initialDiscard = room.discardPile[room.discardPile.length - 1];
+    const validCards = player1Hand.filter(c => 
+      c.color === 'wild' || c.color === initialDiscard.color || c.value === initialDiscard.value
+    );
+    
+    if (validCards.length > 0) {
+      const cardsToPlay = player1Hand.slice(0, player1Hand.length - 1);
+      cardsToPlay.forEach(card => {
+        const index = player1Hand.findIndex(c => c.color === card.color && c.value === card.value);
+        if (index !== -1) {
+          player1Hand.splice(index, 1);
+        }
+      });
+      
+      if (player1Hand.length === 1) {
+        const lastCard = player1Hand[0];
+        if (lastCard.color === 'wild' || lastCard.color === initialDiscard.color || lastCard.value === initialDiscard.value) {
+          room.playCard(playerId1, lastCard);
+          
+          expect(room.unoWindow).toBeDefined();
+          expect(room.unoWindow?.playerId).toBe(playerId1);
+          expect(room.unoWindow?.called).toBe(false);
+          expect(room.state.unoWindow).toEqual(room.unoWindow);
+        }
+      }
+    }
+  });
+
+  it('should not open UNO window when player goes to 0 cards', () => {
+    const manager = new RoomManager();
+    const room = manager.createRoom();
+    
+    const socketId1 = 'socket1';
+    const playerId1 = 'player1';
+    const player1 = { id: playerId1, name: 'Player 1', isReady: false, secret: 'secret1', connected: true, hand: [], handCount: 0 };
+    
+    const socketId2 = 'socket2';
+    const playerId2 = 'player2';
+    const player2 = { id: playerId2, name: 'Player 2', isReady: false, secret: 'secret2', connected: true, hand: [], handCount: 0 };
+    
+    room.addPlayer(socketId1, player1);
+    room.addPlayer(socketId2, player2);
+    
+    let seed = 42;
+    const rng = () => {
+      let s = seed;
+      seed = (s * 1103515245 + 12345) % 0x80000000;
+      return seed / 0x80000000;
+    };
+    
+    room.startGame(rng);
+    
+    const player1Hand = room.players.get(playerId1)!.hand;
+    
+    const initialDiscard = room.discardPile[room.discardPile.length - 1];
+    const validCards = player1Hand.filter(c => 
+      c.color === 'wild' || c.color === initialDiscard.color || c.value === initialDiscard.value
+    );
+    
+    if (validCards.length > 0) {
+      player1Hand.splice(0, player1Hand.length - 1);
+      player1Hand[0] = validCards[0];
+      
+      if (player1Hand.length === 1) {
+        room.playCard(playerId1, player1Hand[0]);
+        
+        expect(room.state.gameStatus).toBe('finished');
+        expect(room.unoWindow).toBeUndefined();
+      }
+    }
+  });
+
+  it('should allow callUno during open window', () => {
+    const manager = new RoomManager();
+    const room = manager.createRoom();
+    
+    const socketId1 = 'socket1';
+    const playerId1 = 'player1';
+    const player1 = { id: playerId1, name: 'Player 1', isReady: false, secret: 'secret1', connected: true, hand: [], handCount: 0 };
+    
+    const socketId2 = 'socket2';
+    const playerId2 = 'player2';
+    const player2 = { id: playerId2, name: 'Player 2', isReady: false, secret: 'secret2', connected: true, hand: [], handCount: 0 };
+    
+    room.addPlayer(socketId1, player1);
+    room.addPlayer(socketId2, player2);
+    
+    let seed = 42;
+    const rng = () => {
+      let s = seed;
+      seed = (s * 1103515245 + 12345) % 0x80000000;
+      return seed / 0x80000000;
+    };
+    
+    room.startGame(rng);
+    
+    const player1Hand = room.players.get(playerId1)!.hand;
+    const initialDiscard = room.discardPile[room.discardPile.length - 1];
+    
+    const validCards = player1Hand.filter(c => 
+      c.color === 'wild' || c.color === initialDiscard.color || c.value === initialDiscard.value
+    );
+    
+    if (validCards.length > 0) {
+      const cardsToPlay = player1Hand.slice(0, player1Hand.length - 1);
+      cardsToPlay.forEach(card => {
+        const index = player1Hand.findIndex(c => c.color === card.color && c.value === card.value);
+        if (index !== -1) {
+          player1Hand.splice(index, 1);
+        }
+      });
+      
+      if (player1Hand.length === 1) {
+        const lastCard = player1Hand[0];
+        if (lastCard.color === 'wild' || lastCard.color === initialDiscard.color || lastCard.value === initialDiscard.value) {
+          room.playCard(playerId1, lastCard);
+          
+          expect(room.unoWindow).toBeDefined();
+          expect(room.unoWindow?.called).toBe(false);
+          
+          room.callUno(playerId1);
+          
+          expect(room.unoWindow?.called).toBe(true);
+          expect(room.state.unoWindow?.called).toBe(true);
+        }
+      }
+    }
+  });
+
+  it('should not allow callUno from wrong player', () => {
+    const manager = new RoomManager();
+    const room = manager.createRoom();
+    
+    const socketId1 = 'socket1';
+    const playerId1 = 'player1';
+    const player1 = { id: playerId1, name: 'Player 1', isReady: false, secret: 'secret1', connected: true, hand: [], handCount: 0 };
+    
+    const socketId2 = 'socket2';
+    const playerId2 = 'player2';
+    const player2 = { id: playerId2, name: 'Player 2', isReady: false, secret: 'secret2', connected: true, hand: [], handCount: 0 };
+    
+    room.addPlayer(socketId1, player1);
+    room.addPlayer(socketId2, player2);
+    
+    let seed = 42;
+    const rng = () => {
+      let s = seed;
+      seed = (s * 1103515245 + 12345) % 0x80000000;
+      return seed / 0x80000000;
+    };
+    
+    room.startGame(rng);
+    
+    const player1Hand = room.players.get(playerId1)!.hand;
+    const initialDiscard = room.discardPile[room.discardPile.length - 1];
+    
+    const validCards = player1Hand.filter(c => 
+      c.color === 'wild' || c.color === initialDiscard.color || c.value === initialDiscard.value
+    );
+    
+    if (validCards.length > 0) {
+      const cardsToPlay = player1Hand.slice(0, player1Hand.length - 1);
+      cardsToPlay.forEach(card => {
+        const index = player1Hand.findIndex(c => c.color === card.color && c.value === card.value);
+        if (index !== -1) {
+          player1Hand.splice(index, 1);
+        }
+      });
+      
+      if (player1Hand.length === 1) {
+        const lastCard = player1Hand[0];
+        if (lastCard.color === 'wild' || lastCard.color === initialDiscard.color || lastCard.value === initialDiscard.value) {
+          room.playCard(playerId1, lastCard);
+          
+          expect(() => room.callUno(playerId2)).toThrow('Not your UNO window');
+        }
+      }
+    }
+  });
+
+  it('should not allow callUno when no window is open', () => {
+    const manager = new RoomManager();
+    const room = manager.createRoom();
+    
+    const socketId1 = 'socket1';
+    const playerId1 = 'player1';
+    const player1 = { id: playerId1, name: 'Player 1', isReady: false, secret: 'secret1', connected: true, hand: [], handCount: 0 };
+    
+    const socketId2 = 'socket2';
+    const playerId2 = 'player2';
+    const player2 = { id: playerId2, name: 'Player 2', isReady: false, secret: 'secret2', connected: true, hand: [], handCount: 0 };
+    
+    room.addPlayer(socketId1, player1);
+    room.addPlayer(socketId2, player2);
+    
+    let seed = 42;
+    const rng = () => {
+      let s = seed;
+      seed = (s * 1103515245 + 12345) % 0x80000000;
+      return seed / 0x80000000;
+    };
+    
+    room.startGame(rng);
+    
+    expect(() => room.callUno(playerId1)).toThrow('No UNO window open');
+  });
+
+  it('should not allow duplicate callUno', () => {
+    const manager = new RoomManager();
+    const room = manager.createRoom();
+    
+    const socketId1 = 'socket1';
+    const playerId1 = 'player1';
+    const player1 = { id: playerId1, name: 'Player 1', isReady: false, secret: 'secret1', connected: true, hand: [], handCount: 0 };
+    
+    const socketId2 = 'socket2';
+    const playerId2 = 'player2';
+    const player2 = { id: playerId2, name: 'Player 2', isReady: false, secret: 'secret2', connected: true, hand: [], handCount: 0 };
+    
+    room.addPlayer(socketId1, player1);
+    room.addPlayer(socketId2, player2);
+    
+    let seed = 42;
+    const rng = () => {
+      let s = seed;
+      seed = (s * 1103515245 + 12345) % 0x80000000;
+      return seed / 0x80000000;
+    };
+    
+    room.startGame(rng);
+    
+    const player1Hand = room.players.get(playerId1)!.hand;
+    const initialDiscard = room.discardPile[room.discardPile.length - 1];
+    
+    const validCards = player1Hand.filter(c => 
+      c.color === 'wild' || c.color === initialDiscard.color || c.value === initialDiscard.value
+    );
+    
+    if (validCards.length > 0) {
+      const cardsToPlay = player1Hand.slice(0, player1Hand.length - 1);
+      cardsToPlay.forEach(card => {
+        const index = player1Hand.findIndex(c => c.color === card.color && c.value === card.value);
+        if (index !== -1) {
+          player1Hand.splice(index, 1);
+        }
+      });
+      
+      if (player1Hand.length === 1) {
+        const lastCard = player1Hand[0];
+        if (lastCard.color === 'wild' || lastCard.color === initialDiscard.color || lastCard.value === initialDiscard.value) {
+          room.playCard(playerId1, lastCard);
+          
+          room.callUno(playerId1);
+          
+          expect(() => room.callUno(playerId1)).toThrow('UNO already called');
+        }
+      }
+    }
+  });
+});
+
 describe('Room startGame', () => {
   it('should initialize deck, deal hands, and set discard pile', () => {
     const manager = new RoomManager();

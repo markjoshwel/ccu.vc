@@ -10,6 +10,12 @@ export type RoomState = {
   direction?: 1 | -1;
   activeColor?: 'red' | 'yellow' | 'green' | 'blue';
   gameEndedReason?: string;
+  unoWindow?: UnoWindow;
+};
+
+export type UnoWindow = {
+  playerId: string;
+  called: boolean;
 };
 
 export type Card = {
@@ -53,6 +59,7 @@ export type ClientToServerEvents = {
   start_game: (actionId: string, callback: (response: { success: boolean; error?: string }) => void) => void;
   playCard: (actionId: string, card: Card, callback: (response: { success: boolean; error?: string }) => void, chosenColor?: 'red' | 'yellow' | 'green' | 'blue') => void;
   drawCard: (actionId: string, callback: (response: { success: boolean; error?: string }) => void) => void;
+  callUno: (actionId: string, callback: (response: { success: boolean; error?: string }) => void) => void;
 };
 
 export type ClockSyncData = {

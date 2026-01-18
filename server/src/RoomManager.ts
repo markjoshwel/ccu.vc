@@ -1,4 +1,4 @@
-import type { RoomState, PlayerPublic, PlayerPrivate, Card, GameView, ClockSyncData, TimeOutEvent } from 'shared';
+import type { RoomState, PlayerPublic, PlayerPrivate, Card, GameView, ClockSyncData, TimeOutEvent, UnoWindow } from 'shared';
 import { Deck } from './Deck';
 
 type RoomCode = string;
@@ -21,6 +21,7 @@ export class Room {
   clockSyncIntervalId?: ReturnType<typeof setInterval>;
   onClockSync?: (data: ClockSyncData) => void;
   onTimeOut?: (data: TimeOutEvent) => void;
+  unoWindow?: UnoWindow;
 
   constructor(code: RoomCode) {
     this.code = code;
@@ -89,6 +90,7 @@ export class Room {
     this.state.currentPlayerIndex = this.state.gameStatus === 'playing' ? this.currentPlayerIndex : undefined;
     this.state.direction = this.state.gameStatus === 'playing' ? this.direction : undefined;
     this.state.activeColor = this.activeColor;
+    this.state.unoWindow = this.unoWindow;
   }
 
   startGame(rng?: () => number): void {
@@ -279,6 +281,11 @@ export class Room {
       return;
     }
 
+    if (player.hand.length === 1) {
+      this.unoWindow = { playerId, called: false };
+      this.updateState();
+    }
+
     if (card.color === 'wild') {
       this.activeColor = chosenColor;
     } else {
@@ -367,6 +374,27 @@ export class Room {
 
     this.updateState();
     this.advanceTurn();
+  }
+
+  callUno(playerId: string): void {
+    if (this.state.gameStatus !== 'playing') {
+      throw new Error('Game is not in playing state');
+    }
+
+    if (!this.unoWindow) {
+      throw new Error('No UNO window open');
+    }
+
+    if (this.unoWindow.playerId !== playerId) {
+      throw new Error('Not your UNO window');
+    }
+
+    if (this.unoWindow.called) {
+      throw new Error('UNO already called');
+    }
+
+    this.unoWindow.called = true;
+    this.updateState();
   }
 
   getClockSyncData(): ClockSyncData {

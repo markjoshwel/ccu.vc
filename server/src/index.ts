@@ -276,6 +276,42 @@ io.on('connection', (socket) => {
     }
   });
 
+  socket.on('callUno', (actionId: string, callback: (response: { success: boolean; error?: string }) => void) => {
+    const roomCode = socketRoomMap.get(socket.id);
+    
+    if (!roomCode) {
+      socket.emit('actionAck', { actionId, ok: false });
+      callback({ success: false, error: 'Not in a room' });
+      return;
+    }
+    
+    const room = roomManager.getRoom(roomCode);
+    
+    if (!room) {
+      socket.emit('actionAck', { actionId, ok: false });
+      callback({ success: false, error: 'Room not found' });
+      return;
+    }
+    
+    const playerData = socketPlayerMap.get(socket.id);
+    if (!playerData) {
+      socket.emit('actionAck', { actionId, ok: false });
+      callback({ success: false, error: 'Player not found' });
+      return;
+    }
+    
+    try {
+      room.callUno(playerData.playerId);
+      io.to(roomCode).emit('roomUpdated', room.state);
+      broadcastGameStateUpdate(roomCode);
+      socket.emit('actionAck', { actionId, ok: true });
+      callback({ success: true });
+    } catch (error) {
+      socket.emit('actionAck', { actionId, ok: false });
+      callback({ success: false, error: (error as Error).message });
+    }
+  });
+
   socket.on('leaveRoom', () => {
     const roomId = socketRoomMap.get(socket.id);
     if (roomId) {
