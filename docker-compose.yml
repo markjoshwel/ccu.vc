@@ -1,37 +1,25 @@
 version: '3.8'
 
 services:
-  server:
+  ccu-server:
     image: ccu-server:2026.1.19
-    # Or build from Nix: 
-    # build:
-    #   context: .
-    #   dockerfile: Dockerfile.server
+    container_name: ccu-server
     ports:
       - "3000:3000"
     environment:
       - PORT=3000
-      - AVATAR_DIR=/app/avatars
-    volumes:
-      - avatars:/app/avatars
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
 
-  client:
+  ccu-client:
     image: ccu-client:2026.1.19
-    # Or build from Nix:
-    # build:
-    #   context: .
-    #   dockerfile: Dockerfile.client
+    container_name: ccu-client
     ports:
-      - "80:80"
+      - "3001:80"
     depends_on:
-      - server
+      - ccu-server
     restart: unless-stopped
-
-volumes:
-  avatars:
