@@ -472,8 +472,9 @@
         "quality gate: `bun --filter server run typecheck` exits with code 0"
       ],
       "priority": 31,
-      "passes": false,
-      "notes": "Tests should mock fetch; avoid live network."
+      "passes": true,
+      "notes": "Tests should mock fetch; avoid live network.",
+      "completionNotes": "Completed by agent"
     },
     {
       "id": "US-032",
@@ -486,8 +487,9 @@
         "quality gate: `bun --filter server run typecheck` exits with code 0"
       ],
       "priority": 32,
-      "passes": false,
-      "notes": "Avatars are public as requested; ensure avatarId is unguessable (UUID)."
+      "passes": true,
+      "notes": "Avatars are public as requested; ensure avatarId is unguessable (UUID).",
+      "completionNotes": "Completed by agent"
     },
     {
       "id": "US-033",
@@ -500,8 +502,9 @@
         "quality gate: `bun --filter client run typecheck` exits with code 0"
       ],
       "priority": 33,
-      "passes": false,
-      "notes": "UI can be minimal; no cropping UI required (server center-crops)."
+      "passes": true,
+      "notes": "UI can be minimal; no cropping UI required (server center-crops).",
+      "completionNotes": "Completed by agent"
     },
     {
       "id": "US-034",
@@ -515,8 +518,9 @@
         "quality gate: `bun --filter client run typecheck` exits with code 0"
       ],
       "priority": 34,
-      "passes": false,
-      "notes": "Objective criteria use presence of stable CSS classes, not subjective design."
+      "passes": true,
+      "notes": "Objective criteria use presence of stable CSS classes, not subjective design.",
+      "completionNotes": "Completed by agent"
     },
     {
       "id": "US-035",
@@ -529,8 +533,9 @@
         "quality gate: `bun --filter client run typecheck` exits with code 0"
       ],
       "priority": 35,
-      "passes": false,
-      "notes": "Since no E2E harness specified, selection can be validated via component unit tests if set up; otherwise typecheck/build."
+      "passes": true,
+      "notes": "Since no E2E harness specified, selection can be validated via component unit tests if set up; otherwise typecheck/build.",
+      "completionNotes": "Completed by agent"
     },
     {
       "id": "US-036",
@@ -543,11 +548,12 @@
         "quality gate: `bun --filter client run typecheck` exits with code 0"
       ],
       "priority": 36,
-      "passes": false,
-      "notes": "Implementation can use `@use-gesture/react` and `react-spring`."
+      "passes": true,
+      "notes": "Implementation can use `@use-gesture/react` and `react-spring`.",
+      "completionNotes": "Completed by agent"
     }
   ],
   "metadata": {
-    "updatedAt": "2026-01-18T15:12:33.428Z"
+    "updatedAt": "2026-01-18T16:56:37.532Z"
   }
 }

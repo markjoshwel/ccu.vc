@@ -1,0 +1,197 @@
+# Iteration 2 Log
+
+## Metadata
+
+- **Task ID**: US-031
+- **Task Title**: Add avatar from-url endpoint with SSRF protections and re-encode pipeline
+- **Description**: Allow avatar selection by URL while preventing SSRF and unsafe image formats.
+- **Status**: completed
+- **Task Completed**: Yes
+- **Promise Detected**: Yes
+- **Started At**: 2026-01-18T16:22:39.677Z
+- **Ended At**: 2026-01-18T16:24:33.329Z
+- **Duration**: 1m 53s
+- **Agent**: opencode
+- **Model**: github-copilot/gpt-5.1-codex-max
+--- RAW OUTPUT ---
+The `/avatar/from-url` endpoint with SSRF protections and re-encode pipeline already exists and meets the acceptance criteria:
+- Rejects non-https and private IP/localhost targets with DNS/IP checks, disallows redirects, enforces 2MB limit, sniffs png/jpeg/webp, re-encodes via the existing pipeline, and stores via `AvatarStore` (`server/src/httpHandler.ts`).
+- Tests already cover rejection of http and private IPs and acceptance of a mocked https URL with image download (`server/server.avatar.test.ts`).
+
+Quality gates:
+- `bun --filter server test` ✔️
+- `bun run --filter="server" typecheck` ✔️
+
+No code changes were needed, so no commit created. If you want, I can still stage and commit the current workspace state (note there are unrelated .ralph/prd metadata edits). 
+
+<promise>COMPLETE</promise>
+
+--- STDERR ---
+[93m[1m| [0m[90m Todo     [0m0 todos
+[93m[1m| [0m[90m Todo     [0m5 todos
+[91m[1m| [0m[90m Bash     [0mShows working tree status
+
+ M .ralph-tui/progress.md
+ M .ralph-tui/ralph.lock
+ M .ralph-tui/session.json
+ M prd.json
+
+[91m[1m| [0m[90m Bash     [0mShows staged and unstaged changes
+
+warning: in the working copy of '.ralph-tui/progress.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.ralph-tui/ralph.lock', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.ralph-tui/session.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'prd.json', LF will be replaced by CRLF the next time Git touches it
+diff --git a/.ralph-tui/progress.md b/.ralph-tui/progress.md
+index fb78ef3..709014b 100644
+--- a/.ralph-tui/progress.md
++++ b/.ralph-tui/progress.md
+@@ -5,16 +5,3 @@ after each iteration and included in agent prompts for context.
+ 
+ ---
+ 
+-## ✓ Iteration 2 - US-030: Add avatar upload endpoint with validate + re-encode + center-crop
+-*2026-01-18T15:12:32.403Z (57s)*
+-
+-**Status:** Completed
+-
+-**Notes:**
+-Work already meets the user story. `POST /avatar/upload` accepts png/jpeg/webp up to 2MB, re-encodes to a 256x256 center-cropped square, saves via `AvatarStore`, and returns `avatarId`. Oversize and unsupported types are rejected per tests.
+-Quality checks run:
+-- `bun --filter server test` (pass)
+-- `bun run --filter=server typecheck` (pass)
+-No code changes were needed, so no commit created.
+-
+----
+diff --git a/.ralph-tui/ralph.lock b/.ralph-tui/ralph.lock
+index 82c0d56..9e907cb 100644
+--- a/.ralph-tui/ralph.lock
++++ b/.ralph-tui/ralph.lock
+@@ -1,7 +1,7 @@
+ {
+-  "pid": 23968,
+-  "sessionId": "517664f4-e84a-40ee-a892-c684c78fc509",
+-  "acquiredAt": "2026-01-18T14:49:06.872Z",
++  "pid": 33312,
++  "sessionId": "2efa4eda-64c5-4e50-9627-769e3911c36f",
++  "acquiredAt": "2026-01-18T16:14:25.416Z",
+   "cwd": "C:\\Users\\mark\\Works\\ccu.vc",
+   "hostname": "cspmilk"
+ }
+\ No newline at end of file
+diff --git a/.ralph-tui/session.json b/.ralph-tui/session.json
+index 151eb94..48744cd 100644
+--- a/.ralph-tui/session.json
++++ b/.ralph-tui/session.json
+@@ -1,12 +1,12 @@
+ {
+   "version": 1,
+-  "sessionId": "e37159df-31fc-4880-aad5-3ff72234a5d4",
++  "sessionId": "49712ec8-8111-4c9a-b49c-1546bd905d76",
+   "status": "running",
+-  "startedAt": "2026-01-18T14:49:08.315Z",
+-  "updatedAt": "2026-01-18T15:12:33.444Z",
+-  "currentIteration": 2,
++  "startedAt": "2026-01-18T16:14:26.925Z",
++  "updatedAt": "2026-01-18T16:22:39.709Z",
++  "currentIteration": 0,
+   "maxIterations": 0,
+-  "tasksCompleted": 1,
++  "tasksCompleted": 0,
+   "isPaused": false,
+   "agentPlugin": "opencode",
+   "model": "github-copilot/gpt-5.1-codex-max",
+@@ -193,7 +193,7 @@
+         "id": "US-030",
+         "title": "Add avatar upload endpoint with validate + re-encode + center-crop",
+         "status": "completed",
+-        "completedInSession": true
++        "completedInSession": false
+       },
+       {
+         "id": "US-031",
+@@ -233,18 +233,7 @@
+       }
+     ]
+   },
+-  "iterations": [
+-    {
+-      "iteration": 2,
+-      "status": "completed",
+-      "taskId": "US-030",
+-      "taskTitle": "Add avatar upload endpoint with validate + re-encode + center-crop",
+-      "taskCompleted": true,
+-      "durationMs": 56503,
+-      "startedAt": "2026-01-18T15:11:35.880Z",
+-      "endedAt": "2026-01-18T15:12:32.383Z"
+-    }
+-  ],
++  "iterations": [],
+   "skippedTaskIds": [],
+   "cwd": "C:\\Users\\mark\\Works\\ccu.vc",
+   "activeTaskIds": [
+diff --git a/prd.json b/prd.json
+index e6be73e..5faab82 100644
+--- a/prd.json
++++ b/prd.json
+@@ -548,6 +548,6 @@
+     }
+   ],
+   "metadata": {
+-    "updatedAt": "2026-01-18T15:12:33.428Z"
++    "updatedAt": "2026-01-18T16:22:39.677Z"
+   }
+ }
+\ No newline at end of file
+
+[91m[1m| [0m[90m Bash     [0mShows recent commits
+
+9fc7b12 Add avatar from-url endpoint with SSRF protections
+5fca751 catch-up
+78e40cf Add avatar upload endpoint with processing and tests
+02e5744 Add chat drawer toggle with unread badge
+0e20c90 Add client chat drawer with unread badge
+
+[93m[1m| [0m[90m Todo     [0m5 todos
+[94m[1m| [0m[90m Glob     [0m{"pattern":"**/server/**/*","path":""}
+[96m[1m| [0m[90m Read     [0mserver\server.avatar.test.ts
+[96m[1m| [0m[90m Read     [0mserver\src\httpHandler.ts
+[91m[1m| [0m[90m Bash     [0mRun server test suite
+
+server test: bun test v1.3.6 (d530ed99)
+server test: 
+server test: server.test.ts:
+server test: gameStateUpdate not received in time, checking room directly
+server test: 
+server test:  132 pass
+server test:  0 fail
+server test:  401 expect() calls
+server test: Ran 132 tests across 2 files. [15.17s]
+server test: Exited with code 0
+
+[93m[1m| [0m[90m Todo     [0m4 todos
+[91m[1m| [0m[90m Bash     [0mRun server typecheck
+
+
+error: No packages matched the filter
+[96m[1m| [0m[90m Read     [0mserver\package.json
+[91m[1m| [0m[90m Bash     [0mRun server typecheck
+
+$ tsc --noEmit
+
+[91m[1m| [0m[90m Bash     [0mShow exit code of last command
+
+$?
+
+[91m[1m| [0m[90m Bash     [0mRun typecheck and print exit code
+
+
+error: Script not found "typecheck;"
+[94m[1m| [0m[90m Glob     [0m{"pattern":"package.json","path":"C:\\Users\\mark\\Works\\ccu.vc"}
+[96m[1m| [0m[90m Read     [0mpackage.json
+[91m[1m| [0m[90m Bash     [0mRun workspace filtered typecheck for server
+
+server typecheck: Exited with code 0
+
+[93m[1m| [0m[90m Todo     [0m3 todos
+[93m[1m| [0m[90m Todo     [0m0 todos

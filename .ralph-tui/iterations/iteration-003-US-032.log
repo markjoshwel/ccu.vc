@@ -1,0 +1,336 @@
+# Iteration 3 Log
+
+## Metadata
+
+- **Task ID**: US-032
+- **Task Title**: Serve avatars publicly via GET /avatars/:avatarId
+- **Description**: Make avatars available to clients without embedding third-party URLs.
+- **Status**: completed
+- **Task Completed**: Yes
+- **Promise Detected**: Yes
+- **Started At**: 2026-01-18T16:24:34.406Z
+- **Ended At**: 2026-01-18T16:27:07.944Z
+- **Duration**: 2m 33s
+- **Agent**: opencode
+- **Model**: github-copilot/gpt-5.1-codex-max
+--- RAW OUTPUT ---
+Implemented public avatar retrieval. Added GET `/avatars/:avatarId` handling in `server/src/httpHandler.ts` to return stored image bytes with correct content type and 404 when missing. Extended `server/server.avatar.test.ts` to cover successful fetch of a stored avatar and 404 for unknown IDs.
+
+Quality checks: `bun --filter server test` ✅; `bun --filter="server" run typecheck` ✅ (no workspace match error when run from root).
+
+Commit: `Add public avatar retrieval endpoint`
+
+<promise>COMPLETE</promise>
+
+--- STDERR ---
+[93m[1m| [0m[90m Todo     [0m5 todos
+[91m[1m| [0m[90m Bash     [0mShows working tree status
+
+## main...origin/main [ahead 2]
+ M .ralph-tui/progress.md
+ M .ralph-tui/ralph.lock
+ M .ralph-tui/session.json
+ M prd.json
+?? .ralph-tui/iterations/iteration-002-US-031.log
+
+[91m[1m| [0m[90m Bash     [0mShows staged and unstaged changes
+
+warning: in the working copy of '.ralph-tui/progress.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.ralph-tui/ralph.lock', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.ralph-tui/session.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'prd.json', LF will be replaced by CRLF the next time Git touches it
+diff --git a/.ralph-tui/progress.md b/.ralph-tui/progress.md
+index fb78ef3..2055d9a 100644
+--- a/.ralph-tui/progress.md
++++ b/.ralph-tui/progress.md
+@@ -5,16 +5,16 @@ after each iteration and included in agent prompts for context.
+ 
+ ---
+ 
+-## ✓ Iteration 2 - US-030: Add avatar upload endpoint with validate + re-encode + center-crop
+-*2026-01-18T15:12:32.403Z (57s)*
++## ✓ Iteration 2 - US-031: Add avatar from-url endpoint with SSRF protections and re-encode pipeline
++*2026-01-18T16:24:33.348Z (114s)*
+ 
+ **Status:** Completed
+ 
+ **Notes:**
+-Work already meets the user story. `POST /avatar/upload` accepts png/jpeg/webp up to 2MB, re-encodes to a 256x256 center-cropped square, saves via `AvatarStore`, and returns `avatarId`. Oversize and unsupported types are rejected per tests.
+-Quality checks run:
+-- `bun --filter server test` (pass)
+-- `bun run --filter=server typecheck` (pass)
+-No code changes were needed, so no commit created.
++- Tests already cover rejection of http and private IPs and acceptance of a mocked https URL with image download (`server/server.avatar.test.ts`).
++Quality gates:
++- `bun --filter server test` ✔️
++- `bun run --filter="server" typecheck` ✔️
++No code changes were needed, so no commit created. If you want, I can still stage and commit the current workspace state (note there are unrelated .ralph/prd metadata edits).
+ 
+ ---
+diff --git a/.ralph-tui/ralph.lock b/.ralph-tui/ralph.lock
+index 82c0d56..9e907cb 100644
+--- a/.ralph-tui/ralph.lock
++++ b/.ralph-tui/ralph.lock
+@@ -1,7 +1,7 @@
+ {
+-  "pid": 23968,
+-  "sessionId": "517664f4-e84a-40ee-a892-c684c78fc509",
+-  "acquiredAt": "2026-01-18T14:49:06.872Z",
++  "pid": 33312,
++  "sessionId": "2efa4eda-64c5-4e50-9627-769e3911c36f",
++  "acquiredAt": "2026-01-18T16:14:25.416Z",
+   "cwd": "C:\\Users\\mark\\Works\\ccu.vc",
+   "hostname": "cspmilk"
+ }
+\ No newline at end of file
+diff --git a/.ralph-tui/session.json b/.ralph-tui/session.json
+index 151eb94..9243f89 100644
+--- a/.ralph-tui/session.json
++++ b/.ralph-tui/session.json
+@@ -1,9 +1,9 @@
+ {
+   "version": 1,
+-  "sessionId": "e37159df-31fc-4880-aad5-3ff72234a5d4",
++  "sessionId": "49712ec8-8111-4c9a-b49c-1546bd905d76",
+   "status": "running",
+-  "startedAt": "2026-01-18T14:49:08.315Z",
+-  "updatedAt": "2026-01-18T15:12:33.444Z",
++  "startedAt": "2026-01-18T16:14:26.925Z",
++  "updatedAt": "2026-01-18T16:24:34.423Z",
+   "currentIteration": 2,
+   "maxIterations": 0,
+   "tasksCompleted": 1,
+@@ -193,13 +193,13 @@
+         "id": "US-030",
+         "title": "Add avatar upload endpoint with validate + re-encode + center-crop",
+         "status": "completed",
+-        "completedInSession": true
++        "completedInSession": false
+       },
+       {
+         "id": "US-031",
+         "title": "Add avatar from-url endpoint with SSRF protections and re-encode pipeline",
+-        "status": "open",
+-        "completedInSession": false
++        "status": "completed",
++        "completedInSession": true
+       },
+       {
+         "id": "US-032",
+@@ -237,19 +237,19 @@
+     {
+       "iteration": 2,
+       "status": "completed",
+-      "taskId": "US-030",
+-      "taskTitle": "Add avatar upload endpoint with validate + re-encode + center-crop",
++      "taskId": "US-031",
++      "taskTitle": "Add avatar from-url endpoint with SSRF protections and re-encode pipeline",
+       "taskCompleted": true,
+-      "durationMs": 56503,
+-      "startedAt": "2026-01-18T15:11:35.880Z",
+-      "endedAt": "2026-01-18T15:12:32.383Z"
++      "durationMs": 113652,
++      "startedAt": "2026-01-18T16:22:39.677Z",
++      "endedAt": "2026-01-18T16:24:33.329Z"
+     }
+   ],
+   "skippedTaskIds": [],
+   "cwd": "C:\\Users\\mark\\Works\\ccu.vc",
+   "activeTaskIds": [
+     "US-028",
+-    "US-031"
++    "US-032"
+   ],
+   "subagentPanelVisible": false
+ }
+\ No newline at end of file
+diff --git a/prd.json b/prd.json
+index e6be73e..9b698a6 100644
+--- a/prd.json
++++ b/prd.json
+@@ -472,8 +472,9 @@
+         "quality gate: `bun --filter server run typecheck` exits with code 0"
+       ],
+       "priority": 31,
+-      "passes": false,
+-      "notes": "Tests should mock fetch; avoid live network."
++      "passes": true,
++      "notes": "Tests should mock fetch; avoid live network.",
++      "completionNotes": "Completed by agent"
+     },
+     {
+       "id": "US-032",
+@@ -548,6 +549,6 @@
+     }
+   ],
+   "metadata": {
+-    "updatedAt": "2026-01-18T15:12:33.428Z"
++    "updatedAt": "2026-01-18T16:24:34.406Z"
+   }
+ }
+\ No newline at end of file
+
+[91m[1m| [0m[90m Bash     [0mShows recent commit messages
+
+9fc7b12 Add avatar from-url endpoint with SSRF protections
+5fca751 catch-up
+78e40cf Add avatar upload endpoint with processing and tests
+02e5744 Add chat drawer toggle with unread badge
+0e20c90 Add client chat drawer with unread badge
+
+[94m[1m| [0m[90m Glob     [0m{"path":".","pattern":"server/**/*avatar*"}
+[94m[1m| [0m[90m Glob     [0m{"path":".","pattern":"server/**/*route*"}
+[94m[1m| [0m[90m Glob     [0m{"pattern":"server/**/*.{ts,tsx,js,jsx,mjs,cjs}","path":"."}
+[96m[1m| [0m[90m Read     [0mserver\src\httpHandler.ts
+[96m[1m| [0m[90m Read     [0mserver\src\AvatarStore.ts
+[96m[1m| [0m[90m Read     [0mserver\server.avatar.test.ts
+[93m[1m| [0m[90m Todo     [0m4 todos
+[92m[1m| [0m[90m Edit     [0mserver\src\httpHandler.ts
+[93m[1m| [0m[90m Todo     [0m3 todos
+[92m[1m| [0m[90m Edit     [0mserver\server.avatar.test.ts
+[92m[1m| [0m[90m Edit     [0mserver\server.avatar.test.ts
+[93m[1m| [0m[90m Todo     [0m2 todos
+[91m[1m| [0m[90m Bash     [0mRuns server test suite with bun filter
+
+
+server test: bun test v1.3.6 (d530ed99)
+server test: 
+server test: server.test.ts:
+server test: gameStateUpdate not received in time, checking room directly
+server test: 
+server test:  133 pass
+server test:  0 fail
+server test:  405 expect() calls
+server test: Ran 133 tests across 2 files. [14.95s]
+server test: Exited with code 0
+[91m[1m| [0m[90m Bash     [0mRuns typecheck for server package
+
+error: No packages matched the filter
+
+[96m[1m| [0m[90m Read     [0mserver\package.json
+[91m[1m| [0m[90m Bash     [0mRuns server typecheck script
+
+$ tsc --noEmit
+
+[93m[1m| [0m[90m Todo     [0m1 todos
+[91m[1m| [0m[90m Bash     [0mShows working tree status## main...origin/main [ahead 2]
+ M .ralph-tui/progress.md
+ M .ralph-tui/ralph.lock
+ M .ralph-tui/session.json
+ M prd.json
+ M server/server.avatar.test.ts
+ M server/src/httpHandler.ts
+?? .ralph-tui/iterations/iteration-002-US-031.log
+
+
+
+[91m[1m| [0m[90m Bash     [0mRuns typecheck for server package from root
+
+error: No packages matched the filter
+
+[94m[1m| [0m[90m Glob     [0m{"pattern":"*","path":"C:\\Users\\mark\\Works\\ccu.vc"}
+[91m[1m| [0m[90m Bash     [0mRuns server typecheck via bun workspace filter
+
+server typecheck: Exited with code 0
+
+[93m[1m| [0m[90m Todo     [0m1 todos
+[91m[1m| [0m[90m Bash     [0mShows working tree status
+
+## main...origin/main [ahead 2]
+ M .ralph-tui/progress.md
+ M .ralph-tui/ralph.lock
+ M .ralph-tui/session.json
+ M prd.json
+ M server/server.avatar.test.ts
+ M server/src/httpHandler.ts
+?? .ralph-tui/iterations/iteration-002-US-031.log
+
+[91m[1m| [0m[90m Bash     [0mStages server files for commit
+
+warning: in the working copy of 'server/server.avatar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'server/src/httpHandler.ts', LF will be replaced by CRLF the next time Git touches it
+
+[96m[1m| [0m[90m Read     [0m.ralph-tui\progress.md
+[96m[1m| [0m[90m Read     [0mprd.json
+[91m[1m| [0m[90m Bash     [0mShows staged changes
+
+diff --git a/server/server.avatar.test.ts b/server/server.avatar.test.ts
+index e438a66..01cc0e0 100644
+--- a/server/server.avatar.test.ts
++++ b/server/server.avatar.test.ts
+@@ -155,6 +155,19 @@ describe('avatar endpoints', () => {
+       expect(stored?.width).toBe(256);
+       expect(stored?.height).toBe(256);
+       expect(stored?.contentType.startsWith('image/')).toBe(true);
++
++      const getRes = await fetch(`${baseUrl}/avatars/${json.avatarId}`);
++      expect(getRes.status).toBe(200);
++      expect(getRes.headers.get('content-type')).toBe(stored?.contentType ?? null);
++      const bytes = new Uint8Array(await getRes.arrayBuffer());
++      expect(bytes.byteLength).toBeGreaterThan(0);
++    });
++  });
++
++  describe('GET /avatars/:id', () => {
++    it('returns 404 for unknown id', async () => {
++      const res = await fetch(`${baseUrl}/avatars/not-found`);
++      expect(res.status).toBe(404);
+     });
+   });
+ });
+diff --git a/server/src/httpHandler.ts b/server/src/httpHandler.ts
+index 3a54e13..e158819 100644
+--- a/server/src/httpHandler.ts
++++ b/server/src/httpHandler.ts
+@@ -27,12 +27,35 @@ export function createHttpHandler(deps: HttpHandlerDeps) {
+ 
+   return async function handleRequest(req: IncomingMessage, res: ServerResponse) {
+     try {
++      const parsedUrl = req.url ? new URL(req.url, 'http://localhost') : null;
++
+       if (req.url === '/health' && req.method === 'GET') {
+         res.writeHead(200, { 'Content-Type': 'application/json' });
+         res.end(JSON.stringify({ status: 'ok' }));
+         return;
+       }
+ 
++      if (parsedUrl && req.method === 'GET' && parsedUrl.pathname.startsWith('/avatars/')) {
++        const avatarId = parsedUrl.pathname.slice('/avatars/'.length);
++        if (!avatarId) {
++          res.writeHead(404);
++          res.end('Not Found');
++          return;
++        }
++        const stored = deps.avatarStore.get(avatarId);
++        if (!stored) {
++          res.writeHead(404);
++          res.end('Not Found');
++          return;
++        }
++        res.writeHead(200, {
++          'Content-Type': stored.contentType,
++          'Content-Length': stored.data.byteLength
++        });
++        res.end(Buffer.from(stored.data));
++        return;
++      }
++
+       if (req.url === '/avatar/upload' && req.method === 'POST') {
+         await handleAvatarUpload(req, res, deps.avatarStore);
+         return;
+
+[91m[1m| [0m[90m Bash     [0mCreates commit with staged server changes
+
+[main e20a2c3] Add public avatar retrieval endpoint
+ 2 files changed, 36 insertions(+)
+
+[93m[1m| [0m[90m Todo     [0m0 todos
+[91m[1m| [0m[90m Bash     [0mShows working tree status
+
+
+## main...origin/main [ahead 3]
+ M .ralph-tui/progress.md
+ M .ralph-tui/ralph.lock
+ M .ralph-tui/session.json
+ M prd.json
+?? .ralph-tui/iterations/iteration-002-US-031.log
