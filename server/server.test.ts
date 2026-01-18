@@ -49,11 +49,14 @@ describe('server', () => {
   describe('GET /health', () => {
     it('should return 200 with status ok', async () => {
       const response = await fetch(`http://localhost:${port}/health`);
-      const body = await response.json();
-      
       expect(response.status).toBe(200);
+      const text = await response.text();
+      expect(() => JSON.parse(text)).not.toThrow();
+      const body = JSON.parse(text);
       expect(body.status).toBe('ok');
+
     });
+
   });
 });
 

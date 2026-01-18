@@ -1,17 +1,30 @@
 import { IncomingMessage, ServerResponse } from 'node:http';
+import { promises as dns } from 'node:dns';
+import { isIP } from 'node:net';
 import { ImageType } from 'imagescript';
 import { AvatarStore } from './AvatarStore';
 import { processAvatarImage } from './ImagePipeline';
 
 const MAX_FILE_BYTES = 2 * 1024 * 1024; // 2MB
 const MAX_BODY_BYTES = MAX_FILE_BYTES + 64 * 1024; // allow small multipart overhead
+const MAX_URL_BODY_BYTES = 8 * 1024; // small JSON payload
+
+const defaultResolveHost = async (hostname: string): Promise<string[]> => {
+  const lookups = await dns.lookup(hostname, { all: true });
+  return lookups.map(entry => entry.address);
+};
 
 export type HttpHandlerDeps = {
   avatarStore: AvatarStore;
+  fetchImpl?: typeof fetch;
+  resolveHost?: (hostname: string) => Promise<string[]>;
 };
 
 
 export function createHttpHandler(deps: HttpHandlerDeps) {
+  const fetchImpl = deps.fetchImpl ?? fetch;
+  const resolveHost = deps.resolveHost ?? defaultResolveHost;
+
   return async function handleRequest(req: IncomingMessage, res: ServerResponse) {
     try {
       if (req.url === '/health' && req.method === 'GET') {
@@ -22,6 +35,11 @@ export function createHttpHandler(deps: HttpHandlerDeps) {
 
       if (req.url === '/avatar/upload' && req.method === 'POST') {
         await handleAvatarUpload(req, res, deps.avatarStore);
+        return;
+      }
+
+      if (req.url === '/avatar/from-url' && req.method === 'POST') {
+        await handleAvatarFromUrl(req, res, deps.avatarStore, fetchImpl, resolveHost);
         return;
       }
 
@@ -94,6 +112,140 @@ async function handleAvatarUpload(req: IncomingMessage, res: ServerResponse, ava
     res.end(JSON.stringify({ avatarId }));
   } catch (error) {
     console.error('Failed to process avatar upload', error);
+    res.writeHead(400, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'Invalid image' }));
+  }
+}
+
+async function handleAvatarFromUrl(
+  req: IncomingMessage,
+  res: ServerResponse,
+  avatarStore: AvatarStore,
+  fetchImpl: typeof fetch,
+  resolveHost: (hostname: string) => Promise<string[]>
+) {
+  const contentType = req.headers['content-type'];
+  if (!contentType || !contentType.includes('application/json')) {
+    res.writeHead(400, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'Expected application/json body' }));
+    return;
+  }
+
+  const bodyResult = await readRequestBody(req, MAX_URL_BODY_BYTES, res);
+  if (!bodyResult.buffer) return;
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(bodyResult.buffer.toString('utf8'));
+  } catch {
+    res.writeHead(400, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'Invalid JSON' }));
+    return;
+  }
+
+  const urlValue = (parsed as { url?: string }).url;
+  if (typeof urlValue !== 'string') {
+    res.writeHead(400, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'Missing url' }));
+    return;
+  }
+
+  let targetUrl: URL;
+  try {
+    targetUrl = new URL(urlValue);
+  } catch {
+    res.writeHead(400, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'Invalid url' }));
+    return;
+  }
+
+  if (targetUrl.protocol !== 'https:') {
+    res.writeHead(400, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'Only https is allowed' }));
+    return;
+  }
+
+  const hostCheck = await validateRemoteHost(targetUrl.hostname, resolveHost);
+  if (!hostCheck.ok) {
+    res.writeHead(hostCheck.status, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: hostCheck.message }));
+    return;
+  }
+
+  let response: Response;
+  try {
+    response = await fetchImpl(targetUrl.toString(), { redirect: 'error' });
+  } catch (err) {
+    console.error('Failed to fetch avatar url', err);
+    res.writeHead(400, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'Failed to download image' }));
+    return;
+  }
+
+  if (response.redirected) {
+    res.writeHead(400, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'Redirects are not allowed' }));
+    return;
+  }
+
+  if (!response.ok) {
+    res.writeHead(400, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'Failed to download image' }));
+    return;
+  }
+
+  if (response.url) {
+    const { hostname } = new URL(response.url, targetUrl);
+    const redirectCheck = await validateRemoteHost(hostname, resolveHost);
+    if (!redirectCheck.ok) {
+      res.writeHead(redirectCheck.status, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: redirectCheck.message }));
+      return;
+    }
+  }
+
+  const contentLengthHeader = response.headers.get('content-length');
+  if (contentLengthHeader) {
+    const contentLength = parseInt(contentLengthHeader, 10);
+    if (!Number.isNaN(contentLength) && contentLength > MAX_FILE_BYTES) {
+      res.writeHead(413, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'File too large' }));
+      return;
+    }
+  }
+
+  const downloaded = await readStreamWithLimit(response.body, MAX_FILE_BYTES);
+  if (!downloaded.ok) {
+    res.writeHead(413, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'File too large' }));
+    return;
+  }
+
+  const data = downloaded.data;
+  const sniffedType = ImageType.getType(data);
+  if (!sniffedType || !isAllowedImageType(sniffedType)) {
+    res.writeHead(415, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'Unsupported image type' }));
+    return;
+  }
+
+  try {
+    const processed = await processAvatarImage(
+      data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength) as ArrayBuffer,
+      sniffedType
+    );
+
+    const avatarId = avatarStore.save({
+      data: processed.data,
+      contentType: processed.contentType,
+      width: processed.width,
+      height: processed.height
+    });
+
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ avatarId }));
+  } catch (error) {
+    console.error('Failed to process avatar from url', error);
     res.writeHead(400, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ error: 'Invalid image' }));
   }
@@ -186,4 +338,84 @@ function parseMultipart(buffer: Buffer, boundary: string): { filename?: string; 
 function isAllowedImageType(type: string): boolean {
   const lower = type.toLowerCase();
   return lower.includes('png') || lower.includes('jpeg') || lower.includes('jpg') || lower.includes('webp');
+}
+
+async function validateRemoteHost(hostname: string, resolveHost: (hostname: string) => Promise<string[]>): Promise<{ ok: boolean; status: number; message: string }> {
+  const lower = hostname.toLowerCase();
+  if (lower === 'localhost') {
+    return { ok: false, status: 403, message: 'Local addresses are not allowed' };
+  }
+
+  const ipVersion = isIP(hostname);
+  if (ipVersion) {
+    if (isPrivateAddress(hostname)) {
+      return { ok: false, status: 403, message: 'Local addresses are not allowed' };
+    }
+    return { ok: true, status: 200, message: 'ok' };
+  }
+
+  try {
+    const addresses = await resolveHost(hostname);
+    if (!addresses.length) {
+      return { ok: false, status: 400, message: 'Unable to resolve host' };
+    }
+    const hasPrivate = addresses.some(entry => isPrivateAddress(entry));
+    if (hasPrivate) {
+      return { ok: false, status: 403, message: 'Local addresses are not allowed' };
+    }
+    return { ok: true, status: 200, message: 'ok' };
+  } catch (err) {
+    console.error('DNS resolution failed', err);
+    return { ok: false, status: 400, message: 'Unable to resolve host' };
+  }
+}
+
+function isPrivateAddress(address: string): boolean {
+  const version = isIP(address);
+  if (version === 4) {
+    const parts = address.split('.').map(Number);
+    if (parts.length !== 4 || parts.some(n => Number.isNaN(n))) return true;
+    const [a, b] = parts;
+    if (a === 10) return true;
+    if (a === 172 && b >= 16 && b <= 31) return true;
+    if (a === 192 && b === 168) return true;
+    if (a === 127) return true;
+    if (a === 169 && b === 254) return true;
+    if (a === 0) return true;
+    return false;
+  }
+  if (version === 6) {
+    const normalized = address.toLowerCase();
+    if (normalized === '::1' || normalized === '::') return true;
+    if (normalized.startsWith('fc') || normalized.startsWith('fd')) return true; // unique local
+    if (normalized.startsWith('fe80')) return true; // link local
+    return false;
+  }
+  return true;
+}
+
+async function readStreamWithLimit(stream: ReadableStream<Uint8Array> | null, maxBytes: number): Promise<{ ok: boolean; data: Uint8Array }> {
+  if (!stream) return { ok: false, data: new Uint8Array() };
+  const reader = stream.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    if (!value) continue;
+    total += value.byteLength;
+    if (total > maxBytes) {
+      return { ok: false, data: new Uint8Array() };
+    }
+    chunks.push(value);
+  }
+
+  const merged = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    merged.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return { ok: true, data: merged };
 }
