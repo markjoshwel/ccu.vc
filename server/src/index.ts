@@ -2,6 +2,7 @@ import { createServer } from 'node:http';
 import { Server as SocketIOServer } from 'socket.io';
 import type { ClientToServerEvents, ServerToClientEvents } from 'shared';
 import { RoomManager } from './RoomManager';
+import { RateLimiter } from './RateLimiter';
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
@@ -26,6 +27,7 @@ const roomManager = new RoomManager();
 
 const socketRoomMap = new Map<string, string>();
 const socketPlayerMap = new Map<string, { playerId: string; playerSecret: string }>();
+const playerRateLimiters = new Map<string, RateLimiter>();
 
 function broadcastGameStateUpdate(roomCode: string): void {
   const room = roomManager.getRoom(roomCode);
@@ -346,6 +348,61 @@ io.on('connection', (socket) => {
       socket.emit('actionAck', { actionId, ok: false });
       callback({ success: false, error: (error as Error).message });
     }
+  });
+
+  socket.on('sendChat', (actionId: string, message: string, callback: (response: { success: boolean; error?: string }) => void) => {
+    const roomCode = socketRoomMap.get(socket.id);
+    
+    if (!roomCode) {
+      socket.emit('actionAck', { actionId, ok: false });
+      callback({ success: false, error: 'Not in a room' });
+      return;
+    }
+    
+    if (message.length > 280) {
+      socket.emit('actionAck', { actionId, ok: false });
+      callback({ success: false, error: 'Message exceeds 280 characters' });
+      return;
+    }
+    
+    const playerData = socketPlayerMap.get(socket.id);
+    if (!playerData) {
+      socket.emit('actionAck', { actionId, ok: false });
+      callback({ success: false, error: 'Player not found' });
+      return;
+    }
+    
+    const playerId = playerData.playerId;
+    
+    let rateLimiter = playerRateLimiters.get(playerId);
+    if (!rateLimiter) {
+      rateLimiter = new RateLimiter(3, 1);
+      playerRateLimiters.set(playerId, rateLimiter);
+    }
+    
+    if (!rateLimiter.tryConsume()) {
+      socket.emit('actionAck', { actionId, ok: false });
+      callback({ success: false, error: 'Rate limit exceeded' });
+      return;
+    }
+    
+    const room = roomManager.getRoom(roomCode);
+    const player = room?.players.get(playerId);
+    
+    if (!room || !player) {
+      socket.emit('actionAck', { actionId, ok: false });
+      callback({ success: false, error: 'Room or player not found' });
+      return;
+    }
+    
+    io.to(roomCode).emit('chatMessage', {
+      playerId,
+      playerName: player.name,
+      message,
+      timestamp: Date.now()
+    });
+    socket.emit('actionAck', { actionId, ok: true });
+    callback({ success: true });
   });
 
   socket.on('leaveRoom', () => {

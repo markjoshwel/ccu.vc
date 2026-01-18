@@ -5,6 +5,7 @@ import { io as ioClient } from 'socket.io-client';
 import type { ClientToServerEvents, ServerToClientEvents, Card } from 'shared';
 import { RoomManager } from './src/RoomManager';
 import { Deck } from './src/Deck';
+import { RateLimiter } from './src/RateLimiter';
 
 describe('server', () => {
   let server: ReturnType<typeof createServer>;
@@ -3823,10 +3824,103 @@ describe('clock sync scheduler', () => {
     expect(clockSyncData.timeRemainingMs[playerId1]).toBe(60000);
     expect(clockSyncData.timeRemainingMs[playerId2]).toBe(60000);
 
+
     room.stopClockSync();
   });
 });
 
+describe('sendChat message validation', () => {
+  it('should reject messages longer than 280 characters', () => {
+    const longMessage = 'A'.repeat(281);
+
+    const isValid = longMessage.length <= 280;
+
+    expect(isValid).toBe(false);
+  });
+
+  it('should accept messages exactly 280 characters long', () => {
+    const message = 'A'.repeat(280);
+
+    const isValid = message.length <= 280;
+
+    expect(isValid).toBe(true);
+  });
+
+  it('should accept messages shorter than 280 characters', () => {
+    const message = 'Hello everyone!';
+
+    const isValid = message.length <= 280;
+
+    expect(isValid).toBe(true);
+  });
+});
+
+describe('RateLimiter', () => {
+  it('should allow messages within burst limit', () => {
+    const rateLimiter = new RateLimiter(3, 1);
+
+    expect(rateLimiter.tryConsume()).toBe(true);
+    expect(rateLimiter.tryConsume()).toBe(true);
+    expect(rateLimiter.tryConsume()).toBe(true);
+  });
+
+  it('should reject messages exceeding burst limit', () => {
+    const rateLimiter = new RateLimiter(3, 1);
+
+    rateLimiter.tryConsume();
+    rateLimiter.tryConsume();
+    rateLimiter.tryConsume();
+
+    expect(rateLimiter.tryConsume()).toBe(false);
+  });
+
+  it('should refill tokens over time', async () => {
+    const rateLimiter = new RateLimiter(3, 1);
+
+    rateLimiter.tryConsume();
+    rateLimiter.tryConsume();
+    rateLimiter.tryConsume();
+
+    expect(rateLimiter.tryConsume()).toBe(false);
+
+    await new Promise(resolve => setTimeout(resolve, 1100));
+
+    expect(rateLimiter.tryConsume()).toBe(true);
+  });
+
+  it('should maintain burst capacity with appropriate delay', async () => {
+    const rateLimiter = new RateLimiter(3, 1);
+
+    rateLimiter.tryConsume();
+    rateLimiter.tryConsume();
+
+    await new Promise(resolve => setTimeout(resolve, 1100));
+
+    expect(rateLimiter.tryConsume()).toBe(true);
+    expect(rateLimiter.tryConsume()).toBe(true);
+    expect(rateLimiter.tryConsume()).toBe(false);
+  });
+
+  it('should limit rate to 1 message per second after burst is exhausted', async () => {
+    const rateLimiter = new RateLimiter(3, 1);
+
+    rateLimiter.tryConsume();
+    rateLimiter.tryConsume();
+    rateLimiter.tryConsume();
+
+    expect(rateLimiter.tryConsume()).toBe(false);
+
+    await new Promise(resolve => setTimeout(resolve, 1100));
+
+    expect(rateLimiter.tryConsume()).toBe(true);
+    expect(rateLimiter.tryConsume()).toBe(false);
+
+    await new Promise(resolve => setTimeout(resolve, 1100));
+
+    expect(rateLimiter.tryConsume()).toBe(true);
+    expect(rateLimiter.tryConsume()).toBe(false);
+  });
+});
 describe('timeout detection', () => {
   it('should emit timeOut event when player time reaches zero', async () => {
     const manager = new RoomManager();

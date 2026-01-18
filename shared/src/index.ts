@@ -61,6 +61,7 @@ export type ClientToServerEvents = {
   drawCard: (actionId: string, callback: (response: { success: boolean; error?: string }) => void) => void;
   callUno: (actionId: string, callback: (response: { success: boolean; error?: string }) => void) => void;
   catchUno: (actionId: string, targetPlayerId: string, callback: (response: { success: boolean; error?: string }) => void) => void;
+  sendChat: (actionId: string, message: string, callback: (response: { success: boolean; error?: string }) => void) => void;
 };
 
 export type ClockSyncData = {
@@ -83,4 +84,5 @@ export type ServerToClientEvents = {
   timeOut: (data: TimeOutEvent) => void;
   error: (message: string) => void;
   actionAck: (data: { actionId: string; ok: boolean }) => void;
+  chatMessage: (data: { playerId: string; playerName: string; message: string; timestamp: number }) => void;
 };
