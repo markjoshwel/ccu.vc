@@ -1,6 +1,6 @@
 import { createServer } from 'node:http';
 import { Server as SocketIOServer } from 'socket.io';
-import type { ClientToServerEvents, ServerToClientEvents } from 'shared';
+import type { ClientToServerEvents, ServerToClientEvents, RoomSettings } from 'shared';
 import { RoomManager } from './RoomManager';
 import { RateLimiter } from './RateLimiter';
 import { AvatarStore } from './AvatarStore';
@@ -69,8 +69,22 @@ function generatePlayerSecret(): string {
 io.on('connection', (socket) => {
   console.log(`Client connected: ${socket.id}`);
   
-  socket.on('create_room', (actionId: string, callback: (response: { roomCode: string }) => void) => {
-    const room = roomManager.createRoom();
+  socket.on('create_room', (actionId: string, settings: Partial<RoomSettings> | null, callback: (response: { roomCode: string }) => void) => {
+    // Validate and sanitize settings
+    const sanitizedSettings: Partial<RoomSettings> = {};
+    if (settings) {
+      if (typeof settings.maxPlayers === 'number') {
+        sanitizedSettings.maxPlayers = Math.min(10, Math.max(2, Math.floor(settings.maxPlayers)));
+      }
+      if (typeof settings.aiPlayerCount === 'number') {
+        sanitizedSettings.aiPlayerCount = Math.min(9, Math.max(0, Math.floor(settings.aiPlayerCount)));
+      }
+      if (typeof settings.timePerTurnMs === 'number') {
+        sanitizedSettings.timePerTurnMs = Math.min(300000, Math.max(10000, Math.floor(settings.timePerTurnMs)));
+      }
+    }
+    
+    const room = roomManager.createRoom(sanitizedSettings);
     socket.emit('actionAck', { actionId, ok: true });
     callback({ roomCode: room.code });
   });
@@ -127,10 +141,20 @@ io.on('connection', (socket) => {
       broadcastGameStateUpdate(roomCode);
     };
 
+    room.onAIMove = () => {
+      io.to(roomCode).emit('roomUpdated', room.state);
+      broadcastGameStateUpdate(roomCode);
+    };
+
+    socket.join(roomCode);
+    
     io.to(roomCode).emit('roomUpdated', room.state);
     const playerPublic = { id: player.id, name: player.name, isReady: player.isReady, connected: player.connected, handCount: player.hand.length, avatarId: player.avatarId };
     io.to(roomCode).emit('playerJoined', playerPublic as any);
-    socket.join(roomCode);
+    
+    // Send chat history to the newly joined player
+    socket.emit('chatHistory', room.getChatHistory());
+    
     broadcastGameStateUpdate(roomCode);
     
     socket.emit('actionAck', { actionId, ok: true });
@@ -159,8 +183,17 @@ io.on('connection', (socket) => {
       broadcastGameStateUpdate(roomCode);
     };
 
+    room.onAIMove = () => {
+      io.to(roomCode).emit('roomUpdated', room.state);
+      broadcastGameStateUpdate(roomCode);
+    };
+
     io.to(roomCode).emit('roomUpdated', room.state);
     socket.join(roomCode);
+    
+    // Send chat history to the reconnecting player
+    socket.emit('chatHistory', room.getChatHistory());
+    
     broadcastGameStateUpdate(roomCode);
     
     socket.emit('actionAck', { actionId, ok: true });
@@ -211,12 +244,12 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('playCard', (actionId: string, card: any, callback: (response: { success: boolean; error?: string }) => void, chosenColor?: 'red' | 'yellow' | 'green' | 'blue') => {
+  socket.on('playCard', (actionId: string, card: any, chosenColor: 'red' | 'yellow' | 'green' | 'blue' | null, callback?: (response: { success: boolean; error?: string }) => void) => {
     const roomCode = socketRoomMap.get(socket.id);
     
     if (!roomCode) {
       socket.emit('actionAck', { actionId, ok: false });
-      callback({ success: false, error: 'Not in a room' });
+      callback?.({ success: false, error: 'Not in a room' });
       return;
     }
     
@@ -224,35 +257,35 @@ io.on('connection', (socket) => {
     
     if (!room) {
       socket.emit('actionAck', { actionId, ok: false });
-      callback({ success: false, error: 'Room not found' });
+      callback?.({ success: false, error: 'Room not found' });
       return;
     }
     
     const playerData = socketPlayerMap.get(socket.id);
     if (!playerData) {
       socket.emit('actionAck', { actionId, ok: false });
-      callback({ success: false, error: 'Player not found' });
+      callback?.({ success: false, error: 'Player not found' });
       return;
     }
     
     try {
-      room.playCard(playerData.playerId, card, chosenColor);
+      room.playCard(playerData.playerId, card, chosenColor ?? undefined);
       io.to(roomCode).emit('roomUpdated', room.state);
       broadcastGameStateUpdate(roomCode);
       socket.emit('actionAck', { actionId, ok: true });
-      callback({ success: true });
+      callback?.({ success: true });
     } catch (error) {
       socket.emit('actionAck', { actionId, ok: false });
-      callback({ success: false, error: (error as Error).message });
+      callback?.({ success: false, error: (error as Error).message });
     }
   });
 
-  socket.on('drawCard', (actionId: string, callback: (response: { success: boolean; error?: string }) => void) => {
+  socket.on('drawCard', (actionId: string, callback?: (response: { success: boolean; error?: string }) => void) => {
     const roomCode = socketRoomMap.get(socket.id);
     
     if (!roomCode) {
       socket.emit('actionAck', { actionId, ok: false });
-      callback({ success: false, error: 'Not in a room' });
+      callback?.({ success: false, error: 'Not in a room' });
       return;
     }
     
@@ -260,14 +293,14 @@ io.on('connection', (socket) => {
     
     if (!room) {
       socket.emit('actionAck', { actionId, ok: false });
-      callback({ success: false, error: 'Room not found' });
+      callback?.({ success: false, error: 'Room not found' });
       return;
     }
     
     const playerData = socketPlayerMap.get(socket.id);
     if (!playerData) {
       socket.emit('actionAck', { actionId, ok: false });
-      callback({ success: false, error: 'Player not found' });
+      callback?.({ success: false, error: 'Player not found' });
       return;
     }
     
@@ -276,19 +309,19 @@ io.on('connection', (socket) => {
       io.to(roomCode).emit('roomUpdated', room.state);
       broadcastGameStateUpdate(roomCode);
       socket.emit('actionAck', { actionId, ok: true });
-      callback({ success: true });
+      callback?.({ success: true });
     } catch (error) {
       socket.emit('actionAck', { actionId, ok: false });
-      callback({ success: false, error: (error as Error).message });
+      callback?.({ success: false, error: (error as Error).message });
     }
   });
 
-  socket.on('callUno', (actionId: string, callback: (response: { success: boolean; error?: string }) => void) => {
+  socket.on('callUno', (actionId: string, callback?: (response: { success: boolean; error?: string }) => void) => {
     const roomCode = socketRoomMap.get(socket.id);
     
     if (!roomCode) {
       socket.emit('actionAck', { actionId, ok: false });
-      callback({ success: false, error: 'Not in a room' });
+      callback?.({ success: false, error: 'Not in a room' });
       return;
     }
     
@@ -296,14 +329,14 @@ io.on('connection', (socket) => {
     
     if (!room) {
       socket.emit('actionAck', { actionId, ok: false });
-      callback({ success: false, error: 'Room not found' });
+      callback?.({ success: false, error: 'Room not found' });
       return;
     }
     
     const playerData = socketPlayerMap.get(socket.id);
     if (!playerData) {
       socket.emit('actionAck', { actionId, ok: false });
-      callback({ success: false, error: 'Player not found' });
+      callback?.({ success: false, error: 'Player not found' });
       return;
     }
     
@@ -312,19 +345,19 @@ io.on('connection', (socket) => {
       io.to(roomCode).emit('roomUpdated', room.state);
       broadcastGameStateUpdate(roomCode);
       socket.emit('actionAck', { actionId, ok: true });
-      callback({ success: true });
+      callback?.({ success: true });
     } catch (error) {
       socket.emit('actionAck', { actionId, ok: false });
-      callback({ success: false, error: (error as Error).message });
+      callback?.({ success: false, error: (error as Error).message });
     }
   });
 
-  socket.on('catchUno', (actionId: string, targetPlayerId: string, callback: (response: { success: boolean; error?: string }) => void) => {
+  socket.on('catchUno', (actionId: string, targetPlayerId: string, callback?: (response: { success: boolean; error?: string }) => void) => {
     const roomCode = socketRoomMap.get(socket.id);
     
     if (!roomCode) {
       socket.emit('actionAck', { actionId, ok: false });
-      callback({ success: false, error: 'Not in a room' });
+      callback?.({ success: false, error: 'Not in a room' });
       return;
     }
     
@@ -332,14 +365,14 @@ io.on('connection', (socket) => {
     
     if (!room) {
       socket.emit('actionAck', { actionId, ok: false });
-      callback({ success: false, error: 'Room not found' });
+      callback?.({ success: false, error: 'Room not found' });
       return;
     }
     
     const playerData = socketPlayerMap.get(socket.id);
     if (!playerData) {
       socket.emit('actionAck', { actionId, ok: false });
-      callback({ success: false, error: 'Player not found' });
+      callback?.({ success: false, error: 'Player not found' });
       return;
     }
     
@@ -348,32 +381,32 @@ io.on('connection', (socket) => {
       io.to(roomCode).emit('roomUpdated', room.state);
       broadcastGameStateUpdate(roomCode);
       socket.emit('actionAck', { actionId, ok: true });
-      callback({ success: true });
+      callback?.({ success: true });
     } catch (error) {
       socket.emit('actionAck', { actionId, ok: false });
-      callback({ success: false, error: (error as Error).message });
+      callback?.({ success: false, error: (error as Error).message });
     }
   });
 
-  socket.on('sendChat', (actionId: string, message: string, callback: (response: { success: boolean; error?: string }) => void) => {
+  socket.on('sendChat', (actionId: string, message: string, callback?: (response: { success: boolean; error?: string }) => void) => {
     const roomCode = socketRoomMap.get(socket.id);
     
     if (!roomCode) {
       socket.emit('actionAck', { actionId, ok: false });
-      callback({ success: false, error: 'Not in a room' });
+      callback?.({ success: false, error: 'Not in a room' });
       return;
     }
     
     if (message.length > 280) {
       socket.emit('actionAck', { actionId, ok: false });
-      callback({ success: false, error: 'Message exceeds 280 characters' });
+      callback?.({ success: false, error: 'Message exceeds 280 characters' });
       return;
     }
     
     const playerData = socketPlayerMap.get(socket.id);
     if (!playerData) {
       socket.emit('actionAck', { actionId, ok: false });
-      callback({ success: false, error: 'Player not found' });
+      callback?.({ success: false, error: 'Player not found' });
       return;
     }
     
@@ -387,7 +420,7 @@ io.on('connection', (socket) => {
     
     if (!rateLimiter.tryConsume()) {
       socket.emit('actionAck', { actionId, ok: false });
-      callback({ success: false, error: 'Rate limit exceeded' });
+      callback?.({ success: false, error: 'Rate limit exceeded' });
       return;
     }
     
@@ -396,18 +429,23 @@ io.on('connection', (socket) => {
     
     if (!room || !player) {
       socket.emit('actionAck', { actionId, ok: false });
-      callback({ success: false, error: 'Room or player not found' });
+      callback?.({ success: false, error: 'Room or player not found' });
       return;
     }
     
-    io.to(roomCode).emit('chatMessage', {
+    const chatMessage = {
       playerId,
       playerName: player.name,
       message,
       timestamp: Date.now()
-    });
+    };
+    
+    // Store in chat history
+    room.addChatMessage(chatMessage);
+    
+    io.to(roomCode).emit('chatMessage', chatMessage);
     socket.emit('actionAck', { actionId, ok: true });
-    callback({ success: true });
+    callback?.({ success: true });
   });
 
   socket.on('leaveRoom', () => {
@@ -439,6 +477,9 @@ io.on('connection', (socket) => {
         }
         io.to(roomId).emit('roomUpdated', room.state);
         broadcastGameStateUpdate(roomId);
+      } else {
+        // Room was deleted - clean up avatars
+        avatarStore.deleteByRoom(roomId);
       }
     }
   });

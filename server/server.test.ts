@@ -116,8 +116,8 @@ describe('sendChat socket event', () => {
     playerRateLimiters = new Map();
 
     io.on('connection', (socket) => {
-      socket.on('create_room', (actionId: string, callback: (response: { roomCode: string }) => void) => {
-        const room = roomManager.createRoom();
+      socket.on('create_room', (actionId: string, settings: Partial<import('shared').RoomSettings> | null, callback: (response: { roomCode: string }) => void) => {
+        const room = roomManager.createRoom(settings ?? undefined);
         socket.emit('actionAck', { actionId, ok: true });
         callback({ roomCode: room.code });
       });
@@ -253,8 +253,8 @@ describe('sendChat socket event', () => {
 
   const connectClient = () => ioClient(`http://localhost:${port}`) as any;
 
-  const createRoomOnServer = (client: any) => new Promise<{ roomCode: string }>((resolve) => {
-    client.emit('create_room', 'action-create', (response: { roomCode: string }) => {
+  const createRoomOnServer = (client: any, settings?: Partial<import('shared').RoomSettings>) => new Promise<{ roomCode: string }>((resolve) => {
+    client.emit('create_room', 'action-create', settings ?? null, (response: { roomCode: string }) => {
       resolve(response);
     });
   });
@@ -470,8 +470,8 @@ describe('join room functionality', () => {
     const socketPlayerMap = new Map<string, { playerId: string; playerSecret: string }>();
 
     io.on('connection', (socket) => {
-      (socket as any).on('create_room', (callback: (response: { roomCode: string }) => void) => {
-        const room = roomManager.createRoom();
+      (socket as any).on('create_room', (actionId: string, settings: any, callback: (response: { roomCode: string }) => void) => {
+        const room = roomManager.createRoom(settings ?? undefined);
         callback({ roomCode: room.code });
       });
       
@@ -610,7 +610,7 @@ describe('join room functionality', () => {
       const client = ioClient(`http://localhost:${port}`) as any;
       
       const createRoomPromise = new Promise<{ roomCode: string }>((resolve) => {
-        client.emit('create_room', (response: { roomCode: string }) => {
+        client.emit('create_room', 'action-create', null, (response: { roomCode: string }) => {
           resolve(response);
         });
       });
@@ -640,7 +640,7 @@ describe('join room functionality', () => {
       const client = ioClient(`http://localhost:${port}`) as any;
       
       const createRoomPromise = new Promise<{ roomCode: string }>((resolve) => {
-        client.emit('create_room', (response: { roomCode: string }) => {
+        client.emit('create_room', 'action-create', null, (response: { roomCode: string }) => {
           resolve(response);
         });
       });
@@ -689,7 +689,7 @@ describe('join room functionality', () => {
       const client = ioClient(`http://localhost:${port}`) as any;
       
       const createRoomPromise = new Promise<{ roomCode: string }>((resolve) => {
-        client.emit('create_room', (response: { roomCode: string }) => {
+        client.emit('create_room', 'action-create', null, (response: { roomCode: string }) => {
           resolve(response);
         });
       });
@@ -715,7 +715,7 @@ describe('join room functionality', () => {
       const client = ioClient(`http://localhost:${port}`) as any;
       
       const createRoomPromise = new Promise<{ roomCode: string }>((resolve) => {
-        client.emit('create_room', (response: { roomCode: string }) => {
+        client.emit('create_room', 'action-create', null, (response: { roomCode: string }) => {
           resolve(response);
         });
       });
@@ -743,7 +743,7 @@ describe('join room functionality', () => {
       const client = ioClient(`http://localhost:${port}`) as any;
       
       const createRoomPromise = new Promise<{ roomCode: string }>((resolve) => {
-        client.emit('create_room', (response: { roomCode: string }) => {
+        client.emit('create_room', 'action-create', null, (response: { roomCode: string }) => {
           resolve(response);
         });
       });
@@ -788,7 +788,7 @@ describe('join room functionality', () => {
       const client1 = ioClient(`http://localhost:${port}`) as any;
       
       const createRoomPromise = new Promise<{ roomCode: string }>((resolve) => {
-        client1.emit('create_room', (response: { roomCode: string }) => {
+        client1.emit('create_room', 'action-create', null, (response: { roomCode: string }) => {
           resolve(response);
         });
       });
@@ -839,7 +839,7 @@ describe('join room functionality', () => {
       const client1 = ioClient(`http://localhost:${port}`) as any;
       
       const createRoomPromise = new Promise<{ roomCode: string }>((resolve) => {
-        client1.emit('create_room', (response: { roomCode: string }) => {
+        client1.emit('create_room', 'action-create', null, (response: { roomCode: string }) => {
           resolve(response);
         });
       });
@@ -892,7 +892,7 @@ describe('join room functionality', () => {
       const client1 = ioClient(`http://localhost:${port}`) as any;
       
       const createRoomPromise = new Promise<{ roomCode: string }>((resolve) => {
-        client1.emit('create_room', (response: { roomCode: string }) => {
+        client1.emit('create_room', 'action-create', null, (response: { roomCode: string }) => {
           resolve(response);
         });
       });
@@ -936,7 +936,7 @@ describe('join room functionality', () => {
       const client1 = ioClient(`http://localhost:${port}`) as any;
       
       const createRoomPromise = new Promise<{ roomCode: string }>((resolve) => {
-        client1.emit('create_room', (response: { roomCode: string }) => {
+        client1.emit('create_room', 'action-create', null, (response: { roomCode: string }) => {
           resolve(response);
         });
       });
@@ -1025,8 +1025,8 @@ describe('start game socket event', () => {
     socketPlayerMap = new Map<string, { playerId: string; playerSecret: string }>();
 
     io.on('connection', (socket) => {
-      (socket as any).on('create_room', (callback: (response: { roomCode: string }) => void) => {
-        const room = roomManager.createRoom();
+      (socket as any).on('create_room', (actionId: string, settings: any, callback: (response: { roomCode: string }) => void) => {
+        const room = roomManager.createRoom(settings ?? undefined);
         callback({ roomCode: room.code });
       });
       
@@ -1149,7 +1149,7 @@ describe('start game socket event', () => {
       const client1 = ioClient(`http://localhost:${port}`) as any;
       
       const createRoomPromise = new Promise<{ roomCode: string }>((resolve) => {
-        client1.emit('create_room', (response: { roomCode: string }) => {
+        client1.emit('create_room', 'action-create', null, (response: { roomCode: string }) => {
           resolve(response);
         });
       });
@@ -1206,7 +1206,7 @@ describe('start game socket event', () => {
       const client1 = ioClient(`http://localhost:${port}`) as any;
       
       const createRoomPromise = new Promise<{ roomCode: string }>((resolve) => {
-        client1.emit('create_room', (response: { roomCode: string }) => {
+        client1.emit('create_room', 'action-create', null, (response: { roomCode: string }) => {
           resolve(response);
         });
       });
@@ -1308,7 +1308,7 @@ describe('start game socket event', () => {
       const client1 = ioClient(`http://localhost:${port}`) as any;
       
       const createRoomPromise = new Promise<{ roomCode: string }>((resolve) => {
-        client1.emit('create_room', (response: { roomCode: string }) => {
+        client1.emit('create_room', 'action-create', null, (response: { roomCode: string }) => {
           resolve(response);
         });
       });
@@ -1357,7 +1357,7 @@ describe('start game socket event', () => {
       const client = ioClient(`http://localhost:${port}`) as any;
       
       const createRoomPromise = new Promise<{ roomCode: string }>((resolve) => {
-        client.emit('create_room', (response: { roomCode: string }) => {
+        client.emit('create_room', 'action-create', null, (response: { roomCode: string }) => {
           resolve(response);
         });
       });
@@ -4107,6 +4107,828 @@ describe('clock sync scheduler', () => {
   });
 });
 
+describe('AI player functionality', () => {
+  describe('Room Settings', () => {
+    it('should create room with default settings', () => {
+      const manager = new RoomManager();
+      const room = manager.createRoom();
+      
+      expect(room.settings.maxPlayers).toBe(6);
+      expect(room.settings.aiPlayerCount).toBe(0);
+      expect(room.settings.timePerTurnMs).toBe(60000);
+    });
+
+    it('should create room with custom settings', () => {
+      const manager = new RoomManager();
+      const room = manager.createRoom({
+        maxPlayers: 4,
+        aiPlayerCount: 2,
+        timePerTurnMs: 30000
+      });
+      
+      expect(room.settings.maxPlayers).toBe(4);
+      expect(room.settings.aiPlayerCount).toBe(2);
+      expect(room.settings.timePerTurnMs).toBe(30000);
+    });
+
+    it('should include settings in room state', () => {
+      const manager = new RoomManager();
+      const room = manager.createRoom({
+        maxPlayers: 8,
+        aiPlayerCount: 3,
+        timePerTurnMs: 45000
+      });
+      
+      expect(room.state.settings).toEqual({
+        maxPlayers: 8,
+        aiPlayerCount: 3,
+        timePerTurnMs: 45000
+      });
+    });
+
+    it('should use custom time per turn for clock', () => {
+      const manager = new RoomManager();
+      const room = manager.createRoom({ timePerTurnMs: 30000 });
+      
+      const player1 = { id: 'p1', name: 'Player 1', isReady: false, secret: 's1', connected: true, hand: [], handCount: 0 };
+      const player2 = { id: 'p2', name: 'Player 2', isReady: false, secret: 's2', connected: true, hand: [], handCount: 0 };
+      
+      room.addPlayer('socket1', player1);
+      room.addPlayer('socket2', player2);
+      room.startGame();
+      
+      expect(room.timeRemainingMs['p1']).toBe(30000);
+      expect(room.timeRemainingMs['p2']).toBe(30000);
+      
+      room.stopClockSync();
+    });
+  });
+
+  describe('Adding AI players', () => {
+    it('should add AI players when game starts with aiPlayerCount > 0', () => {
+      const manager = new RoomManager();
+      const room = manager.createRoom({ aiPlayerCount: 2 });
+      
+      const player1 = { id: 'p1', name: 'Human', isReady: false, secret: 's1', connected: true, hand: [], handCount: 0 };
+      room.addPlayer('socket1', player1);
+      
+      room.startGame();
+      
+      expect(room.players.size).toBe(3); // 1 human + 2 AI
+      
+      const aiPlayers = Array.from(room.players.values()).filter(p => p.isAI);
+      expect(aiPlayers).toHaveLength(2);
+      expect(aiPlayers[0].name).toBe('Bot Alpha');
+      expect(aiPlayers[1].name).toBe('Bot Beta');
+      
+      room.stopClockSync();
+    });
+
+    it('should mark AI players as always connected', () => {
+      const manager = new RoomManager();
+      const room = manager.createRoom({ aiPlayerCount: 1 });
+      
+      const player1 = { id: 'p1', name: 'Human', isReady: false, secret: 's1', connected: true, hand: [], handCount: 0 };
+      room.addPlayer('socket1', player1);
+      
+      room.startGame();
+      
+      const aiPlayer = Array.from(room.players.values()).find(p => p.isAI);
+      expect(aiPlayer?.connected).toBe(true);
+      expect(aiPlayer?.isReady).toBe(true);
+      
+      room.stopClockSync();
+    });
+
+    it('should deal cards to AI players', () => {
+      const manager = new RoomManager();
+      const room = manager.createRoom({ aiPlayerCount: 1 });
+      
+      const player1 = { id: 'p1', name: 'Human', isReady: false, secret: 's1', connected: true, hand: [], handCount: 0 };
+      room.addPlayer('socket1', player1);
+      
+      room.startGame();
+      
+      const aiPlayer = Array.from(room.players.values()).find(p => p.isAI);
+      expect(aiPlayer?.hand.length).toBe(7);
+      
+      room.stopClockSync();
+    });
+
+    it('should include AI players in state players array', () => {
+      const manager = new RoomManager();
+      const room = manager.createRoom({ aiPlayerCount: 2 });
+      
+      const player1 = { id: 'p1', name: 'Human', isReady: false, secret: 's1', connected: true, hand: [], handCount: 0 };
+      room.addPlayer('socket1', player1);
+      
+      room.startGame();
+      
+      expect(room.state.players).toHaveLength(3);
+      const aiInState = room.state.players.filter(p => p.isAI);
+      expect(aiInState).toHaveLength(2);
+      
+      room.stopClockSync();
+    });
+
+    it('should allow starting game with 1 human + AI players', () => {
+      const manager = new RoomManager();
+      const room = manager.createRoom({ aiPlayerCount: 1 });
+      
+      const player1 = { id: 'p1', name: 'Human', isReady: false, secret: 's1', connected: true, hand: [], handCount: 0 };
+      room.addPlayer('socket1', player1);
+      
+      expect(() => room.startGame()).not.toThrow();
+      expect(room.state.gameStatus).toBe('playing');
+      
+      room.stopClockSync();
+    });
+  });
+
+  describe('AI move detection', () => {
+    it('should correctly identify when current player is AI', () => {
+      const manager = new RoomManager();
+      const room = manager.createRoom({ aiPlayerCount: 1 });
+      
+      const player1 = { id: 'p1', name: 'Human', isReady: false, secret: 's1', connected: true, hand: [], handCount: 0 };
+      room.addPlayer('socket1', player1);
+      
+      room.startGame();
+      
+      // First player is human (p1)
+      expect(room.isCurrentPlayerAI()).toBe(false);
+      
+      // Manually advance turn to AI
+      room.advanceTurn();
+      expect(room.isCurrentPlayerAI()).toBe(true);
+      
+      room.stopClockSync();
+    });
+
+    it('should return false for isCurrentPlayerAI when game not playing', () => {
+      const manager = new RoomManager();
+      const room = manager.createRoom({ aiPlayerCount: 1 });
+      
+      const player1 = { id: 'p1', name: 'Human', isReady: false, secret: 's1', connected: true, hand: [], handCount: 0 };
+      room.addPlayer('socket1', player1);
+      
+      expect(room.isCurrentPlayerAI()).toBe(false);
+    });
+  });
+
+  describe('AI making moves', () => {
+    it('should play a matching color card', () => {
+      const manager = new RoomManager();
+      const room = manager.createRoom({ aiPlayerCount: 1 });
+      
+      const player1 = { id: 'p1', name: 'Human', isReady: false, secret: 's1', connected: true, hand: [], handCount: 0 };
+      room.addPlayer('socket1', player1);
+      
+      room.startGame();
+      room.stopClockSync();
+      
+      // Setup: put a red 5 on discard pile
+      room.discardPile = [{ color: 'red', value: '5' }];
+      room.activeColor = undefined;
+      
+      // Give AI a red 7
+      const aiPlayer = Array.from(room.players.values()).find(p => p.isAI);
+      aiPlayer!.hand = [{ color: 'red', value: '7' }, { color: 'blue', value: '2' }];
+      
+      // Move to AI's turn
+      room.currentPlayerIndex = room.playerOrder.indexOf(aiPlayer!.id);
+      
+      room.makeAIMove();
+      
+      // AI should have played the red 7
+      expect(aiPlayer!.hand).toHaveLength(1);
+      expect(aiPlayer!.hand[0]).toEqual({ color: 'blue', value: '2' });
+      expect(room.discardPile[room.discardPile.length - 1]).toEqual({ color: 'red', value: '7' });
+    });
+
+    it('should play a matching value card', () => {
+      const manager = new RoomManager();
+      const room = manager.createRoom({ aiPlayerCount: 1 });
+      
+      const player1 = { id: 'p1', name: 'Human', isReady: false, secret: 's1', connected: true, hand: [], handCount: 0 };
+      room.addPlayer('socket1', player1);
+      
+      room.startGame();
+      room.stopClockSync();
+      
+      // Setup: put a red 5 on discard pile
+      room.discardPile = [{ color: 'red', value: '5' }];
+      room.activeColor = undefined;
+      
+      // Give AI a blue 5 (matches value)
+      const aiPlayer = Array.from(room.players.values()).find(p => p.isAI);
+      aiPlayer!.hand = [{ color: 'blue', value: '5' }, { color: 'green', value: '2' }];
+      
+      room.currentPlayerIndex = room.playerOrder.indexOf(aiPlayer!.id);
+      
+      room.makeAIMove();
+      
+      expect(aiPlayer!.hand).toHaveLength(1);
+      expect(room.discardPile[room.discardPile.length - 1]).toEqual({ color: 'blue', value: '5' });
+    });
+
+    it('should play a wild card and choose most common color', () => {
+      const manager = new RoomManager();
+      const room = manager.createRoom({ aiPlayerCount: 1 });
+      
+      const player1 = { id: 'p1', name: 'Human', isReady: false, secret: 's1', connected: true, hand: [], handCount: 0 };
+      room.addPlayer('socket1', player1);
+      
+      room.startGame();
+      room.stopClockSync();
+      
+      // Setup: put a red 5 on discard pile
+      room.discardPile = [{ color: 'red', value: '5' }];
+      room.activeColor = undefined;
+      
+      // Give AI a wild card and 2 blue cards
+      const aiPlayer = Array.from(room.players.values()).find(p => p.isAI);
+      aiPlayer!.hand = [
+        { color: 'wild', value: 'wild' },
+        { color: 'blue', value: '2' },
+        { color: 'blue', value: '3' },
+        { color: 'green', value: '1' }
+      ];
+      
+      room.currentPlayerIndex = room.playerOrder.indexOf(aiPlayer!.id);
+      
+      room.makeAIMove();
+      
+      // AI should have played wild and chosen blue (most common)
+      expect(String(room.activeColor)).toBe('blue');
+      expect(room.discardPile[room.discardPile.length - 1]).toEqual({ color: 'wild', value: 'wild' });
+    });
+
+    it('should draw when no playable card', () => {
+      const manager = new RoomManager();
+      const room = manager.createRoom({ aiPlayerCount: 1 });
+      
+      const player1 = { id: 'p1', name: 'Human', isReady: false, secret: 's1', connected: true, hand: [], handCount: 0 };
+      room.addPlayer('socket1', player1);
+      
+      room.startGame();
+      room.stopClockSync();
+      
+      // Setup: put a red 5 on discard pile
+      room.discardPile = [{ color: 'red', value: '5' }];
+      room.activeColor = undefined;
+      
+      // Give AI cards that don't match
+      const aiPlayer = Array.from(room.players.values()).find(p => p.isAI);
+      aiPlayer!.hand = [
+        { color: 'blue', value: '2' },
+        { color: 'green', value: '3' }
+      ];
+      
+      room.currentPlayerIndex = room.playerOrder.indexOf(aiPlayer!.id);
+      const initialHandSize = aiPlayer!.hand.length;
+      
+      room.makeAIMove();
+      
+      // AI should have drawn a card
+      expect(aiPlayer!.hand.length).toBe(initialHandSize + 1);
+    });
+
+    it('should call UNO when down to 1 card', () => {
+      const manager = new RoomManager();
+      const room = manager.createRoom({ aiPlayerCount: 1 });
+      
+      const player1 = { id: 'p1', name: 'Human', isReady: false, secret: 's1', connected: true, hand: [], handCount: 0 };
+      room.addPlayer('socket1', player1);
+      
+      room.startGame();
+      room.stopClockSync();
+      
+      // Setup: put a red 5 on discard pile
+      room.discardPile = [{ color: 'red', value: '5' }];
+      room.activeColor = undefined;
+      
+      // Give AI 2 cards, one playable
+      const aiPlayer = Array.from(room.players.values()).find(p => p.isAI);
+      aiPlayer!.hand = [
+        { color: 'red', value: '7' },
+        { color: 'blue', value: '2' }
+      ];
+      
+      room.currentPlayerIndex = room.playerOrder.indexOf(aiPlayer!.id);
+      
+      room.makeAIMove();
+      
+      // AI should have 1 card and called UNO
+      expect(aiPlayer!.hand).toHaveLength(1);
+      expect(room.unoWindow?.playerId).toBe(aiPlayer!.id);
+      expect(room.unoWindow?.called).toBe(true);
+    });
+
+    it('should not make move when not AI turn', () => {
+      const manager = new RoomManager();
+      const room = manager.createRoom({ aiPlayerCount: 1 });
+      
+      const player1 = { id: 'p1', name: 'Human', isReady: false, secret: 's1', connected: true, hand: [], handCount: 0 };
+      room.addPlayer('socket1', player1);
+      
+      room.startGame();
+      room.stopClockSync();
+      
+      // Human's turn
+      expect(room.currentPlayerIndex).toBe(0);
+      
+      const initialDiscardLength = room.discardPile.length;
+      room.makeAIMove();
+      
+      // Nothing should change
+      expect(room.discardPile.length).toBe(initialDiscardLength);
+    });
+  });
+
+  describe('AI move scheduling', () => {
+    it('should schedule AI move after game starts if AI goes first', async () => {
+      const manager = new RoomManager();
+      const room = manager.createRoom({ aiPlayerCount: 1 });
+      
+      // Add AI first so it will be first in player order
+      room.addAIPlayers();
+      
+      const player1 = { id: 'p1', name: 'Human', isReady: false, secret: 's1', connected: true, hand: [], handCount: 0 };
+      room.addPlayer('socket1', player1);
+      
+      let aiMoveCalled = false;
+      room.onAIMove = () => { aiMoveCalled = true; };
+      
+      room.startGame();
+      
+      // Wait for AI move (1-2 seconds delay)
+      await new Promise(resolve => setTimeout(resolve, 2500));
+      
+      expect(aiMoveCalled).toBe(true);
+      
+      room.stopClockSync();
+    });
+
+    it('should schedule AI move after turn advances to AI', async () => {
+      const manager = new RoomManager();
+      const room = manager.createRoom({ aiPlayerCount: 1 });
+      
+      const player1 = { id: 'p1', name: 'Human', isReady: false, secret: 's1', connected: true, hand: [], handCount: 0 };
+      room.addPlayer('socket1', player1);
+      
+      room.startGame();
+      
+      let aiMoveCalled = false;
+      room.onAIMove = () => { aiMoveCalled = true; };
+      
+      // Advance to AI turn
+      room.advanceTurn();
+      
+      // Wait for AI move
+      await new Promise(resolve => setTimeout(resolve, 2500));
+      
+      expect(aiMoveCalled).toBe(true);
+      
+      room.stopClockSync();
+    });
+
+    it('should clear AI timeout when game ends', () => {
+      const manager = new RoomManager();
+      const room = manager.createRoom({ aiPlayerCount: 1 });
+      
+      const player1 = { id: 'p1', name: 'Human', isReady: false, secret: 's1', connected: true, hand: [], handCount: 0 };
+      room.addPlayer('socket1', player1);
+      
+      room.startGame();
+      room.advanceTurn(); // Move to AI turn, which schedules AI move
+      
+      expect(room.aiMoveTimeoutId).toBeDefined();
+      
+      room.stopClockSync();
+      
+      expect(room.aiMoveTimeoutId).toBeUndefined();
+    });
+  });
+
+  describe('Game end conditions with AI', () => {
+    it('should end game when all humans disconnect', () => {
+      const manager = new RoomManager();
+      const room = manager.createRoom({ aiPlayerCount: 2 });
+      
+      const player1 = { id: 'p1', name: 'Human', isReady: false, secret: 's1', connected: true, hand: [], handCount: 0 };
+      room.addPlayer('socket1', player1);
+      
+      room.startGame();
+      
+      // Disconnect human
+      room.markPlayerDisconnected('p1');
+      
+      // Try to advance turn (which checks game end conditions)
+      room.nextConnectedPlayerIndex();
+      
+      expect(room.state.gameStatus).toBe('finished');
+      expect(room.state.gameEndedReason).toBe('All human players disconnected');
+      
+      room.stopClockSync();
+    });
+
+    it('should continue game when humans + AI are active', () => {
+      const manager = new RoomManager();
+      const room = manager.createRoom({ aiPlayerCount: 1 });
+      
+      const player1 = { id: 'p1', name: 'Human1', isReady: false, secret: 's1', connected: true, hand: [], handCount: 0 };
+      const player2 = { id: 'p2', name: 'Human2', isReady: false, secret: 's2', connected: true, hand: [], handCount: 0 };
+      room.addPlayer('socket1', player1);
+      room.addPlayer('socket2', player2);
+      
+      room.startGame();
+      
+      // Disconnect one human
+      room.markPlayerDisconnected('p1');
+      
+      // Game should continue (1 human + 1 AI)
+      room.nextConnectedPlayerIndex();
+      
+      expect(room.state.gameStatus).toBe('playing');
+      
+      room.stopClockSync();
+    });
+
+    it('should let AI win by playing all cards', () => {
+      const manager = new RoomManager();
+      const room = manager.createRoom({ aiPlayerCount: 1 });
+      
+      const player1 = { id: 'p1', name: 'Human', isReady: false, secret: 's1', connected: true, hand: [], handCount: 0 };
+      room.addPlayer('socket1', player1);
+      
+      room.startGame();
+      room.stopClockSync();
+      
+      // Setup: put a red 5 on discard pile
+      room.discardPile = [{ color: 'red', value: '5' }];
+      room.activeColor = undefined;
+      
+      // Give AI only 1 playable card
+      const aiPlayer = Array.from(room.players.values()).find(p => p.isAI);
+      aiPlayer!.hand = [{ color: 'red', value: '7' }];
+      
+      room.currentPlayerIndex = room.playerOrder.indexOf(aiPlayer!.id);
+      
+      room.makeAIMove();
+      
+      expect(room.state.gameStatus).toBe('finished');
+      expect(room.state.gameEndedReason).toContain('won');
+    });
+  });
+
+  describe('AI skipping behavior', () => {
+    it('should treat AI as connected when skipping disconnected players', () => {
+      const manager = new RoomManager();
+      const room = manager.createRoom({ aiPlayerCount: 2 });
+      
+      const player1 = { id: 'p1', name: 'Human', isReady: false, secret: 's1', connected: true, hand: [], handCount: 0 };
+      room.addPlayer('socket1', player1);
+      
+      room.startGame();
+      
+      // AI players should be in the rotation
+      const aiPlayers = Array.from(room.players.values()).filter(p => p.isAI);
+      expect(aiPlayers.every(p => p.connected)).toBe(true);
+      
+      room.stopClockSync();
+    });
+  });
+});
+
+describe('RoomSettings validation', () => {
+  it('should use defaults for missing settings', () => {
+    const manager = new RoomManager();
+    const room = manager.createRoom({});
+    
+    expect(room.settings.maxPlayers).toBe(6);
+    expect(room.settings.aiPlayerCount).toBe(0);
+    expect(room.settings.timePerTurnMs).toBe(60000);
+  });
+
+  it('should allow partial settings', () => {
+    const manager = new RoomManager();
+    const room = manager.createRoom({ aiPlayerCount: 3 });
+    
+    expect(room.settings.maxPlayers).toBe(6);
+    expect(room.settings.aiPlayerCount).toBe(3);
+    expect(room.settings.timePerTurnMs).toBe(60000);
+  });
+
+  it('should not add AI players if aiPlayerCount is 0', () => {
+    const manager = new RoomManager();
+    const room = manager.createRoom({ aiPlayerCount: 0 });
+    
+    const player1 = { id: 'p1', name: 'Human1', isReady: false, secret: 's1', connected: true, hand: [], handCount: 0 };
+    const player2 = { id: 'p2', name: 'Human2', isReady: false, secret: 's2', connected: true, hand: [], handCount: 0 };
+    room.addPlayer('socket1', player1);
+    room.addPlayer('socket2', player2);
+    
+    room.startGame();
+    
+    expect(room.players.size).toBe(2);
+    expect(Array.from(room.players.values()).filter(p => p.isAI)).toHaveLength(0);
+    
+    room.stopClockSync();
+  });
+});
+
+describe('Game win conditions and card effects', () => {
+  describe('Player wins by playing all cards', () => {
+    it('should end game when player plays last card', () => {
+      const manager = new RoomManager();
+      const room = manager.createRoom();
+      
+      const player1 = { id: 'p1', name: 'Player 1', isReady: false, secret: 's1', connected: true, hand: [], handCount: 0 };
+      const player2 = { id: 'p2', name: 'Player 2', isReady: false, secret: 's2', connected: true, hand: [], handCount: 0 };
+      
+      room.addPlayer('socket1', player1);
+      room.addPlayer('socket2', player2);
+      room.startGame();
+      room.stopClockSync();
+      
+      // Setup: give player 1 card that matches discard
+      room.discardPile = [{ color: 'red', value: '5' }];
+      room.activeColor = undefined;
+      
+      const p1 = room.players.get('p1')!;
+      p1.hand = [{ color: 'red', value: '7' }];
+      
+      room.currentPlayerIndex = 0;
+      room.playCard('p1', { color: 'red', value: '7' });
+      
+      expect(room.state.gameStatus).toBe('finished');
+      expect(room.state.gameEndedReason).toBe('Player 1 won');
+    });
+  });
+
+  describe('Skip card effects', () => {
+    it('should skip next player', () => {
+      const manager = new RoomManager();
+      const room = manager.createRoom();
+      
+      const player1 = { id: 'p1', name: 'Player 1', isReady: false, secret: 's1', connected: true, hand: [], handCount: 0 };
+      const player2 = { id: 'p2', name: 'Player 2', isReady: false, secret: 's2', connected: true, hand: [], handCount: 0 };
+      const player3 = { id: 'p3', name: 'Player 3', isReady: false, secret: 's3', connected: true, hand: [], handCount: 0 };
+      
+      room.addPlayer('socket1', player1);
+      room.addPlayer('socket2', player2);
+      room.addPlayer('socket3', player3);
+      room.startGame();
+      room.stopClockSync();
+      
+      room.discardPile = [{ color: 'red', value: '5' }];
+      room.activeColor = undefined;
+      
+      const p1 = room.players.get('p1')!;
+      p1.hand = [{ color: 'red', value: 'skip' }, { color: 'blue', value: '1' }];
+      
+      room.currentPlayerIndex = 0;
+      room.playCard('p1', { color: 'red', value: 'skip' });
+      
+      // Should skip player 2 and be player 3's turn
+      expect(room.playerOrder[room.currentPlayerIndex]).toBe('p3');
+    });
+  });
+
+  describe('Reverse card effects', () => {
+    it('should reverse direction with 3+ players', () => {
+      const manager = new RoomManager();
+      const room = manager.createRoom();
+      
+      const player1 = { id: 'p1', name: 'Player 1', isReady: false, secret: 's1', connected: true, hand: [], handCount: 0 };
+      const player2 = { id: 'p2', name: 'Player 2', isReady: false, secret: 's2', connected: true, hand: [], handCount: 0 };
+      const player3 = { id: 'p3', name: 'Player 3', isReady: false, secret: 's3', connected: true, hand: [], handCount: 0 };
+      
+      room.addPlayer('socket1', player1);
+      room.addPlayer('socket2', player2);
+      room.addPlayer('socket3', player3);
+      room.startGame();
+      room.stopClockSync();
+      
+      room.discardPile = [{ color: 'red', value: '5' }];
+      room.activeColor = undefined;
+      
+      const p1 = room.players.get('p1')!;
+      p1.hand = [{ color: 'red', value: 'reverse' }, { color: 'blue', value: '1' }];
+      
+      expect(room.direction).toBe(1);
+      room.currentPlayerIndex = 0;
+      room.playCard('p1', { color: 'red', value: 'reverse' });
+      
+      expect(room.direction).toBe(-1);
+      // Should now be player 3's turn (going backwards)
+      expect(room.playerOrder[room.currentPlayerIndex]).toBe('p3');
+    });
+
+    it('should act as skip with 2 players', () => {
+      const manager = new RoomManager();
+      const room = manager.createRoom();
+      
+      const player1 = { id: 'p1', name: 'Player 1', isReady: false, secret: 's1', connected: true, hand: [], handCount: 0 };
+      const player2 = { id: 'p2', name: 'Player 2', isReady: false, secret: 's2', connected: true, hand: [], handCount: 0 };
+      
+      room.addPlayer('socket1', player1);
+      room.addPlayer('socket2', player2);
+      room.startGame();
+      room.stopClockSync();
+      
+      room.discardPile = [{ color: 'red', value: '5' }];
+      room.activeColor = undefined;
+      
+      const p1 = room.players.get('p1')!;
+      p1.hand = [{ color: 'red', value: 'reverse' }, { color: 'blue', value: '1' }];
+      
+      room.currentPlayerIndex = 0;
+      room.playCard('p1', { color: 'red', value: 'reverse' });
+      
+      // Should skip player 2 and go back to player 1
+      expect(room.playerOrder[room.currentPlayerIndex]).toBe('p1');
+    });
+  });
+
+  describe('Draw 2 card effects', () => {
+    it('should make next player draw 2 cards and skip their turn', () => {
+      const manager = new RoomManager();
+      const room = manager.createRoom();
+      
+      const player1 = { id: 'p1', name: 'Player 1', isReady: false, secret: 's1', connected: true, hand: [], handCount: 0 };
+      const player2 = { id: 'p2', name: 'Player 2', isReady: false, secret: 's2', connected: true, hand: [], handCount: 0 };
+      const player3 = { id: 'p3', name: 'Player 3', isReady: false, secret: 's3', connected: true, hand: [], handCount: 0 };
+      
+      room.addPlayer('socket1', player1);
+      room.addPlayer('socket2', player2);
+      room.addPlayer('socket3', player3);
+      room.startGame();
+      room.stopClockSync();
+      
+      room.discardPile = [{ color: 'red', value: '5' }];
+      room.activeColor = undefined;
+      
+      const p1 = room.players.get('p1')!;
+      const p2 = room.players.get('p2')!;
+      p1.hand = [{ color: 'red', value: 'draw2' }, { color: 'blue', value: '1' }];
+      const p2InitialHandSize = p2.hand.length;
+      
+      room.currentPlayerIndex = 0;
+      room.playCard('p1', { color: 'red', value: 'draw2' });
+      
+      expect(p2.hand.length).toBe(p2InitialHandSize + 2);
+      expect(room.playerOrder[room.currentPlayerIndex]).toBe('p3');
+    });
+  });
+
+  describe('Wild Draw 4 card effects', () => {
+    it('should make next player draw 4 cards and set active color', () => {
+      const manager = new RoomManager();
+      const room = manager.createRoom();
+      
+      const player1 = { id: 'p1', name: 'Player 1', isReady: false, secret: 's1', connected: true, hand: [], handCount: 0 };
+      const player2 = { id: 'p2', name: 'Player 2', isReady: false, secret: 's2', connected: true, hand: [], handCount: 0 };
+      const player3 = { id: 'p3', name: 'Player 3', isReady: false, secret: 's3', connected: true, hand: [], handCount: 0 };
+      
+      room.addPlayer('socket1', player1);
+      room.addPlayer('socket2', player2);
+      room.addPlayer('socket3', player3);
+      room.startGame();
+      room.stopClockSync();
+      
+      room.discardPile = [{ color: 'red', value: '5' }];
+      room.activeColor = undefined;
+      
+      const p1 = room.players.get('p1')!;
+      const p2 = room.players.get('p2')!;
+      p1.hand = [{ color: 'wild', value: 'wild_draw4' }, { color: 'blue', value: '1' }];
+      const p2InitialHandSize = p2.hand.length;
+      
+      room.currentPlayerIndex = 0;
+      room.playCard('p1', { color: 'wild', value: 'wild_draw4' }, 'blue');
+      
+      expect(p2.hand.length).toBe(p2InitialHandSize + 4);
+      expect(String(room.activeColor)).toBe('blue');
+      expect(room.playerOrder[room.currentPlayerIndex]).toBe('p3');
+    });
+  });
+
+  describe('UNO mechanics', () => {
+    it('should open UNO window when player has 1 card', () => {
+      const manager = new RoomManager();
+      const room = manager.createRoom();
+      
+      const player1 = { id: 'p1', name: 'Player 1', isReady: false, secret: 's1', connected: true, hand: [], handCount: 0 };
+      const player2 = { id: 'p2', name: 'Player 2', isReady: false, secret: 's2', connected: true, hand: [], handCount: 0 };
+      
+      room.addPlayer('socket1', player1);
+      room.addPlayer('socket2', player2);
+      room.startGame();
+      room.stopClockSync();
+      
+      room.discardPile = [{ color: 'red', value: '5' }];
+      room.activeColor = undefined;
+      
+      const p1 = room.players.get('p1')!;
+      p1.hand = [{ color: 'red', value: '7' }, { color: 'blue', value: '1' }];
+      
+      room.currentPlayerIndex = 0;
+      room.playCard('p1', { color: 'red', value: '7' });
+      
+      expect(room.unoWindow).toBeDefined();
+      expect(room.unoWindow?.playerId).toBe('p1');
+      expect(room.unoWindow?.called).toBe(false);
+    });
+
+    it('should allow player to call UNO', () => {
+      const manager = new RoomManager();
+      const room = manager.createRoom();
+      
+      const player1 = { id: 'p1', name: 'Player 1', isReady: false, secret: 's1', connected: true, hand: [], handCount: 0 };
+      const player2 = { id: 'p2', name: 'Player 2', isReady: false, secret: 's2', connected: true, hand: [], handCount: 0 };
+      
+      room.addPlayer('socket1', player1);
+      room.addPlayer('socket2', player2);
+      room.startGame();
+      room.stopClockSync();
+      
+      room.discardPile = [{ color: 'red', value: '5' }];
+      room.activeColor = undefined;
+      
+      const p1 = room.players.get('p1')!;
+      p1.hand = [{ color: 'red', value: '7' }, { color: 'blue', value: '1' }];
+      
+      room.currentPlayerIndex = 0;
+      room.playCard('p1', { color: 'red', value: '7' });
+      room.callUno('p1');
+      
+      expect(room.unoWindow?.called).toBe(true);
+    });
+
+    it('should penalize player when caught not calling UNO', () => {
+      const manager = new RoomManager();
+      const room = manager.createRoom();
+      
+      const player1 = { id: 'p1', name: 'Player 1', isReady: false, secret: 's1', connected: true, hand: [], handCount: 0 };
+      const player2 = { id: 'p2', name: 'Player 2', isReady: false, secret: 's2', connected: true, hand: [], handCount: 0 };
+      
+      room.addPlayer('socket1', player1);
+      room.addPlayer('socket2', player2);
+      room.startGame();
+      room.stopClockSync();
+      
+      room.discardPile = [{ color: 'red', value: '5' }];
+      room.activeColor = undefined;
+      
+      const p1 = room.players.get('p1')!;
+      p1.hand = [{ color: 'red', value: '7' }, { color: 'blue', value: '1' }];
+      
+      room.currentPlayerIndex = 0;
+      room.playCard('p1', { color: 'red', value: '7' });
+      
+      // Player 2 catches player 1
+      room.catchUno('p2', 'p1');
+      
+      // Player 1 should have drawn 2 penalty cards (1 original + 2 penalty = 3)
+      expect(p1.hand.length).toBe(3);
+      expect(room.unoWindow).toBeUndefined();
+    });
+  });
+
+  describe('Timer reset on turn change', () => {
+    it('should reset timer when turn advances', () => {
+      const manager = new RoomManager();
+      const room = manager.createRoom({ timePerTurnMs: 30000 });
+      
+      const player1 = { id: 'p1', name: 'Player 1', isReady: false, secret: 's1', connected: true, hand: [], handCount: 0 };
+      const player2 = { id: 'p2', name: 'Player 2', isReady: false, secret: 's2', connected: true, hand: [], handCount: 0 };
+      
+      room.addPlayer('socket1', player1);
+      room.addPlayer('socket2', player2);
+      room.startGame();
+      
+      // Simulate time passing
+      room.timeRemainingMs['p1'] = 15000;
+      
+      room.discardPile = [{ color: 'red', value: '5' }];
+      room.activeColor = undefined;
+      
+      const p1 = room.players.get('p1')!;
+      p1.hand = [{ color: 'red', value: '7' }, { color: 'blue', value: '1' }];
+      
+      room.currentPlayerIndex = 0;
+      room.playCard('p1', { color: 'red', value: '7' });
+      
+      // Player 2's timer should be reset to full
+      expect(room.timeRemainingMs['p2']).toBe(30000);
+      
+      room.stopClockSync();
+    });
+  });
+});
+
 describe('sendChat message validation', () => {
   it('should reject messages longer than 280 characters', () => {
     const longMessage = 'A'.repeat(281);
@@ -4257,8 +5079,8 @@ describe('sendChat event', () => {
     playerRateLimiters = new Map<string, RateLimiter>();
 
     io.on('connection', (socket) => {
-      (socket as any).on('create_room', (callback: (response: { roomCode: string }) => void) => {
-        const room = roomManager.createRoom();
+      (socket as any).on('create_room', (actionId: string, settings: any, callback: (response: { roomCode: string }) => void) => {
+        const room = roomManager.createRoom(settings ?? undefined);
         callback({ roomCode: room.code });
       });
       
@@ -4399,7 +5221,7 @@ describe('sendChat event', () => {
       const client1 = ioClient(`http://localhost:${port}`) as any;
       
       const createRoomPromise = new Promise<{ roomCode: string }>((resolve) => {
-        client1.emit('create_room', (response: { roomCode: string }) => {
+        client1.emit('create_room', 'action-create', null, (response: { roomCode: string }) => {
           resolve(response);
         });
       });
@@ -4467,7 +5289,7 @@ describe('sendChat event', () => {
       const client1 = ioClient(`http://localhost:${port}`) as any;
       
       const createRoomPromise = new Promise<{ roomCode: string }>((resolve) => {
-        client1.emit('create_room', (response: { roomCode: string }) => {
+        client1.emit('create_room', 'action-create', null, (response: { roomCode: string }) => {
           resolve(response);
         });
       });
@@ -4505,7 +5327,7 @@ describe('sendChat event', () => {
       const client1 = ioClient(`http://localhost:${port}`) as any;
       
       const createRoomPromise = new Promise<{ roomCode: string }>((resolve) => {
-        client1.emit('create_room', (response: { roomCode: string }) => {
+        client1.emit('create_room', 'action-create', null, (response: { roomCode: string }) => {
           resolve(response);
         });
       });
@@ -4542,7 +5364,7 @@ describe('sendChat event', () => {
       const client1 = ioClient(`http://localhost:${port}`) as any;
       
       const createRoomPromise = new Promise<{ roomCode: string }>((resolve) => {
-        client1.emit('create_room', (response: { roomCode: string }) => {
+        client1.emit('create_room', 'action-create', null, (response: { roomCode: string }) => {
           resolve(response);
         });
       });
@@ -4607,7 +5429,7 @@ describe('sendChat event', () => {
       const client1 = ioClient(`http://localhost:${port}`) as any;
       
       const createRoomPromise = new Promise<{ roomCode: string }>((resolve) => {
-        client1.emit('create_room', (response: { roomCode: string }) => {
+        client1.emit('create_room', 'action-create', null, (response: { roomCode: string }) => {
           resolve(response);
         });
       });

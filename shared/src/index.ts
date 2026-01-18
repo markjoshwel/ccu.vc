@@ -1,3 +1,9 @@
+export type RoomSettings = {
+  maxPlayers: number;      // 2-10, default 6
+  aiPlayerCount: number;   // 0-9, default 0
+  timePerTurnMs: number;   // default 60000
+};
+
 export type RoomState = {
   id: string;
   name: string;
@@ -11,6 +17,7 @@ export type RoomState = {
   activeColor?: 'red' | 'yellow' | 'green' | 'blue';
   gameEndedReason?: string;
   unoWindow?: UnoWindow;
+  settings?: RoomSettings;
 };
 
 export type UnoWindow = {
@@ -31,6 +38,7 @@ export type PlayerPublic = {
   connected: boolean;
   handCount: number;
   avatarId?: string;
+  isAI?: boolean;
 };
 
 export type PlayerPrivate = {
@@ -56,8 +64,10 @@ type JoinRoomArgs =
   | [actionId: string, roomCode: string, displayName: string, callback: JoinRoomCallback]
   | [actionId: string, roomCode: string, displayName: string, avatarId: string | null | undefined, callback: JoinRoomCallback];
 
+type CreateRoomCallback = (response: { roomCode: string }) => void;
+
 export type ClientToServerEvents = {
-  create_room: (actionId: string, callback: (response: { roomCode: string }) => void) => void;
+  create_room: (actionId: string, settings: Partial<RoomSettings> | null, callback: CreateRoomCallback) => void;
   join_room: (...args: JoinRoomArgs) => void;
   reconnect_room: (actionId: string, roomCode: string, playerId: string, playerSecret: string, callback: (response: { success: boolean; error?: string }) => void) => void;
   joinRoom: (roomId: string) => void;
@@ -65,7 +75,7 @@ export type ClientToServerEvents = {
   updatePlayer: (data: Partial<PlayerPrivate>) => void;
   playerReady: () => void;
   start_game: (actionId: string, callback: (response: { success: boolean; error?: string }) => void) => void;
-  playCard: (actionId: string, card: Card, callback: (response: { success: boolean; error?: string }) => void, chosenColor?: 'red' | 'yellow' | 'green' | 'blue') => void;
+  playCard: (actionId: string, card: Card, chosenColor: 'red' | 'yellow' | 'green' | 'blue' | null, callback: (response: { success: boolean; error?: string }) => void) => void;
   drawCard: (actionId: string, callback: (response: { success: boolean; error?: string }) => void) => void;
   callUno: (actionId: string, callback: (response: { success: boolean; error?: string }) => void) => void;
   catchUno: (actionId: string, targetPlayerId: string, callback: (response: { success: boolean; error?: string }) => void) => void;
@@ -82,6 +92,13 @@ export type TimeOutEvent = {
   policy: 'autoDrawAndSkip';
 };
 
+export type ChatMessage = {
+  playerId: string;
+  playerName: string;
+  message: string;
+  timestamp: number;
+};
+
 export type ServerToClientEvents = {
   roomUpdated: (room: RoomState) => void;
   playerJoined: (player: PlayerPublic) => void;
@@ -92,5 +109,6 @@ export type ServerToClientEvents = {
   timeOut: (data: TimeOutEvent) => void;
   error: (message: string) => void;
   actionAck: (data: { actionId: string; ok: boolean }) => void;
-  chatMessage: (data: { playerId: string; playerName: string; message: string; timestamp: number }) => void;
+  chatMessage: (data: ChatMessage) => void;
+  chatHistory: (data: ChatMessage[]) => void;
 };
