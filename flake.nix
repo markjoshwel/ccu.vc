@@ -111,7 +111,7 @@
           
           copyToRoot = pkgs.buildEnv {
             name = "ccu-client-root";
-            paths = [ pkgs.darkhttpd ];
+            paths = [ pkgs.darkhttpd pkgs.busybox ];
             pathsToLink = [ "/bin" ];
           };
 
@@ -121,9 +121,11 @@
           '';
 
           config = {
-            Cmd = [ "${pkgs.darkhttpd}/bin/darkhttpd" "/srv" "--port" "8080" ];
-            ExposedPorts = { "8080/tcp" = {}; };
+            # Use sh to read PORT env var, default 12121
+            Cmd = [ "/bin/sh" "-c" "darkhttpd /srv --port \${PORT:-12121}" ];
+            ExposedPorts = { "12121/tcp" = {}; };
             WorkingDir = "/srv";
+            Env = [ "PORT=12121" ];
           };
         };
 
