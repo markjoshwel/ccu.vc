@@ -1,0 +1,581 @@
+# Iteration 22 Log
+
+## Metadata
+
+- **Task ID**: US-022
+- **Task Title**: Implement client clock interpolation and reduced-motion friendly rendering
+- **Description**: Make the clock feel smooth and responsive without excessive network traffic.
+- **Status**: completed
+- **Task Completed**: Yes
+- **Promise Detected**: Yes
+- **Started At**: 2026-01-18T06:26:28.365Z
+- **Ended At**: 2026-01-18T06:34:24.272Z
+- **Duration**: 7m 55s
+- **Agent**: opencode
+- **Model**: opencode/glm-4.7-free
+--- RAW OUTPUT ---
+I'll implement US-022 to add client clock interpolation and reduced-motion support. Let me start by exploring the codebase structure.
+<promise>COMPLETE</promise>
+
+--- STDERR ---
+[94m[1m| [0m[90m Glob     [0m{"pattern":"client/**/*.{tsx,ts,jsx,js}"}
+[96m[1m| [0m[90m Read     [0mpackage.json
+[96m[1m| [0m[90m Read     [0mclient\src\App.tsx
+[94m[1m| [0m[90m Glob     [0m{"pattern":"shared/**/*.{ts,tsx}"}
+[96m[1m| [0m[90m Read     [0mshared\src\index.ts
+[96m[1m| [0m[90m Read     [0mclient\package.json
+[92m[1m| [0m[90m Edit     [0mclient\src\App.tsx
+[92m[1m| [0m[90m Edit     [0mclient\src\App.tsx
+[92m[1m| [0m[90m Edit     [0mclient\src\App.tsx
+[92m[1m| [0m[90m Edit     [0mclient\src\App.tsx
+[92m[1m| [0m[90m Edit     [0mclient\src\App.tsx
+[92m[1m| [0m[90m Edit     [0mclient\src\App.tsx
+[92m[1m| [0m[90m Edit     [0mclient\src\App.tsx
+[92m[1m| [0m[90m Edit     [0mclient\src\App.tsx
+[92m[1m| [0m[90m Edit     [0mclient\src\App.tsx
+[94m[1m| [0m[90m Glob     [0m{"pattern":"client/**/*.{css,scss}"}
+[96m[1m| [0m[90m Read     [0mclient\src\index.css
+[92m[1m| [0m[90m Edit     [0mclient\src\index.css
+[92m[1m| [0m[90m Edit     [0mclient\src\index.css
+[92m[1m| [0m[90m Edit     [0mclient\src\App.tsx
+[91m[1m| [0m[90m Bash     [0mBuild client to verify implementation
+
+error: No packages matched the filter
+
+[91m[1m| [0m[90m Bash     [0mBuild client to verify implementation
+
+$ tsc --noEmit && vite build
+[36mvite v5.4.21 [32mbuilding for production...[36m[39m
+transforming...
+[32m✓[39m 60 modules transformed.
+rendering chunks...
+computing gzip size...
+[2mdist/[22m[32mindex.html                 [39m[1m[2m  0.39 kB[22m[1m[22m[2m │ gzip:  0.27 kB[22m
+[2mdist/[22m[35massets/index-ZUY-ctep.css  [39m[1m[2m  4.80 kB[22m[1m[22m[2m │ gzip:  1.61 kB[22m
+[2mdist/[22m[36massets/index-ZsacRBAB.js   [39m[1m[2m193.02 kB[22m[1m[22m[2m │ gzip: 63.77 kB[22m
+[32m✓ built in 1.79s[39m
+
+[91m[1m| [0m[90m Bash     [0mTypecheck client to verify implementation
+
+$ tsc --noEmit
+
+[91m[1m| [0m[90m Bash     [0mShow git status
+
+On branch main
+Your branch is ahead of 'origin/main' by 18 commits.
+  (use "git push" to publish your local commits)
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   .ralph-tui/progress.md
+	modified:   .ralph-tui/session.json
+	modified:   client/src/App.tsx
+	modified:   client/src/index.css
+	modified:   prd.json
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	.ralph-tui/iterations/iteration-018-US-018.log
+	.ralph-tui/iterations/iteration-019-US-019.log
+	.ralph-tui/iterations/iteration-020-US-020.log
+	.ralph-tui/iterations/iteration-021-US-021.log
+
+no changes added to commit (use "git add" and/or "git commit -a")
+
+[91m[1m| [0m[90m Bash     [0mShow git diff
+
+warning: in the working copy of '.ralph-tui/progress.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.ralph-tui/session.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'client/src/App.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'client/src/index.css', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'prd.json', LF will be replaced by CRLF the next time Git touches it
+diff --git a/.ralph-tui/progress.md b/.ralph-tui/progress.md
+index f105d34..d2068bd 100644
+--- a/.ralph-tui/progress.md
++++ b/.ralph-tui/progress.md
+@@ -186,3 +186,51 @@ Now let me run the tests and typecheck to verify the implementation:
+ All tests pass and typecheck succeeds. Let me commit the changes:
+ 
+ ---
++## ✓ Iteration 18 - US-018: Implement Wild card and active color selection (server + client)
++*2026-01-17T20:21:02.456Z (453s)*
++
++**Status:** Completed
++
++**Notes:**
++I'll implement US-018 to add Wild card and active color selection. Let me start by exploring the codebase structure.
++Now I'll implement Wild card and active color selection. Let me start by updating the shared types to add `activeColor` and the color selection parameter.
++Now let me run the tests to verify the implementation:
++I see there are some test failures. Let me first check why `state.activeColor` is not being updated:
++All acceptance criteria have been met. Let me commit the changes:
++
++---
++## ✓ Iteration 19 - US-019: Implement Wild Draw Four effect (server)
++*2026-01-17T20:23:39.991Z (156s)*
++
++**Status:** Completed
++
++**Notes:**
++I'll implement US-019 to add the Wild Draw Four effect. Let me explore the codebase first.
++
++---
++## ✓ Iteration 20 - US-020: Implement win condition: first player to 0 cards ends game
++*2026-01-17T20:29:41.043Z (360s)*
++
++**Status:** Completed
++
++**Notes:**
++e a seeded RNG to ensure the initial discard card is not a Wild card:
++The test is failing because after player1 plays, the game advances turn but then player2 tries to play when the game ended. Let me fix the test to make player2 play their last card:
++This is a pre-existing test issue where the random shuffle produces a Wild card as the initial discard. Let me fix it by using a seeded RNG:
++All tests pass. Now let me run typecheck:
++All acceptance criteria are met. Let me commit the changes:
++
++---
++## ✓ Iteration 21 - US-021: Add server chess clock state and clockSync broadcast (no timeout yet)
++*2026-01-18T06:26:27.327Z (439s)*
++
++**Status:** Completed
++
++**Notes:**
++Let me fix the timing test to be less strict about exact timing:
++Let me run all tests again:
++Good, clock sync tests now pass. The failures are pre-existing. Let me verify all clock sync tests pass:
++All tests pass. Now let me run typecheck:
++All tests pass and typecheck succeeds. Let me commit the changes:
++
++---
+diff --git a/.ralph-tui/session.json b/.ralph-tui/session.json
+index c954101..7b564fb 100644
+--- a/.ralph-tui/session.json
++++ b/.ralph-tui/session.json
+@@ -3,10 +3,10 @@
+   "sessionId": "e4783755-3905-4470-8efb-6fa82f4e2471",
+   "status": "running",
+   "startedAt": "2026-01-17T18:27:42.045Z",
+-  "updatedAt": "2026-01-17T20:13:29.165Z",
+-  "currentIteration": 17,
++  "updatedAt": "2026-01-18T06:26:28.380Z",
++  "currentIteration": 21,
+   "maxIterations": 10,
+-  "tasksCompleted": 17,
++  "tasksCompleted": 21,
+   "isPaused": false,
+   "agentPlugin": "opencode",
+   "model": "opencode/glm-4.7-free",
+@@ -120,26 +120,26 @@
+       {
+         "id": "US-018",
+         "title": "Implement Wild card and active color selection (server + client)",
+-        "status": "open",
+-        "completedInSession": false
++        "status": "completed",
++        "completedInSession": true
+       },
+       {
+         "id": "US-019",
+         "title": "Implement Wild Draw Four effect (server)",
+-        "status": "open",
+-        "completedInSession": false
++        "status": "completed",
++        "completedInSession": true
+       },
+       {
+         "id": "US-020",
+         "title": "Implement win condition: first player to 0 cards ends game",
+-        "status": "open",
+-        "completedInSession": false
++        "status": "completed",
++        "completedInSession": true
+       },
+       {
+         "id": "US-021",
+         "title": "Add server chess clock state and clockSync broadcast (no timeout yet)",
+-        "status": "open",
+-        "completedInSession": false
++        "status": "completed",
++        "completedInSession": true
+       },
+       {
+         "id": "US-022",
+@@ -403,12 +403,52 @@
+       "durationMs": 132081,
+       "startedAt": "2026-01-17T20:11:16.007Z",
+       "endedAt": "2026-01-17T20:13:28.088Z"
++    },
++    {
++      "iteration": 18,
++      "status": "completed",
++      "taskId": "US-018",
++      "taskTitle": "Implement Wild card and active color selection (server + client)",
++      "taskCompleted": true,
++      "durationMs": 453292,
++      "startedAt": "2026-01-17T20:13:29.146Z",
++      "endedAt": "2026-01-17T20:21:02.438Z"
++    },
++    {
++      "iteration": 19,
++      "status": "completed",
++      "taskId": "US-019",
++      "taskTitle": "Implement Wild Draw Four effect (server)",
++      "taskCompleted": true,
++      "durationMs": 156482,
++      "startedAt": "2026-01-17T20:21:03.492Z",
++      "endedAt": "2026-01-17T20:23:39.974Z"
++    },
++    {
++      "iteration": 20,
++      "status": "completed",
++      "taskId": "US-020",
++      "taskTitle": "Implement win condition: first player to 0 cards ends game",
++      "taskCompleted": true,
++      "durationMs": 359995,
++      "startedAt": "2026-01-17T20:23:41.034Z",
++      "endedAt": "2026-01-17T20:29:41.029Z"
++    },
++    {
++      "iteration": 21,
++      "status": "completed",
++      "taskId": "US-021",
++      "taskTitle": "Add server chess clock state and clockSync broadcast (no timeout yet)",
++      "taskCompleted": true,
++      "durationMs": 438557,
++      "startedAt": "2026-01-18T06:19:08.754Z",
++      "endedAt": "2026-01-18T06:26:27.311Z"
+     }
+   ],
+   "skippedTaskIds": [],
+   "cwd": "C:\\Users\\mark\\Works\\ccu.vc",
+   "activeTaskIds": [
+-    "US-018"
++    "US-022"
+   ],
+   "subagentPanelVisible": false
+ }
+\ No newline at end of file
+diff --git a/client/src/App.tsx b/client/src/App.tsx
+index a4786d1..1f6bec1 100644
+--- a/client/src/App.tsx
++++ b/client/src/App.tsx
+@@ -29,6 +29,49 @@ function App() {
+   const [gameView, setGameView] = useState<GameView | null>(null);
+   const [showColorPicker, setShowColorPicker] = useState(false);
+   const [pendingWildCard, setPendingWildCard] = useState<Card | null>(null);
++  const [clockSync, setClockSync] = useState<import('shared').ClockSyncData | null>(null);
++  const [interpolatedTime, setInterpolatedTime] = useState<{ [playerId: string]: number }>({});
++  const [reducedMotion, setReducedMotion] = useState(false);
++
++  useEffect(() => {
++    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
++    setReducedMotion(mediaQuery.matches);
++
++    const handler = (event: MediaQueryListEvent) => setReducedMotion(event.matches);
++    mediaQuery.addEventListener('change', handler);
++    return () => mediaQuery.removeEventListener('change', handler);
++  }, []);
++
++  useEffect(() => {
++    if (!clockSync) return;
++
++    const updateInterval = reducedMotion ? 1000 : 100;
++    let lastSyncTime = Date.now();
++    let lastSecond = -1;
++
++    const updateInterpolatedTime = () => {
++      const now = Date.now();
++      const elapsed = now - lastSyncTime;
++      const currentSecond = Math.floor(elapsed / 1000);
++      
++      setInterpolatedTime((prev) => {
++        const newInterpolatedTime: { [playerId: string]: number } = {};
++        
++        for (const [playerId, timeRemainingMs] of Object.entries(clockSync.timeRemainingMs)) {
++          const remainingTime = Math.max(0, timeRemainingMs - elapsed);
++          newInterpolatedTime[playerId] = remainingTime;
++        }
++        
++        return newInterpolatedTime;
++      });
++
++      lastSyncTime = now;
++      lastSecond = currentSecond;
++    };
++
++    const intervalId = setInterval(updateInterpolatedTime, updateInterval);
++    return () => clearInterval(intervalId);
++  }, [clockSync, reducedMotion]);
+ 
+   useEffect(() => {
+     const storedSecret = localStorage.getItem(STORAGE_KEYS.PLAYER_SECRET);
+@@ -66,16 +109,24 @@ function App() {
+         });
+       });
+ 
+-      newSocket.on('roomUpdated', (updatedRoom) => {
+-        setRoom(updatedRoom);
+-        setPlayers(updatedRoom.players);
+-        setView('room');
+-        setLoading(false);
+-      });
++    newSocket.on('roomUpdated', (updatedRoom) => {
++      setRoom(updatedRoom);
++      setPlayers(updatedRoom.players);
++      setView('room');
++      setLoading(false);
++    });
++
++    newSocket.on('gameStateUpdate', (updatedGameView) => {
++      setGameView(updatedGameView);
++      setRoom(updatedGameView.room);
++    });
++
++    newSocket.on('clockSync', (data) => {
++      setClockSync(data);
++    });
+ 
+-      newSocket.on('gameStateUpdate', (updatedGameView) => {
+-        setGameView(updatedGameView);
+-        setRoom(updatedGameView.room);
++      newSocket.on('clockSync', (data) => {
++        setClockSync(data);
+       });
+ 
+       newSocket.on('error', (message) => {
+@@ -199,6 +250,10 @@ function App() {
+       setRoom(updatedGameView.room);
+     });
+ 
++    newSocket.on('clockSync', (data) => {
++      setClockSync(data);
++    });
++
+     newSocket.on('error', (message) => {
+       setError(message);
+       setLoading(false);
+@@ -216,6 +271,8 @@ function App() {
+     setRoom(null);
+     setPlayers([]);
+     setGameView(null);
++    setClockSync(null);
++    setInterpolatedTime({});
+     setView('lobby');
+     setLoading(false);
+     setError('');
+@@ -274,8 +331,25 @@ function App() {
+     });
+   };
+ 
+-  const isCreatePending = pendingActions.size > 0;
+-  const isJoinPending = pendingActions.size > 0;
++    const isCreatePending = pendingActions.size > 0;
++    const isJoinPending = pendingActions.size > 0;
++
++    const formatTime = (ms: number): string => {
++      const seconds = Math.ceil(ms / 1000);
++      const minutes = Math.floor(seconds / 60);
++      const remainingSeconds = seconds % 60;
++      return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
++    };
++
++    const getPlayerTime = (playerId: string): number => {
++      if (interpolatedTime[playerId] !== undefined) {
++        return interpolatedTime[playerId];
++      }
++      if (clockSync?.timeRemainingMs[playerId] !== undefined) {
++        return clockSync.timeRemainingMs[playerId];
++      }
++      return 0;
++    };
+ 
+   if (loading) {
+     return (
+@@ -332,6 +406,11 @@ function App() {
+                     <span className="name">{player.name}</span>
+                     <span className="status">{player.connected ? 'Online' : 'Offline'}</span>
+                     <span className="hand-count">{getPlayerHandCount(player)} cards</span>
++                    {room.gameStatus === 'playing' && (
++                      <span className={`clock-time ${room.currentPlayerIndex === index ? 'active' : ''}`}>
++                        {formatTime(getPlayerTime(player.id))}
++                      </span>
++                    )}
+                   </div>
+                 ))}
+               </div>
+diff --git a/client/src/index.css b/client/src/index.css
+index 617bd16..a6df627 100644
+--- a/client/src/index.css
++++ b/client/src/index.css
+@@ -235,6 +235,28 @@ button:disabled {
+   margin-left: auto;
+ }
+ 
++.player .clock-time {
++  font-family: monospace;
++  font-size: 14px;
++  margin-left: 16px;
++  font-weight: bold;
++  transition: all 0.5s ease;
++}
++
++@media (prefers-reduced-motion: reduce) {
++  .player .clock-time {
++    transition: none;
++  }
++}
++
++.player .clock-time.active {
++  color: #4a90e2;
++}
++
++.player .clock-time:not(.active) {
++  color: #999;
++}
++
+ .player.active {
+   border: 2px solid #4a90e2;
+   background: #e8f4fc;
+@@ -351,4 +373,23 @@ button:disabled {
+ 
+ .cancel-btn:hover {
+   background: #bbb;
++}
++
++.clock-tick {
++  animation: pulse 0.3s ease;
++}
++
++@media (prefers-reduced-motion: reduce) {
++  .clock-tick {
++    animation: none;
++  }
++}
++
++@keyframes pulse {
++  0%, 100% {
++    opacity: 1;
++  }
++  50% {
++    opacity: 0.7;
++  }
+ }
+\ No newline at end of file
+diff --git a/prd.json b/prd.json
+index 79de54b..379a8f5 100644
+--- a/prd.json
++++ b/prd.json
+@@ -277,8 +277,9 @@
+         "quality gate: `bun --filter server run typecheck` exits with code 0"
+       ],
+       "priority": 18,
+-      "passes": false,
+-      "notes": "Client can use a simple modal/bottom sheet to choose color."
++      "passes": true,
++      "notes": "Client can use a simple modal/bottom sheet to choose color.",
++      "completionNotes": "Completed by agent"
+     },
+     {
+       "id": "US-019",
+@@ -291,8 +292,9 @@
+         "quality gate: `bun --filter server run typecheck` exits with code 0"
+       ],
+       "priority": 19,
+-      "passes": false,
+-      "notes": "Challenge rules are excluded in v1 unless added later."
++      "passes": true,
++      "notes": "Challenge rules are excluded in v1 unless added later.",
++      "completionNotes": "Completed by agent"
+     },
+     {
+       "id": "US-020",
+@@ -305,8 +307,9 @@
+         "quality gate: `bun --filter server run typecheck` exits with code 0"
+       ],
+       "priority": 20,
+-      "passes": false,
+-      "notes": ""
++      "passes": true,
++      "notes": "",
++      "completionNotes": "Completed by agent"
+     },
+     {
+       "id": "US-021",
+@@ -319,8 +322,9 @@
+         "quality gate: `bun --filter server run typecheck` exits with code 0"
+       ],
+       "priority": 21,
+-      "passes": false,
+-      "notes": "Client interpolation is added in a separate story."
++      "passes": true,
++      "notes": "Client interpolation is added in a separate story.",
++      "completionNotes": "Completed by agent"
+     },
+     {
+       "id": "US-022",
+@@ -536,6 +540,6 @@
+     }
+   ],
+   "metadata": {
+-    "updatedAt": "2026-01-17T20:13:29.146Z"
++    "updatedAt": "2026-01-18T06:26:28.365Z"
+   }
+ }
+\ No newline at end of file
+
+[91m[1m| [0m[90m Bash     [0mShow recent commit messages
+
+9c46202 US-021: Add server chess clock state and clockSync broadcast
+db88a4b Implement win condition: first player to 0 cards ends game
+ccafdd2 Implement Wild Draw Four card effect (US-019)
+71dcd2c Implement Wild card and active color selection (US-018)
+5d632b4 Implement Draw Two card effect
+50ac5f2 Implement Skip and Reverse card effects (US-016)
+d1373eb Implement US-015: basic gameplay UI with hand, discard pile, and turn highlighting
+e4e59e2 Implement actionId-based actionAck responses and pending UX hooks
+095620c Implement draw card action and end-turn behavior (US-013)
+ad1949a Implement playCard validation for number and color matches (US-012)
+
+[96m[1m| [0m[90m Read     [0mclient\src\App.tsx
+[92m[1m| [0m[90m Edit     [0mclient\src\App.tsx
+[96m[1m| [0m[90m Read     [0mclient\src\App.tsx
+[96m[1m| [0m[90m Read     [0mclient\src\App.tsx
+[92m[1m| [0m[90m Edit     [0mclient\src\App.tsx
+[96m[1m| [0m[90m Read     [0mclient\src\App.tsx
+[91m[1m| [0m[90m Bash     [0mTypecheck client to verify no errors
+
+$ tsc --noEmit
+src/App.tsx(134,4): error TS1128: Declaration or statement expected.
+src/App.tsx(134,8): error TS1005: ';' expected.
+
+[96m[1m| [0m[90m Read     [0mclient\src\App.tsx
+[92m[1m| [0m[90m Edit     [0mclient\src\App.tsx
+[96m[1m| [0m[90m Read     [0mclient\src\App.tsx
+[96m[1m| [0m[90m Read     [0mclient\src\App.tsx
+[92m[1m| [0m[90m Edit     [0mclient\src\App.tsx
+[94m[1m| [0m[90m Grep     [0misCreatePending|isJoinPending
+[96m[1m| [0m[90m Read     [0mclient\src\App.tsx
+[92m[1m| [0m[90m Edit     [0mclient\src\App.tsx
+[91m[1m| [0m[90m Bash     [0mTypecheck client to verify no errors
+
+$ tsc --noEmit
+
+[91m[1m| [0m[90m Bash     [0mBuild client to verify implementation
+
+$ tsc --noEmit && vite build
+[36mvite v5.4.21 [32mbuilding for production...[36m[39m
+transforming...
+[32m✓[39m 60 modules transformed.
+rendering chunks...
+computing gzip size...
+[2mdist/[22m[32mindex.html                 [39m[1m[2m  0.39 kB[22m[1m[22m[2m │ gzip:  0.27 kB[22m
+[2mdist/[22m[35massets/index-ZUY-ctep.css  [39m[1m[2m  4.80 kB[22m[1m[22m[2m │ gzip:  1.61 kB[22m
+[2mdist/[22m[36massets/index-QdX63ox_.js   [39m[1m[2m192.98 kB[22m[1m[22m[2m │ gzip: 63.77 kB[22m
+[32m✓ built in 1.57s[39m
+
+[91m[1m| [0m[90m Bash     [0mCommit changes for US-022
+
+warning: in the working copy of 'client/src/App.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'client/src/index.css', LF will be replaced by CRLF the next time Git touches it
+[main fc5a3a6] US-022: Implement client clock interpolation and reduced-motion friendly rendering
+ 2 files changed, 118 insertions(+), 2 deletions(-)
+

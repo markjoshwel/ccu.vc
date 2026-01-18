@@ -346,6 +346,11 @@ export class Room {
     } else {
       this.advanceTurn();
     }
+
+    if (this.unoWindow && this.unoWindow.playerId !== playerId) {
+      this.unoWindow = undefined;
+      this.updateState();
+    }
   }
 
   drawCard(playerId: string): void {
@@ -374,6 +379,11 @@ export class Room {
 
     this.updateState();
     this.advanceTurn();
+
+    if (this.unoWindow && this.unoWindow.playerId !== playerId) {
+      this.unoWindow = undefined;
+      this.updateState();
+    }
   }
 
   callUno(playerId: string): void {

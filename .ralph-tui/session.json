@@ -3,10 +3,10 @@
   "sessionId": "e4783755-3905-4470-8efb-6fa82f4e2471",
   "status": "running",
   "startedAt": "2026-01-17T18:27:42.045Z",
-  "updatedAt": "2026-01-17T20:13:29.165Z",
-  "currentIteration": 17,
+  "updatedAt": "2026-01-18T07:16:35.618Z",
+  "currentIteration": 24,
   "maxIterations": 10,
-  "tasksCompleted": 17,
+  "tasksCompleted": 24,
   "isPaused": false,
   "agentPlugin": "opencode",
   "model": "opencode/glm-4.7-free",
@@ -120,44 +120,44 @@
       {
         "id": "US-018",
         "title": "Implement Wild card and active color selection (server + client)",
-        "status": "open",
-        "completedInSession": false
+        "status": "completed",
+        "completedInSession": true
       },
       {
         "id": "US-019",
         "title": "Implement Wild Draw Four effect (server)",
-        "status": "open",
-        "completedInSession": false
+        "status": "completed",
+        "completedInSession": true
       },
       {
         "id": "US-020",
         "title": "Implement win condition: first player to 0 cards ends game",
-        "status": "open",
-        "completedInSession": false
+        "status": "completed",
+        "completedInSession": true
       },
       {
         "id": "US-021",
         "title": "Add server chess clock state and clockSync broadcast (no timeout yet)",
-        "status": "open",
-        "completedInSession": false
+        "status": "completed",
+        "completedInSession": true
       },
       {
         "id": "US-022",
         "title": "Implement client clock interpolation and reduced-motion friendly rendering",
-        "status": "open",
-        "completedInSession": false
+        "status": "completed",
+        "completedInSession": true
       },
       {
         "id": "US-023",
         "title": "Implement timeout detection and autoDrawAndSkip policy (server)",
-        "status": "open",
-        "completedInSession": false
+        "status": "completed",
+        "completedInSession": true
       },
       {
         "id": "US-024",
         "title": "Implement UNO window and callUno event (server)",
-        "status": "open",
-        "completedInSession": false
+        "status": "completed",
+        "completedInSession": true
       },
       {
         "id": "US-025",
@@ -403,12 +403,82 @@
       "durationMs": 132081,
       "startedAt": "2026-01-17T20:11:16.007Z",
       "endedAt": "2026-01-17T20:13:28.088Z"
+    },
+    {
+      "iteration": 18,
+      "status": "completed",
+      "taskId": "US-018",
+      "taskTitle": "Implement Wild card and active color selection (server + client)",
+      "taskCompleted": true,
+      "durationMs": 453292,
+      "startedAt": "2026-01-17T20:13:29.146Z",
+      "endedAt": "2026-01-17T20:21:02.438Z"
+    },
+    {
+      "iteration": 19,
+      "status": "completed",
+      "taskId": "US-019",
+      "taskTitle": "Implement Wild Draw Four effect (server)",
+      "taskCompleted": true,
+      "durationMs": 156482,
+      "startedAt": "2026-01-17T20:21:03.492Z",
+      "endedAt": "2026-01-17T20:23:39.974Z"
+    },
+    {
+      "iteration": 20,
+      "status": "completed",
+      "taskId": "US-020",
+      "taskTitle": "Implement win condition: first player to 0 cards ends game",
+      "taskCompleted": true,
+      "durationMs": 359995,
+      "startedAt": "2026-01-17T20:23:41.034Z",
+      "endedAt": "2026-01-17T20:29:41.029Z"
+    },
+    {
+      "iteration": 21,
+      "status": "completed",
+      "taskId": "US-021",
+      "taskTitle": "Add server chess clock state and clockSync broadcast (no timeout yet)",
+      "taskCompleted": true,
+      "durationMs": 438557,
+      "startedAt": "2026-01-18T06:19:08.754Z",
+      "endedAt": "2026-01-18T06:26:27.311Z"
+    },
+    {
+      "iteration": 22,
+      "status": "completed",
+      "taskId": "US-022",
+      "taskTitle": "Implement client clock interpolation and reduced-motion friendly rendering",
+      "taskCompleted": true,
+      "durationMs": 475907,
+      "startedAt": "2026-01-18T06:26:28.365Z",
+      "endedAt": "2026-01-18T06:34:24.272Z"
+    },
+    {
+      "iteration": 23,
+      "status": "completed",
+      "taskId": "US-023",
+      "taskTitle": "Implement timeout detection and autoDrawAndSkip policy (server)",
+      "taskCompleted": true,
+      "durationMs": 1281403,
+      "startedAt": "2026-01-18T06:34:25.346Z",
+      "endedAt": "2026-01-18T06:55:46.749Z"
+    },
+    {
+      "iteration": 24,
+      "status": "completed",
+      "taskId": "US-024",
+      "taskTitle": "Implement UNO window and callUno event (server)",
+      "taskCompleted": true,
+      "durationMs": 1246738,
+      "startedAt": "2026-01-18T06:55:47.806Z",
+      "endedAt": "2026-01-18T07:16:34.544Z"
     }
   ],
   "skippedTaskIds": [],
   "cwd": "C:\\Users\\mark\\Works\\ccu.vc",
   "activeTaskIds": [
-    "US-018"
+    "US-025"
   ],
   "subagentPanelVisible": false
 }

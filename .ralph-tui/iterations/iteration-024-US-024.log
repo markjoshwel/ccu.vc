@@ -1,0 +1,877 @@
+# Iteration 24 Log
+
+## Metadata
+
+- **Task ID**: US-024
+- **Task Title**: Implement UNO window and callUno event (server)
+- **Description**: Track required UNO calls when a player reaches one card.
+- **Status**: completed
+- **Task Completed**: Yes
+- **Promise Detected**: Yes
+- **Started At**: 2026-01-18T06:55:47.806Z
+- **Ended At**: 2026-01-18T07:16:34.544Z
+- **Duration**: 20m 46s
+- **Agent**: opencode
+- **Model**: opencode/glm-4.7-free
+--- RAW OUTPUT ---
+I'll implement US-024 to add UNO window and callUno event handling on the server. Let me start by exploring the codebase structure.
+Now I'll implement the UNO window and callUno event functionality. Let me start by creating a todo list to track the work:
+<promise>COMPLETE</promise>
+
+--- STDERR ---
+[94m[1m| [0m[90m Glob     [0m{"pattern":"**/server/**/*.ts"}
+[94m[1m| [0m[90m Glob     [0m{"pattern":"**/server/**/*.tsx"}
+[96m[1m| [0m[90m Read     [0mpackage.json
+[96m[1m| [0m[90m Read     [0mserver\package.json
+[96m[1m| [0m[90m Read     [0mserver\src\index.ts
+[96m[1m| [0m[90m Read     [0mserver\src\RoomManager.ts
+[96m[1m| [0m[90m Read     [0mserver\server.test.ts
+[94m[1m| [0m[90m Glob     [0m{"pattern":"**/shared/**/*.ts"}
+[96m[1m| [0m[90m Read     [0mshared\src\index.ts
+[93m[1m| [0m[90m Todo     [0m8 todos
+[93m[1m| [0m[90m Todo     [0m8 todos
+[92m[1m| [0m[90m Edit     [0mshared\src\index.ts
+[92m[1m| [0m[90m Edit     [0mshared\src\index.ts
+[93m[1m| [0m[90m Todo     [0m7 todos
+[92m[1m| [0m[90m Edit     [0mserver\src\RoomManager.ts
+[96m[1m| [0m[90m Read     [0mshared\package.json
+[91m[1m| [0m[90m Bash     [0mBuild shared package to export types
+
+$ tsc --outDir dist
+
+[92m[1m| [0m[90m Edit     [0mserver\src\RoomManager.ts
+[92m[1m| [0m[90m Edit     [0mserver\src\RoomManager.ts
+[92m[1m| [0m[90m Edit     [0mserver\src\RoomManager.ts
+[93m[1m| [0m[90m Todo     [0m5 todos
+[92m[1m| [0m[90m Edit     [0mserver\src\RoomManager.ts
+[93m[1m| [0m[90m Todo     [0m4 todos
+[92m[1m| [0m[90m Edit     [0mserver\src\index.ts
+[93m[1m| [0m[90m Todo     [0m3 todos
+[92m[1m| [0m[90m Edit     [0mserver\server.test.ts
+[92m[1m| [0m[90m Edit     [0mserver\server.test.ts
+[92m[1m| [0m[90m Edit     [0mserver\server.test.ts
+[92m[1m| [0m[90m Edit     [0mserver\server.test.ts
+[92m[1m| [0m[90m Edit     [0mserver\server.test.ts
+[92m[1m| [0m[90m Edit     [0mserver\server.test.ts
+[92m[1m| [0m[90m Edit     [0mserver\server.test.ts
+[93m[1m| [0m[90m Todo     [0m2 todos
+[91m[1m| [0m[90m Bash     [0mRun typecheck on server
+
+$ tsc --noEmit
+
+[93m[1m| [0m[90m Todo     [0m1 todos
+[91m[1m| [0m[90m Bash     [0mRun server tests
+
+bun test v1.3.6 (d530ed99)
+
+server.test.ts:
+gameStateUpdate not received in time, checking room directly
+
+ 104 pass
+ 0 fail
+ 332 expect() calls
+Ran 104 tests across 1 file. [7.49s]
+
+[93m[1m| [0m[90m Todo     [0m0 todos
+[91m[1m| [0m[90m Bash     [0mCheck git status
+
+On branch main
+Your branch is ahead of 'origin/main' by 20 commits.
+  (use "git push" to publish your local commits)
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   .ralph-tui/progress.md
+	modified:   .ralph-tui/session.json
+	modified:   prd.json
+	modified:   server/server.test.ts
+	modified:   server/src/RoomManager.ts
+	modified:   server/src/index.ts
+	modified:   shared/src/index.ts
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	.ralph-tui/iterations/iteration-018-US-018.log
+	.ralph-tui/iterations/iteration-019-US-019.log
+	.ralph-tui/iterations/iteration-020-US-020.log
+	.ralph-tui/iterations/iteration-021-US-021.log
+	.ralph-tui/iterations/iteration-022-US-022.log
+	.ralph-tui/iterations/iteration-023-US-023.log
+
+no changes added to commit (use "git add" and/or "git commit -a")
+
+[91m[1m| [0m[90m Bash     [0mCheck git diff
+
+warning: in the working copy of '.ralph-tui/progress.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.ralph-tui/session.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'prd.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'server/server.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'server/src/RoomManager.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'server/src/index.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'shared/src/index.ts', LF will be replaced by CRLF the next time Git touches it
+diff --git a/.ralph-tui/progress.md b/.ralph-tui/progress.md
+index f105d34..c22035a 100644
+--- a/.ralph-tui/progress.md
++++ b/.ralph-tui/progress.md
+@@ -186,3 +186,66 @@ Now let me run the tests and typecheck to verify the implementation:
+ All tests pass and typecheck succeeds. Let me commit the changes:
+ 
+ ---
++## ✓ Iteration 18 - US-018: Implement Wild card and active color selection (server + client)
++*2026-01-17T20:21:02.456Z (453s)*
++
++**Status:** Completed
++
++**Notes:**
++I'll implement US-018 to add Wild card and active color selection. Let me start by exploring the codebase structure.
++Now I'll implement Wild card and active color selection. Let me start by updating the shared types to add `activeColor` and the color selection parameter.
++Now let me run the tests to verify the implementation:
++I see there are some test failures. Let me first check why `state.activeColor` is not being updated:
++All acceptance criteria have been met. Let me commit the changes:
++
++---
++## ✓ Iteration 19 - US-019: Implement Wild Draw Four effect (server)
++*2026-01-17T20:23:39.991Z (156s)*
++
++**Status:** Completed
++
++**Notes:**
++I'll implement US-019 to add the Wild Draw Four effect. Let me explore the codebase first.
++
++---
++## ✓ Iteration 20 - US-020: Implement win condition: first player to 0 cards ends game
++*2026-01-17T20:29:41.043Z (360s)*
++
++**Status:** Completed
++
++**Notes:**
++e a seeded RNG to ensure the initial discard card is not a Wild card:
++The test is failing because after player1 plays, the game advances turn but then player2 tries to play when the game ended. Let me fix the test to make player2 play their last card:
++This is a pre-existing test issue where the random shuffle produces a Wild card as the initial discard. Let me fix it by using a seeded RNG:
++All tests pass. Now let me run typecheck:
++All acceptance criteria are met. Let me commit the changes:
++
++---
++## ✓ Iteration 21 - US-021: Add server chess clock state and clockSync broadcast (no timeout yet)
++*2026-01-18T06:26:27.327Z (439s)*
++
++**Status:** Completed
++
++**Notes:**
++Let me fix the timing test to be less strict about exact timing:
++Let me run all tests again:
++Good, clock sync tests now pass. The failures are pre-existing. Let me verify all clock sync tests pass:
++All tests pass. Now let me run typecheck:
++All tests pass and typecheck succeeds. Let me commit the changes:
++
++---
++## ✓ Iteration 22 - US-022: Implement client clock interpolation and reduced-motion friendly rendering
++*2026-01-18T06:34:24.293Z (476s)*
++
++**Status:** Completed
++
++**Notes:**
++I'll implement US-022 to add client clock interpolation and reduced-motion support. Let me start by exploring the codebase structure.
++
++---
++## ✓ Iteration 23 - US-023: Implement timeout detection and autoDrawAndSkip policy (server)
++*2026-01-18T06:55:46.768Z (1281s)*
++
++**Status:** Completed
++
++---
+diff --git a/.ralph-tui/session.json b/.ralph-tui/session.json
+index c954101..215724c 100644
+--- a/.ralph-tui/session.json
++++ b/.ralph-tui/session.json
+@@ -3,10 +3,10 @@
+   "sessionId": "e4783755-3905-4470-8efb-6fa82f4e2471",
+   "status": "running",
+   "startedAt": "2026-01-17T18:27:42.045Z",
+-  "updatedAt": "2026-01-17T20:13:29.165Z",
+-  "currentIteration": 17,
++  "updatedAt": "2026-01-18T06:55:47.823Z",
++  "currentIteration": 23,
+   "maxIterations": 10,
+-  "tasksCompleted": 17,
++  "tasksCompleted": 23,
+   "isPaused": false,
+   "agentPlugin": "opencode",
+   "model": "opencode/glm-4.7-free",
+@@ -120,38 +120,38 @@
+       {
+         "id": "US-018",
+         "title": "Implement Wild card and active color selection (server + client)",
+-        "status": "open",
+-        "completedInSession": false
++        "status": "completed",
++        "completedInSession": true
+       },
+       {
+         "id": "US-019",
+         "title": "Implement Wild Draw Four effect (server)",
+-        "status": "open",
+-        "completedInSession": false
++        "status": "completed",
++        "completedInSession": true
+       },
+       {
+         "id": "US-020",
+         "title": "Implement win condition: first player to 0 cards ends game",
+-        "status": "open",
+-        "completedInSession": false
++        "status": "completed",
++        "completedInSession": true
+       },
+       {
+         "id": "US-021",
+         "title": "Add server chess clock state and clockSync broadcast (no timeout yet)",
+-        "status": "open",
+-        "completedInSession": false
++        "status": "completed",
++        "completedInSession": true
+       },
+       {
+         "id": "US-022",
+         "title": "Implement client clock interpolation and reduced-motion friendly rendering",
+-        "status": "open",
+-        "completedInSession": false
++        "status": "completed",
++        "completedInSession": true
+       },
+       {
+         "id": "US-023",
+         "title": "Implement timeout detection and autoDrawAndSkip policy (server)",
+-        "status": "open",
+-        "completedInSession": false
++        "status": "completed",
++        "completedInSession": true
+       },
+       {
+         "id": "US-024",
+@@ -403,12 +403,72 @@
+       "durationMs": 132081,
+       "startedAt": "2026-01-17T20:11:16.007Z",
+       "endedAt": "2026-01-17T20:13:28.088Z"
++    },
++    {
++      "iteration": 18,
++      "status": "completed",
++      "taskId": "US-018",
++      "taskTitle": "Implement Wild card and active color selection (server + client)",
++      "taskCompleted": true,
++      "durationMs": 453292,
++      "startedAt": "2026-01-17T20:13:29.146Z",
++      "endedAt": "2026-01-17T20:21:02.438Z"
++    },
++    {
++      "iteration": 19,
++      "status": "completed",
++      "taskId": "US-019",
++      "taskTitle": "Implement Wild Draw Four effect (server)",
++      "taskCompleted": true,
++      "durationMs": 156482,
++      "startedAt": "2026-01-17T20:21:03.492Z",
++      "endedAt": "2026-01-17T20:23:39.974Z"
++    },
++    {
++      "iteration": 20,
++      "status": "completed",
++      "taskId": "US-020",
++      "taskTitle": "Implement win condition: first player to 0 cards ends game",
++      "taskCompleted": true,
++      "durationMs": 359995,
++      "startedAt": "2026-01-17T20:23:41.034Z",
++      "endedAt": "2026-01-17T20:29:41.029Z"
++    },
++    {
++      "iteration": 21,
++      "status": "completed",
++      "taskId": "US-021",
++      "taskTitle": "Add server chess clock state and clockSync broadcast (no timeout yet)",
++      "taskCompleted": true,
++      "durationMs": 438557,
++      "startedAt": "2026-01-18T06:19:08.754Z",
++      "endedAt": "2026-01-18T06:26:27.311Z"
++    },
++    {
++      "iteration": 22,
++      "status": "completed",
++      "taskId": "US-022",
++      "taskTitle": "Implement client clock interpolation and reduced-motion friendly rendering",
++      "taskCompleted": true,
++      "durationMs": 475907,
++      "startedAt": "2026-01-18T06:26:28.365Z",
++      "endedAt": "2026-01-18T06:34:24.272Z"
++    },
++    {
++      "iteration": 23,
++      "status": "completed",
++      "taskId": "US-023",
++      "taskTitle": "Implement timeout detection and autoDrawAndSkip policy (server)",
++      "taskCompleted": true,
++      "durationMs": 1281403,
++      "startedAt": "2026-01-18T06:34:25.346Z",
++      "endedAt": "2026-01-18T06:55:46.749Z"
+     }
+   ],
+   "skippedTaskIds": [],
+   "cwd": "C:\\Users\\mark\\Works\\ccu.vc",
+   "activeTaskIds": [
+-    "US-018"
++    "US-024"
+   ],
+   "subagentPanelVisible": false
+ }
+\ No newline at end of file
+diff --git a/prd.json b/prd.json
+index 79de54b..be1e60b 100644
+--- a/prd.json
++++ b/prd.json
+@@ -277,8 +277,9 @@
+         "quality gate: `bun --filter server run typecheck` exits with code 0"
+       ],
+       "priority": 18,
+-      "passes": false,
+-      "notes": "Client can use a simple modal/bottom sheet to choose color."
++      "passes": true,
++      "notes": "Client can use a simple modal/bottom sheet to choose color.",
++      "completionNotes": "Completed by agent"
+     },
+     {
+       "id": "US-019",
+@@ -291,8 +292,9 @@
+         "quality gate: `bun --filter server run typecheck` exits with code 0"
+       ],
+       "priority": 19,
+-      "passes": false,
+-      "notes": "Challenge rules are excluded in v1 unless added later."
++      "passes": true,
++      "notes": "Challenge rules are excluded in v1 unless added later.",
++      "completionNotes": "Completed by agent"
+     },
+     {
+       "id": "US-020",
+@@ -305,8 +307,9 @@
+         "quality gate: `bun --filter server run typecheck` exits with code 0"
+       ],
+       "priority": 20,
+-      "passes": false,
+-      "notes": ""
++      "passes": true,
++      "notes": "",
++      "completionNotes": "Completed by agent"
+     },
+     {
+       "id": "US-021",
+@@ -319,8 +322,9 @@
+         "quality gate: `bun --filter server run typecheck` exits with code 0"
+       ],
+       "priority": 21,
+-      "passes": false,
+-      "notes": "Client interpolation is added in a separate story."
++      "passes": true,
++      "notes": "Client interpolation is added in a separate story.",
++      "completionNotes": "Completed by agent"
+     },
+     {
+       "id": "US-022",
+@@ -333,8 +337,9 @@
+         "quality gate: `bun --filter client run typecheck` exits with code 0"
+       ],
+       "priority": 22,
+-      "passes": false,
+-      "notes": "Objective validation is via deterministic interpolation logic unit tests if client test setup exists; otherwise rely on typecheck/build gates."
++      "passes": true,
++      "notes": "Objective validation is via deterministic interpolation logic unit tests if client test setup exists; otherwise rely on typecheck/build gates.",
++      "completionNotes": "Completed by agent"
+     },
+     {
+       "id": "US-023",
+@@ -347,8 +352,9 @@
+         "quality gate: `bun --filter server run typecheck` exits with code 0"
+       ],
+       "priority": 23,
+-      "passes": false,
+-      "notes": ""
++      "passes": true,
++      "notes": "",
++      "completionNotes": "Completed by agent"
+     },
+     {
+       "id": "US-024",
+@@ -536,6 +542,6 @@
+     }
+   ],
+   "metadata": {
+-    "updatedAt": "2026-01-17T20:13:29.146Z"
++    "updatedAt": "2026-01-18T06:55:47.806Z"
+   }
+ }
+\ No newline at end of file
+diff --git a/server/server.test.ts b/server/server.test.ts
+index 0acb4a7..df9aba3 100644
+--- a/server/server.test.ts
++++ b/server/server.test.ts
+@@ -1431,6 +1431,301 @@ describe('Deck', () => {
+   });
+ });
+ 
++describe('UNO window', () => {
++  it('should open UNO window when player reaches 1 card', () => {
++    const manager = new RoomManager();
++    const room = manager.createRoom();
++    
++    const socketId1 = 'socket1';
++    const playerId1 = 'player1';
++    const player1 = { id: playerId1, name: 'Player 1', isReady: false, secret: 'secret1', connected: true, hand: [], handCount: 0 };
++    
++    const socketId2 = 'socket2';
++    const playerId2 = 'player2';
++    const player2 = { id: playerId2, name: 'Player 2', isReady: false, secret: 'secret2', connected: true, hand: [], handCount: 0 };
++    
++    room.addPlayer(socketId1, player1);
++    room.addPlayer(socketId2, player2);
++    
++    let seed = 42;
++    const rng = () => {
++      let s = seed;
++      seed = (s * 1103515245 + 12345) % 0x80000000;
++      return seed / 0x80000000;
++    };
++    
++    room.startGame(rng);
++    
++    expect(room.state.gameStatus).toBe('playing');
++    expect(room.unoWindow).toBeUndefined();
++    
++    const player1Hand = room.players.get(playerId1)!.hand;
++    const player2Hand = room.players.get(playerId2)!.hand;
++    
++    expect(player1Hand.length).toBe(7);
++    expect(player2Hand.length).toBe(7);
++    
++    const initialDiscard = room.discardPile[room.discardPile.length - 1];
++    const validCards = player1Hand.filter(c => 
++      c.color === 'wild' || c.color === initialDiscard.color || c.value === initialDiscard.value
++    );
++    
++    if (validCards.length > 0) {
++      const cardsToPlay = player1Hand.slice(0, player1Hand.length - 1);
++      cardsToPlay.forEach(card => {
++        const index = player1Hand.findIndex(c => c.color === card.color && c.value === card.value);
++        if (index !== -1) {
++          player1Hand.splice(index, 1);
++        }
++      });
++      
++      if (player1Hand.length === 1) {
++        const lastCard = player1Hand[0];
++        if (lastCard.color === 'wild' || lastCard.color === initialDiscard.color || lastCard.value === initialDiscard.value) {
++          room.playCard(playerId1, lastCard);
++          
++          expect(room.unoWindow).toBeDefined();
++          expect(room.unoWindow?.playerId).toBe(playerId1);
++          expect(room.unoWindow?.called).toBe(false);
++          expect(room.state.unoWindow).toEqual(room.unoWindow);
++        }
++      }
++    }
++  });
++
++  it('should not open UNO window when player goes to 0 cards', () => {
++    const manager = new RoomManager();
++    const room = manager.createRoom();
++    
++    const socketId1 = 'socket1';
++    const playerId1 = 'player1';
++    const player1 = { id: playerId1, name: 'Player 1', isReady: false, secret: 'secret1', connected: true, hand: [], handCount: 0 };
++    
++    const socketId2 = 'socket2';
++    const playerId2 = 'player2';
++    const player2 = { id: playerId2, name: 'Player 2', isReady: false, secret: 'secret2', connected: true, hand: [], handCount: 0 };
++    
++    room.addPlayer(socketId1, player1);
++    room.addPlayer(socketId2, player2);
++    
++    let seed = 42;
++    const rng = () => {
++      let s = seed;
++      seed = (s * 1103515245 + 12345) % 0x80000000;
++      return seed / 0x80000000;
++    };
++    
++    room.startGame(rng);
++    
++    const player1Hand = room.players.get(playerId1)!.hand;
++    
++    const initialDiscard = room.discardPile[room.discardPile.length - 1];
++    const validCards = player1Hand.filter(c => 
++      c.color === 'wild' || c.color === initialDiscard.color || c.value === initialDiscard.value
++    );
++    
++    if (validCards.length > 0) {
++      player1Hand.splice(0, player1Hand.length - 1);
++      player1Hand[0] = validCards[0];
++      
++      if (player1Hand.length === 1) {
++        room.playCard(playerId1, player1Hand[0]);
++        
++        expect(room.state.gameStatus).toBe('finished');
++        expect(room.unoWindow).toBeUndefined();
++      }
++    }
++  });
++
++  it('should allow callUno during open window', () => {
++    const manager = new RoomManager();
++    const room = manager.createRoom();
++    
++    const socketId1 = 'socket1';
++    const playerId1 = 'player1';
++    const player1 = { id: playerId1, name: 'Player 1', isReady: false, secret: 'secret1', connected: true, hand: [], handCount: 0 };
++    
++    const socketId2 = 'socket2';
++    const playerId2 = 'player2';
++    const player2 = { id: playerId2, name: 'Player 2', isReady: false, secret: 'secret2', connected: true, hand: [], handCount: 0 };
++    
++    room.addPlayer(socketId1, player1);
++    room.addPlayer(socketId2, player2);
++    
++    let seed = 42;
++    const rng = () => {
++      let s = seed;
++      seed = (s * 1103515245 + 12345) % 0x80000000;
++      return seed / 0x80000000;
++    };
++    
++    room.startGame(rng);
++    
++    const player1Hand = room.players.get(playerId1)!.hand;
++    const initialDiscard = room.discardPile[room.discardPile.length - 1];
++    
++    const validCards = player1Hand.filter(c => 
++      c.color === 'wild' || c.color === initialDiscard.color || c.value === initialDiscard.value
++    );
++    
++    if (validCards.length > 0) {
++      const cardsToPlay = player1Hand.slice(0, player1Hand.length - 1);
++      cardsToPlay.forEach(card => {
++        const index = player1Hand.findIndex(c => c.color === card.color && c.value === card.value);
++        if (index !== -1) {
++          player1Hand.splice(index, 1);
++        }
++      });
++      
++      if (player1Hand.length === 1) {
++        const lastCard = player1Hand[0];
++        if (lastCard.color === 'wild' || lastCard.color === initialDiscard.color || lastCard.value === initialDiscard.value) {
++          room.playCard(playerId1, lastCard);
++          
++          expect(room.unoWindow).toBeDefined();
++          expect(room.unoWindow?.called).toBe(false);
++          
++          room.callUno(playerId1);
++          
++          expect(room.unoWindow?.called).toBe(true);
++          expect(room.state.unoWindow?.called).toBe(true);
++        }
++      }
++    }
++  });
++
++  it('should not allow callUno from wrong player', () => {
++    const manager = new RoomManager();
++    const room = manager.createRoom();
++    
++    const socketId1 = 'socket1';
++    const playerId1 = 'player1';
++    const player1 = { id: playerId1, name: 'Player 1', isReady: false, secret: 'secret1', connected: true, hand: [], handCount: 0 };
++    
++    const socketId2 = 'socket2';
++    const playerId2 = 'player2';
++    const player2 = { id: playerId2, name: 'Player 2', isReady: false, secret: 'secret2', connected: true, hand: [], handCount: 0 };
++    
++    room.addPlayer(socketId1, player1);
++    room.addPlayer(socketId2, player2);
++    
++    let seed = 42;
++    const rng = () => {
++      let s = seed;
++      seed = (s * 1103515245 + 12345) % 0x80000000;
++      return seed / 0x80000000;
++    };
++    
++    room.startGame(rng);
++    
++    const player1Hand = room.players.get(playerId1)!.hand;
++    const initialDiscard = room.discardPile[room.discardPile.length - 1];
++    
++    const validCards = player1Hand.filter(c => 
++      c.color === 'wild' || c.color === initialDiscard.color || c.value === initialDiscard.value
++    );
++    
++    if (validCards.length > 0) {
++      const cardsToPlay = player1Hand.slice(0, player1Hand.length - 1);
++      cardsToPlay.forEach(card => {
++        const index = player1Hand.findIndex(c => c.color === card.color && c.value === card.value);
++        if (index !== -1) {
++          player1Hand.splice(index, 1);
++        }
++      });
++      
++      if (player1Hand.length === 1) {
++        const lastCard = player1Hand[0];
++        if (lastCard.color === 'wild' || lastCard.color === initialDiscard.color || lastCard.value === initialDiscard.value) {
++          room.playCard(playerId1, lastCard);
++          
++          expect(() => room.callUno(playerId2)).toThrow('Not your UNO window');
++        }
++      }
++    }
++  });
++
++  it('should not allow callUno when no window is open', () => {
++    const manager = new RoomManager();
++    const room = manager.createRoom();
++    
++    const socketId1 = 'socket1';
++    const playerId1 = 'player1';
++    const player1 = { id: playerId1, name: 'Player 1', isReady: false, secret: 'secret1', connected: true, hand: [], handCount: 0 };
++    
++    const socketId2 = 'socket2';
++    const playerId2 = 'player2';
++    const player2 = { id: playerId2, name: 'Player 2', isReady: false, secret: 'secret2', connected: true, hand: [], handCount: 0 };
++    
++    room.addPlayer(socketId1, player1);
++    room.addPlayer(socketId2, player2);
++    
++    let seed = 42;
++    const rng = () => {
++      let s = seed;
++      seed = (s * 1103515245 + 12345) % 0x80000000;
++      return seed / 0x80000000;
++    };
++    
++    room.startGame(rng);
++    
++    expect(() => room.callUno(playerId1)).toThrow('No UNO window open');
++  });
++
++  it('should not allow duplicate callUno', () => {
++    const manager = new RoomManager();
++    const room = manager.createRoom();
++    
++    const socketId1 = 'socket1';
++    const playerId1 = 'player1';
++    const player1 = { id: playerId1, name: 'Player 1', isReady: false, secret: 'secret1', connected: true, hand: [], handCount: 0 };
++    
++    const socketId2 = 'socket2';
++    const playerId2 = 'player2';
++    const player2 = { id: playerId2, name: 'Player 2', isReady: false, secret: 'secret2', connected: true, hand: [], handCount: 0 };
++    
++    room.addPlayer(socketId1, player1);
++    room.addPlayer(socketId2, player2);
++    
++    let seed = 42;
++    const rng = () => {
++      let s = seed;
++      seed = (s * 1103515245 + 12345) % 0x80000000;
++      return seed / 0x80000000;
++    };
++    
++    room.startGame(rng);
++    
++    const player1Hand = room.players.get(playerId1)!.hand;
++    const initialDiscard = room.discardPile[room.discardPile.length - 1];
++    
++    const validCards = player1Hand.filter(c => 
++      c.color === 'wild' || c.color === initialDiscard.color || c.value === initialDiscard.value
++    );
++    
++    if (validCards.length > 0) {
++      const cardsToPlay = player1Hand.slice(0, player1Hand.length - 1);
++      cardsToPlay.forEach(card => {
++        const index = player1Hand.findIndex(c => c.color === card.color && c.value === card.value);
++        if (index !== -1) {
++          player1Hand.splice(index, 1);
++        }
++      });
++      
++      if (player1Hand.length === 1) {
++        const lastCard = player1Hand[0];
++        if (lastCard.color === 'wild' || lastCard.color === initialDiscard.color || lastCard.value === initialDiscard.value) {
++          room.playCard(playerId1, lastCard);
++          
++          room.callUno(playerId1);
++          
++          expect(() => room.callUno(playerId1)).toThrow('UNO already called');
++        }
++      }
++    }
++  });
++});
++
+ describe('Room startGame', () => {
+   it('should initialize deck, deal hands, and set discard pile', () => {
+     const manager = new RoomManager();
+diff --git a/server/src/RoomManager.ts b/server/src/RoomManager.ts
+index 8b9fdfe..185dacf 100644
+--- a/server/src/RoomManager.ts
++++ b/server/src/RoomManager.ts
+@@ -1,4 +1,4 @@
+-import type { RoomState, PlayerPublic, PlayerPrivate, Card, GameView, ClockSyncData, TimeOutEvent } from 'shared';
++import type { RoomState, PlayerPublic, PlayerPrivate, Card, GameView, ClockSyncData, TimeOutEvent, UnoWindow } from 'shared';
+ import { Deck } from './Deck';
+ 
+ type RoomCode = string;
+@@ -21,6 +21,7 @@ export class Room {
+   clockSyncIntervalId?: ReturnType<typeof setInterval>;
+   onClockSync?: (data: ClockSyncData) => void;
+   onTimeOut?: (data: TimeOutEvent) => void;
++  unoWindow?: UnoWindow;
+ 
+   constructor(code: RoomCode) {
+     this.code = code;
+@@ -89,6 +90,7 @@ export class Room {
+     this.state.currentPlayerIndex = this.state.gameStatus === 'playing' ? this.currentPlayerIndex : undefined;
+     this.state.direction = this.state.gameStatus === 'playing' ? this.direction : undefined;
+     this.state.activeColor = this.activeColor;
++    this.state.unoWindow = this.unoWindow;
+   }
+ 
+   startGame(rng?: () => number): void {
+@@ -279,6 +281,11 @@ export class Room {
+       return;
+     }
+ 
++    if (player.hand.length === 1) {
++      this.unoWindow = { playerId, called: false };
++      this.updateState();
++    }
++
+     if (card.color === 'wild') {
+       this.activeColor = chosenColor;
+     } else {
+@@ -369,6 +376,27 @@ export class Room {
+     this.advanceTurn();
+   }
+ 
++  callUno(playerId: string): void {
++    if (this.state.gameStatus !== 'playing') {
++      throw new Error('Game is not in playing state');
++    }
++
++    if (!this.unoWindow) {
++      throw new Error('No UNO window open');
++    }
++
++    if (this.unoWindow.playerId !== playerId) {
++      throw new Error('Not your UNO window');
++    }
++
++    if (this.unoWindow.called) {
++      throw new Error('UNO already called');
++    }
++
++    this.unoWindow.called = true;
++    this.updateState();
++  }
++
+   getClockSyncData(): ClockSyncData {
+     const activePlayerId = this.playerOrder[this.currentPlayerIndex];
+     return {
+diff --git a/server/src/index.ts b/server/src/index.ts
+index 827b744..e231081 100644
+--- a/server/src/index.ts
++++ b/server/src/index.ts
+@@ -276,6 +276,42 @@ io.on('connection', (socket) => {
+     }
+   });
+ 
++  socket.on('callUno', (actionId: string, callback: (response: { success: boolean; error?: string }) => void) => {
++    const roomCode = socketRoomMap.get(socket.id);
++    
++    if (!roomCode) {
++      socket.emit('actionAck', { actionId, ok: false });
++      callback({ success: false, error: 'Not in a room' });
++      return;
++    }
++    
++    const room = roomManager.getRoom(roomCode);
++    
++    if (!room) {
++      socket.emit('actionAck', { actionId, ok: false });
++      callback({ success: false, error: 'Room not found' });
++      return;
++    }
++    
++    const playerData = socketPlayerMap.get(socket.id);
++    if (!playerData) {
++      socket.emit('actionAck', { actionId, ok: false });
++      callback({ success: false, error: 'Player not found' });
++      return;
++    }
++    
++    try {
++      room.callUno(playerData.playerId);
++      io.to(roomCode).emit('roomUpdated', room.state);
++      broadcastGameStateUpdate(roomCode);
++      socket.emit('actionAck', { actionId, ok: true });
++      callback({ success: true });
++    } catch (error) {
++      socket.emit('actionAck', { actionId, ok: false });
++      callback({ success: false, error: (error as Error).message });
++    }
++  });
++
+   socket.on('leaveRoom', () => {
+     const roomId = socketRoomMap.get(socket.id);
+     if (roomId) {
+diff --git a/shared/src/index.ts b/shared/src/index.ts
+index 9192be7..20db9ca 100644
+--- a/shared/src/index.ts
++++ b/shared/src/index.ts
+@@ -10,6 +10,12 @@ export type RoomState = {
+   direction?: 1 | -1;
+   activeColor?: 'red' | 'yellow' | 'green' | 'blue';
+   gameEndedReason?: string;
++  unoWindow?: UnoWindow;
++};
++
++export type UnoWindow = {
++  playerId: string;
++  called: boolean;
+ };
+ 
+ export type Card = {
+@@ -53,6 +59,7 @@ export type ClientToServerEvents = {
+   start_game: (actionId: string, callback: (response: { success: boolean; error?: string }) => void) => void;
+   playCard: (actionId: string, card: Card, callback: (response: { success: boolean; error?: string }) => void, chosenColor?: 'red' | 'yellow' | 'green' | 'blue') => void;
+   drawCard: (actionId: string, callback: (response: { success: boolean; error?: string }) => void) => void;
++  callUno: (actionId: string, callback: (response: { success: boolean; error?: string }) => void) => void;
+ };
+ 
+ export type ClockSyncData = {
+
+[91m[1m| [0m[90m Bash     [0mCheck recent commits
+
+f15852d feat(US-023): Implement timeout detection and autoDrawAndSkip policy
+fc5a3a6 US-022: Implement client clock interpolation and reduced-motion friendly rendering
+9c46202 US-021: Add server chess clock state and clockSync broadcast
+db88a4b Implement win condition: first player to 0 cards ends game
+ccafdd2 Implement Wild Draw Four card effect (US-019)
+
+[91m[1m| [0m[90m Bash     [0mStage source files for commit
+
+warning: in the working copy of 'server/server.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'server/src/RoomManager.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'server/src/index.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'shared/src/index.ts', LF will be replaced by CRLF the next time Git touches it
+
+[91m[1m| [0m[90m Bash     [0mCommit UNO window implementation
+
+[main 1767fd3] feat(US-024): Implement UNO window and callUno event (server)
+ 4 files changed, 367 insertions(+), 1 deletion(-)
+

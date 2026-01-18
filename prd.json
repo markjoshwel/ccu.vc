@@ -277,8 +277,9 @@
         "quality gate: `bun --filter server run typecheck` exits with code 0"
       ],
       "priority": 18,
-      "passes": false,
-      "notes": "Client can use a simple modal/bottom sheet to choose color."
+      "passes": true,
+      "notes": "Client can use a simple modal/bottom sheet to choose color.",
+      "completionNotes": "Completed by agent"
     },
     {
       "id": "US-019",
@@ -291,8 +292,9 @@
         "quality gate: `bun --filter server run typecheck` exits with code 0"
       ],
       "priority": 19,
-      "passes": false,
-      "notes": "Challenge rules are excluded in v1 unless added later."
+      "passes": true,
+      "notes": "Challenge rules are excluded in v1 unless added later.",
+      "completionNotes": "Completed by agent"
     },
     {
       "id": "US-020",
@@ -305,8 +307,9 @@
         "quality gate: `bun --filter server run typecheck` exits with code 0"
       ],
       "priority": 20,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "",
+      "completionNotes": "Completed by agent"
     },
     {
       "id": "US-021",
@@ -319,8 +322,9 @@
         "quality gate: `bun --filter server run typecheck` exits with code 0"
       ],
       "priority": 21,
-      "passes": false,
-      "notes": "Client interpolation is added in a separate story."
+      "passes": true,
+      "notes": "Client interpolation is added in a separate story.",
+      "completionNotes": "Completed by agent"
     },
     {
       "id": "US-022",
@@ -333,8 +337,9 @@
         "quality gate: `bun --filter client run typecheck` exits with code 0"
       ],
       "priority": 22,
-      "passes": false,
-      "notes": "Objective validation is via deterministic interpolation logic unit tests if client test setup exists; otherwise rely on typecheck/build gates."
+      "passes": true,
+      "notes": "Objective validation is via deterministic interpolation logic unit tests if client test setup exists; otherwise rely on typecheck/build gates.",
+      "completionNotes": "Completed by agent"
     },
     {
       "id": "US-023",
@@ -347,8 +352,9 @@
         "quality gate: `bun --filter server run typecheck` exits with code 0"
       ],
       "priority": 23,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "",
+      "completionNotes": "Completed by agent"
     },
     {
       "id": "US-024",
@@ -361,8 +367,9 @@
         "quality gate: `bun --filter server run typecheck` exits with code 0"
       ],
       "priority": 24,
-      "passes": false,
-      "notes": "Window close timing (next player's first action) and catching are handled in separate stories."
+      "passes": true,
+      "notes": "Window close timing (next player's first action) and catching are handled in separate stories.",
+      "completionNotes": "Completed by agent"
     },
     {
       "id": "US-025",
@@ -536,6 +543,6 @@
     }
   ],
   "metadata": {
-    "updatedAt": "2026-01-17T20:13:29.146Z"
+    "updatedAt": "2026-01-18T07:16:35.601Z"
   }
 }
