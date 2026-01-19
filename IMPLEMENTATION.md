@@ -516,3 +516,4 @@ docker-compose up -d
 10. **Carousel padding**: Horizontal padding (8rem) prevents clipping while allowing full scroll range, no `justify-center` on overflow containers to avoid rendering bugs
 11. **Stacking logic**: Pending draws/skips/reverses accumulate when stackable cards are played on pending actions, resolved when drawing or advancing turns
 12. **In-room settings**: Hosts can update room settings between rounds in waiting state, allowing dynamic rule changes without recreating rooms
+13. **Tab styling**: Uses inline styles for color and border theming to ensure proper contrast and avoid invalid Tailwind class issues

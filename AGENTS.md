@@ -86,6 +86,7 @@ Chess Clock UNO - Real-time multiplayer UNO with chess clock mechanics, keyboard
 - **Chat Speed**: Niconico-style chat at ~350px/s, stops at screen center
 - **Continuous Rounds**: Games auto-reset to waiting view after completion
 - **In-Room Settings Changes**: Hosts can update room settings in the waiting view between rounds via settings modal
+- **UI Fixes**: Corrected tab styling by using inline styles for proper color theming instead of invalid Tailwind classes
 
 #### Keyboard Controls
 - **Arrow Left/Right**: Select card in hand
