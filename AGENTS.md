@@ -44,7 +44,7 @@ Chess Clock UNO - Real-time multiplayer UNO with chess clock mechanics, keyboard
 #### Room Creation UI
 - **Tabbed Interface**: Settings and UNO Rules tabs in lobby and room creation
 - **Settings Tab**: Max players slider (2-10), AI opponents counter (0-9), time-per-turn slider (15-120s)
-- **UNO Rules Tab**: Granular checkboxes for stacking modes (colors, numbers, plus_same, plus_any, skip_reverse), jump-in modes (exact, power), and radio buttons for draw mode (single, until_playable) - server-side logic implemented for all combinations
+- **UNO Rules Tab**: Granular checkboxes for stacking modes (colors, numbers, plus_same, plus_any, skip_reverse), jump-in modes (exact, skip, reverse, draw2, wild, wild4), and radio buttons for draw mode (single, until_playable) - server-side logic implemented for all combinations
 
 #### Dynamic Version Tag
 - **Version Display**: All pages now display a dynamic version tag in the footer
@@ -272,3 +272,59 @@ ccu.vc/
 - Carousel containers use explicit `paddingLeft`/`paddingRight` instead of `justify-center` to prevent overflow clipping
 - Room grace period of 5 minutes allows hosts to switch tabs/apps and reconnect
 - Dynamic version tag reads from `import.meta.env.VITE_GIT_COMMIT_HASH` and `VITE_BUILD_NUMBER`
+
+### Version Increment Workflow
+
+When releasing changes, follow this workflow:
+
+1. **Make your changes** - Implement features/fixes in the codebase
+
+2. **Commit changes** - Use a descriptive commit message:
+   ```bash
+   git add -A
+   git commit -m "Describe your changes"
+   ```
+
+3. **Increment version** - Update all version references:
+   ```bash
+   # Update package.json files (client, server, shared)
+   # Update flake.nix
+   # Update shared/src/version.ts fallback
+   # Update AGENTS.md version header
+   # Update IMPLEMENTATION.md version header
+   ```
+
+   Version format: `YYYY.MM.DD+BUILD-<git-hash>`
+   - `YYYY.MM.DD`: Current date
+   - `BUILD`: Increment build number (6, 7, 8...)
+   - `<git-hash>`: First 7 chars of commit hash (e.g., `aafe55e`)
+
+4. **Commit version bump**:
+   ```bash
+   git add -A
+   git commit -m "Update version to <new-version>"
+   ```
+
+5. **Push**:
+   ```bash
+   git push
+   ```
+
+**Files to update for version bumps:**
+| File | Location |
+|------|----------|
+| `client/package.json` | `"version": "YYYY.MM.DD+BUILD-hash"` |
+| `server/package.json` | `"version": "YYYY.MM.DD+BUILD-hash"` |
+| `shared/package.json` | `"version": "YYYY.MM.DD+BUILD-hash"` |
+| `flake.nix` | `version = "YYYY.MM.DD+BUILD-hash"` |
+| `shared/src/version.ts` | Fallback string and BUILD_NUMBER default |
+| `AGENTS.md` | `## Version: YYYY.MM.DD+BUILD-hash` |
+| `IMPLEMENTATION.md` | `## Version: YYYY.MM.DD+BUILD-hash` |
+
+**Build with version:**
+```bash
+# Sets VITE_GIT_COMMIT_HASH and VITE_BUILD_NUMBER at build time
+bun run build
+```
+
+The dynamic version tag will display: `YYYY.MM.DD+BUILD-hash` (e.g., `2026.1.19+7-aafe55e`)

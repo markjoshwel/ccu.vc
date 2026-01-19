@@ -446,8 +446,11 @@ When a player's clock reaches 0:
 #### Jump-In Modes
 - **none**: No jump-in allowed
 - **exact**: Jump-in with exact color+value match
-- **power**: Jump-in with Skip, Reverse, Draw 2, Wild, Wild Draw 4
-- **both**: Jump-in with exact matches or power cards
+- **jump_skip**: Jump-in with Skip cards
+- **jump_reverse**: Jump-in with Reverse cards
+- **jump_draw2**: Jump-in with Draw 2 cards
+- **jump_wild**: Jump-in with Wild cards
+- **jump_wild4**: Jump-in with Wild Draw 4 cards
 
 #### Draw Modes
 - **single**: Draw one card per turn

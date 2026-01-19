@@ -46,14 +46,14 @@ export class Room {
      this.connectedPlayerIds = new Set();
      this.playerSocketMap = new Map();
      this.players = new Map();
-    this.settings = {
-      maxPlayers: settings?.maxPlayers ?? DEFAULT_MAX_PLAYERS,
-      aiPlayerCount: settings?.aiPlayerCount ?? 0,
-      timePerTurnMs: settings?.timePerTurnMs ?? DEFAULT_TIME_PER_TURN_MS,
-      stackingMode: settings?.stackingMode ?? [],
-      jumpInMode: settings?.jumpInMode ?? [],
-      drawMode: settings?.drawMode ?? 'single'
-    };
+      this.settings = {
+        maxPlayers: settings?.maxPlayers ?? DEFAULT_MAX_PLAYERS,
+        aiPlayerCount: settings?.aiPlayerCount ?? 0,
+        timePerTurnMs: settings?.timePerTurnMs ?? DEFAULT_TIME_PER_TURN_MS,
+        stackingMode: settings?.stackingMode ?? ['plus_same'], // Standard UNO: stack same draw cards
+        jumpInMode: settings?.jumpInMode ?? ['exact'], // Standard UNO: jump-in with exact match
+        drawMode: settings?.drawMode ?? 'single' // Standard UNO: draw one card
+      };
     this.pendingDraws = 0;
     this.pendingSkips = 0;
     this.pendingReverses = 0;
@@ -128,8 +128,20 @@ export class Room {
         case 'exact':
           if (card.color === topCard.color && card.value === topCard.value) return true;
           break;
-        case 'power':
-          if (['skip', 'reverse', 'draw2', 'wild', 'wild_draw4'].includes(card.value)) return true;
+        case 'jump_skip':
+          if (card.value === 'skip') return true;
+          break;
+        case 'jump_reverse':
+          if (card.value === 'reverse') return true;
+          break;
+        case 'jump_draw2':
+          if (card.value === 'draw2') return true;
+          break;
+        case 'jump_wild':
+          if (card.value === 'wild') return true;
+          break;
+        case 'jump_wild4':
+          if (card.value === 'wild_draw4') return true;
           break;
       }
     }

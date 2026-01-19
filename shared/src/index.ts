@@ -1,6 +1,6 @@
 export type StackingMode = string[]; // Array of: 'colors', 'numbers', 'plus_same', 'plus_any', 'skip_reverse'
 
-export type JumpInMode = string[]; // Array of: 'exact', 'power'
+export type JumpInMode = string[]; // Array of: 'exact', 'jump_skip', 'jump_reverse', 'jump_draw2', 'jump_wild', 'jump_wild4'
 
 export type DrawMode = 'single' | 'until_playable';
 

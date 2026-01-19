@@ -494,7 +494,7 @@ function CornerIndicator({ value, position }: { value: string; position: 'top-le
 // Components
 // ============================================================================
 
-// Custom range slider with filled track
+// Custom range slider with filled track and proper drag support
 interface RangeSliderProps {
   min: number;
   max: number;
@@ -503,22 +503,75 @@ interface RangeSliderProps {
   step?: number;
 }
 
-function RangeSlider({ min, max, value, onChange, step }: RangeSliderProps) {
+function RangeSlider({ min, max, value, onChange, step = 1 }: RangeSliderProps) {
   const percentage = ((value - min) / (max - min)) * 100;
-  
+  const trackRef = useRef<HTMLDivElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
+
+  const updateValueFromClientX = (clientX: number) => {
+    if (!trackRef.current) return;
+    const rect = trackRef.current.getBoundingClientRect();
+    const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    const newValue = min + ratio * (max - min);
+    const steppedValue = Math.round(newValue / step) * step;
+    onChange(Math.max(min, Math.min(max, steppedValue)));
+  };
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+    updateValueFromClientX(e.clientX);
+  };
+
+  const handleMouseMove = (e: MouseEvent) => {
+    if (isDragging) {
+      updateValueFromClientX(e.clientX);
+    }
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  useEffect(() => {
+    if (isDragging) {
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+    }
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging]);
+
   return (
-    <input
-      type="range"
-      min={min}
-      max={max}
-      step={step || 1}
-      value={value}
-      onChange={(e) => onChange(Math.round(Number(e.target.value)))}
-      className="w-full appearance-none h-2 rounded-xl cursor-pointer"
-      style={{
-        background: `linear-gradient(to right, ${THEME.primary} 0%, ${THEME.primary} ${percentage}%, ${THEME.outlineVariant} ${percentage}%, ${THEME.outlineVariant} 100%)`,
-      }}
-    />
+    <div 
+      ref={trackRef}
+      className="relative w-full h-3 rounded-xl cursor-pointer"
+      style={{ backgroundColor: THEME.outlineVariant }}
+      onMouseDown={handleMouseDown}
+    >
+      {/* Filled portion */}
+      <div 
+        className="absolute left-0 top-0 h-full rounded-xl transition-colors"
+        style={{ 
+          width: `${percentage}%`,
+          backgroundColor: THEME.primary,
+        }}
+      />
+      {/* Custom thumb */}
+      <div 
+        className={`absolute top-1/2 -translate-y-1/2 w-5 h-5 rounded-full border-2 shadow-md transition-transform ${
+          isDragging ? 'scale-125 cursor-grabbing' : 'cursor-grab hover:scale-110'
+        }`}
+        style={{
+          left: `calc(${percentage}% - 10px)`,
+          backgroundColor: THEME.primaryContainer,
+          borderColor: '#FFFFFF',
+          boxShadow: '0 2px 6px rgba(0, 0, 0, 0.3)',
+        }}
+      />
+    </div>
   );
 }
 
@@ -1778,12 +1831,12 @@ function App() {
 
    // Room settings
    const [maxPlayers, setMaxPlayers] = useState(6);
-   const [aiPlayerCount, setAiPlayerCount] = useState(0);
-   const [timePerTurnMs, setTimePerTurnMs] = useState(60000);
-   const [activeTab, setActiveTab] = useState<'settings' | 'rules'>('settings');
-    const [stackingMode, setStackingMode] = useState<StackingMode>([]);
-    const [jumpInMode, setJumpInMode] = useState<JumpInMode>([]);
-    const [drawMode, setDrawMode] = useState<DrawMode>('single');
+    const [aiPlayerCount, setAiPlayerCount] = useState(0);
+    const [timePerTurnMs, setTimePerTurnMs] = useState(60000);
+    const [activeTab, setActiveTab] = useState<'settings' | 'rules'>('settings');
+    const [stackingMode, setStackingMode] = useState<StackingMode>(['plus_same']); // Standard UNO: stack same draw cards
+    const [jumpInMode, setJumpInMode] = useState<JumpInMode>(['exact']); // Standard UNO: jump-in with exact match
+    const [drawMode, setDrawMode] = useState<DrawMode>('single'); // Standard UNO: draw one card
 
   // Clamp AI count when max players changes
   useEffect(() => {
@@ -2871,20 +2924,22 @@ function App() {
                <div className="max-w-md w-full rounded-2xl p-6 shadow-2xl border" style={{ backgroundColor: THEME.surfaceContainer, borderColor: THEME.outlineVariant }}>
                  <h2 className="text-xl font-semibold mb-4" style={{ color: THEME.onSurface }}>Room Settings</h2>
 
-                 <div className="flex space-x-1 mb-4 border-b border-outlineVariant">
-                   <button
-                     onClick={() => setModalTab('settings')}
-                     className={`px-3 py-2 text-sm font-medium border-b-2 transition-colors ${modalTab === 'settings' ? 'border-primary text-primary' : 'border-transparent text-onSurfaceVariant'}`}
-                   >
-                     Settings
-                   </button>
-                   <button
-                     onClick={() => setModalTab('rules')}
-                     className={`px-3 py-2 text-sm font-medium border-b-2 transition-colors ${modalTab === 'rules' ? 'border-primary text-primary' : 'border-transparent text-onSurfaceVariant'}`}
-                   >
-                     UNO Rules
-                   </button>
-                 </div>
+                  <div className="flex space-x-1 mb-4 border-b border-outlineVariant">
+                    <button
+                      onClick={() => setModalTab('settings')}
+                      className="px-3 py-2 text-sm font-medium border-b-2 transition-colors"
+                      style={modalTab === 'settings' ? { borderColor: THEME.primary, color: THEME.primary } : { borderColor: 'transparent', color: THEME.onSurfaceVariant }}
+                    >
+                      Settings
+                    </button>
+                    <button
+                      onClick={() => setModalTab('rules')}
+                      className="px-3 py-2 text-sm font-medium border-b-2 transition-colors"
+                      style={modalTab === 'rules' ? { borderColor: THEME.primary, color: THEME.primary } : { borderColor: 'transparent', color: THEME.onSurfaceVariant }}
+                    >
+                      UNO Rules
+                    </button>
+                  </div>
 
                  {modalTab === 'settings' && (
                    <div className="space-y-4">
@@ -2919,19 +2974,19 @@ function App() {
                        )}
                      </div>
 
-                     <div>
-                       <div className="flex justify-between mb-2">
-                         <label className="text-sm" style={{ color: THEME.onSurfaceVariant }}>Time per Turn</label>
-                         <span className="text-sm font-medium" style={{ color: THEME.onSurface }}>{Math.floor(draftTimePerTurnMs / 1000)}s</span>
-                       </div>
-                       <RangeSlider
-                         min={15000}
-                         max={120000}
-                         step={5000}
-                         value={draftTimePerTurnMs}
-                         onChange={setDraftTimePerTurnMs}
-                       />
-                     </div>
+                      <div>
+                        <div className="flex justify-between mb-2">
+                          <label className="text-sm" style={{ color: THEME.onSurfaceVariant }}>Time per Turn</label>
+                          <span className="text-sm font-medium" style={{ color: THEME.onSurface }}>{Math.floor(draftTimePerTurnMs / 1000)}s</span>
+                        </div>
+                        <RangeSlider
+                          min={15000}
+                          max={240000}
+                          step={5000}
+                          value={draftTimePerTurnMs}
+                          onChange={setDraftTimePerTurnMs}
+                        />
+                      </div>
                    </div>
                  )}
 
@@ -3018,67 +3073,129 @@ function App() {
                         </div>
                       </div>
 
-                      <div>
-                        <label className="block text-sm mb-2" style={{ color: THEME.onSurfaceVariant }}>Jump-In Mode</label>
-                        <div className="space-y-2">
-                          <label className="flex items-center" title="Allow jumping in with exact card matches (same color and number)" style={{ color: THEME.onSurface }}>
-                            <input
-                              type="checkbox"
-                              checked={draftJumpInMode.includes('exact')}
-                              onChange={(e) => {
-                                if (e.target.checked) {
-                                  setDraftJumpInMode([...draftJumpInMode, 'exact']);
-                                } else {
-                                  setDraftJumpInMode(draftJumpInMode.filter(m => m !== 'exact'));
-                                }
-                              }}
-                              className="mr-2"
-                            />
-                            Exact matches
-                          </label>
-                          <label className="flex items-center" title="Allow jumping in with power cards (skip, reverse, draw, wild)" style={{ color: THEME.onSurface }}>
-                            <input
-                              type="checkbox"
-                              checked={draftJumpInMode.includes('power')}
-                              onChange={(e) => {
-                                if (e.target.checked) {
-                                  setDraftJumpInMode([...draftJumpInMode, 'power']);
-                                } else {
-                                  setDraftJumpInMode(draftJumpInMode.filter(m => m !== 'power'));
-                                }
-                              }}
-                              className="mr-2"
+                       <div>
+                         <label className="block text-sm mb-2" style={{ color: THEME.onSurfaceVariant }}>Jump-In Mode</label>
+                         <div className="space-y-2">
+                           <label className="flex items-center" title="Allow jumping in with exact card matches (same color and number)" style={{ color: THEME.onSurface }}>
+                             <input
+                               type="checkbox"
+                               checked={draftJumpInMode.includes('exact')}
+                               onChange={(e) => {
+                                 if (e.target.checked) {
+                                   setDraftJumpInMode([...draftJumpInMode, 'exact']);
+                                 } else {
+                                   setDraftJumpInMode(draftJumpInMode.filter(m => m !== 'exact'));
+                                 }
+                               }}
+                               className="mr-2"
                              />
-                             Colors
+                             Exact matches
                            </label>
-                        </div>
-                      </div>
+                           <label className="flex items-center" title="Allow jumping in with Skip cards" style={{ color: THEME.onSurface }}>
+                             <input
+                               type="checkbox"
+                               checked={draftJumpInMode.includes('jump_skip')}
+                               onChange={(e) => {
+                                 if (e.target.checked) {
+                                   setDraftJumpInMode([...draftJumpInMode, 'jump_skip']);
+                                 } else {
+                                   setDraftJumpInMode(draftJumpInMode.filter(m => m !== 'jump_skip'));
+                                 }
+                               }}
+                               className="mr-2"
+                             />
+                             Skip
+                           </label>
+                           <label className="flex items-center" title="Allow jumping in with Reverse cards" style={{ color: THEME.onSurface }}>
+                             <input
+                               type="checkbox"
+                               checked={draftJumpInMode.includes('jump_reverse')}
+                               onChange={(e) => {
+                                 if (e.target.checked) {
+                                   setDraftJumpInMode([...draftJumpInMode, 'jump_reverse']);
+                                 } else {
+                                   setDraftJumpInMode(draftJumpInMode.filter(m => m !== 'jump_reverse'));
+                                 }
+                               }}
+                               className="mr-2"
+                             />
+                             Reverse
+                           </label>
+                           <label className="flex items-center" title="Allow jumping in with Draw 2 cards" style={{ color: THEME.onSurface }}>
+                             <input
+                               type="checkbox"
+                               checked={draftJumpInMode.includes('jump_draw2')}
+                               onChange={(e) => {
+                                 if (e.target.checked) {
+                                   setDraftJumpInMode([...draftJumpInMode, 'jump_draw2']);
+                                 } else {
+                                   setDraftJumpInMode(draftJumpInMode.filter(m => m !== 'jump_draw2'));
+                                 }
+                               }}
+                               className="mr-2"
+                             />
+                             Draw 2
+                           </label>
+                           <label className="flex items-center" title="Allow jumping in with Wild cards" style={{ color: THEME.onSurface }}>
+                             <input
+                               type="checkbox"
+                               checked={draftJumpInMode.includes('jump_wild')}
+                               onChange={(e) => {
+                                 if (e.target.checked) {
+                                   setDraftJumpInMode([...draftJumpInMode, 'jump_wild']);
+                                 } else {
+                                   setDraftJumpInMode(draftJumpInMode.filter(m => m !== 'jump_wild'));
+                                 }
+                               }}
+                               className="mr-2"
+                             />
+                             Wild
+                           </label>
+                           <label className="flex items-center" title="Allow jumping in with Wild Draw 4 cards" style={{ color: THEME.onSurface }}>
+                             <input
+                               type="checkbox"
+                               checked={draftJumpInMode.includes('jump_wild4')}
+                               onChange={(e) => {
+                                 if (e.target.checked) {
+                                   setDraftJumpInMode([...draftJumpInMode, 'jump_wild4']);
+                                 } else {
+                                   setDraftJumpInMode(draftJumpInMode.filter(m => m !== 'jump_wild4'));
+                                 }
+                               }}
+                               className="mr-2"
+                             />
+                             Wild Draw 4
+                           </label>
+                         </div>
+                       </div>
 
-                      <div>
-                        <label className="block text-sm mb-2" style={{ color: THEME.onSurfaceVariant }}>Draw Mode</label>
-                        <div className="space-y-2">
-                          <label className="flex items-center">
-                            <input
-                              type="radio"
-                              value="single"
-                              checked={draftDrawMode === 'single'}
-                              onChange={(e) => setDraftDrawMode(e.target.value as DrawMode)}
-                              className="mr-2"
-                            />
-                            Single card
-                          </label>
-                          <label className="flex items-center" style={{ color: THEME.onSurface }}>
-                            <input
-                              type="radio"
-                              value="until_playable"
-                              checked={draftDrawMode === 'until_playable'}
-                              onChange={(e) => setDraftDrawMode(e.target.value as DrawMode)}
-                              className="mr-2"
-                            />
-                            Draw until playable
-                          </label>
-                        </div>
-                      </div>
+                       <div>
+                         <label className="block text-sm mb-2" style={{ color: THEME.onSurfaceVariant }}>Draw Mode</label>
+                         <div className="space-y-2">
+                           <label className="flex items-center" style={{ color: THEME.onSurface }}>
+                             <input
+                               type="radio"
+                               name="drawMode"
+                               value="single"
+                               checked={draftDrawMode === 'single'}
+                               onChange={(e) => setDraftDrawMode(e.target.value as DrawMode)}
+                               className="mr-2"
+                             />
+                             Single card
+                           </label>
+                           <label className="flex items-center" style={{ color: THEME.onSurface }}>
+                             <input
+                               type="radio"
+                               name="drawMode"
+                               value="until_playable"
+                               checked={draftDrawMode === 'until_playable'}
+                               onChange={(e) => setDraftDrawMode(e.target.value as DrawMode)}
+                               className="mr-2"
+                             />
+                             Draw until playable
+                           </label>
+                         </div>
+                       </div>
                    </div>
                  )}
 
@@ -3480,20 +3597,25 @@ function App() {
                 </div>
               )}
 
-              <div className="space-y-3">
-                <input
-                  type="file"
-                  accept="image/png,image/jpeg,image/webp"
-                  onChange={(e: ChangeEvent<HTMLInputElement>) => {
-                    const file = e.target.files?.[0];
-                    if (file) handleAvatarUpload(file);
-                  }}
-                  disabled={isUploadingAvatar}
-                  className="w-full text-sm file:mr-4 file:py-2 file:px-4
-                             file:rounded-lg file:border-0 file:text-sm file:font-medium
-                             file:cursor-pointer file:transition-colors"
-                  style={{ color: THEME.onSurfaceVariant }}
-                />
+            <div className="space-y-3">
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleAvatarUpload(file);
+                }}
+                disabled={isUploadingAvatar}
+                className="w-full text-sm file:mr-4 file:py-2 file:px-4
+                           file:rounded-lg file:border-0 file:text-sm file:font-medium
+                           file:cursor-pointer file:transition-colors"
+                style={{ 
+                  color: THEME.onSurfaceVariant,
+                  backgroundColor: THEME.surfaceContainerHigh,
+                  borderRadius: '0.75rem',
+                  padding: '0.5rem',
+                }}
+              />
 
                 <div className="flex gap-2">
                   <input
@@ -3762,20 +3884,20 @@ function App() {
                      </p>
                    )}
                  </div>
-                  {/* Time per Turn */}
-                  <div>
-                    <div className="flex justify-between mb-2">
-                      <label className="text-sm" style={{ color: THEME.onSurfaceVariant }}>Time per Turn</label>
-                      <span className="text-sm font-medium" style={{ color: THEME.onSurface }}>{Math.floor(timePerTurnMs / 1000)}s</span>
-                    </div>
-                    <RangeSlider
-                      min={15000}
-                      max={120000}
-                      step={5000}
-                      value={timePerTurnMs}
-                      onChange={setTimePerTurnMs}
-                    />
-                  </div>
+                   {/* Time per Turn */}
+                   <div>
+                     <div className="flex justify-between mb-2">
+                       <label className="text-sm" style={{ color: THEME.onSurfaceVariant }}>Time per Turn</label>
+                       <span className="text-sm font-medium" style={{ color: THEME.onSurface }}>{Math.floor(timePerTurnMs / 1000)}s</span>
+                     </div>
+                     <RangeSlider
+                       min={15000}
+                       max={240000}
+                       step={5000}
+                       value={timePerTurnMs}
+                       onChange={setTimePerTurnMs}
+                     />
+                   </div>
                 </div>
               )}
 
@@ -3882,50 +4004,112 @@ function App() {
                          />
                          Exact matches
                        </label>
-                       <label className="flex items-center" title="Allow jumping in with power cards (skip, reverse, draw, wild)" style={{ color: THEME.onSurface }}>
+                       <label className="flex items-center" title="Allow jumping in with Skip cards" style={{ color: THEME.onSurface }}>
                          <input
                            type="checkbox"
-                           checked={jumpInMode.includes('power')}
+                           checked={jumpInMode.includes('jump_skip')}
                            onChange={(e) => {
                              if (e.target.checked) {
-                               setJumpInMode([...jumpInMode, 'power']);
+                               setJumpInMode([...jumpInMode, 'jump_skip']);
                              } else {
-                               setJumpInMode(jumpInMode.filter(m => m !== 'power'));
+                               setJumpInMode(jumpInMode.filter(m => m !== 'jump_skip'));
                              }
                            }}
                            className="mr-2"
                          />
-                         Power cards
+                         Skip
+                       </label>
+                       <label className="flex items-center" title="Allow jumping in with Reverse cards" style={{ color: THEME.onSurface }}>
+                         <input
+                           type="checkbox"
+                           checked={jumpInMode.includes('jump_reverse')}
+                           onChange={(e) => {
+                             if (e.target.checked) {
+                               setJumpInMode([...jumpInMode, 'jump_reverse']);
+                             } else {
+                               setJumpInMode(jumpInMode.filter(m => m !== 'jump_reverse'));
+                             }
+                           }}
+                           className="mr-2"
+                         />
+                         Reverse
+                       </label>
+                       <label className="flex items-center" title="Allow jumping in with Draw 2 cards" style={{ color: THEME.onSurface }}>
+                         <input
+                           type="checkbox"
+                           checked={jumpInMode.includes('jump_draw2')}
+                           onChange={(e) => {
+                             if (e.target.checked) {
+                               setJumpInMode([...jumpInMode, 'jump_draw2']);
+                             } else {
+                               setJumpInMode(jumpInMode.filter(m => m !== 'jump_draw2'));
+                             }
+                           }}
+                           className="mr-2"
+                         />
+                         Draw 2
+                       </label>
+                       <label className="flex items-center" title="Allow jumping in with Wild cards" style={{ color: THEME.onSurface }}>
+                         <input
+                           type="checkbox"
+                           checked={jumpInMode.includes('jump_wild')}
+                           onChange={(e) => {
+                             if (e.target.checked) {
+                               setJumpInMode([...jumpInMode, 'jump_wild']);
+                             } else {
+                               setJumpInMode(jumpInMode.filter(m => m !== 'jump_wild'));
+                             }
+                           }}
+                           className="mr-2"
+                         />
+                         Wild
+                       </label>
+                       <label className="flex items-center" title="Allow jumping in with Wild Draw 4 cards" style={{ color: THEME.onSurface }}>
+                         <input
+                           type="checkbox"
+                           checked={jumpInMode.includes('jump_wild4')}
+                           onChange={(e) => {
+                             if (e.target.checked) {
+                               setJumpInMode([...jumpInMode, 'jump_wild4']);
+                             } else {
+                               setJumpInMode(jumpInMode.filter(m => m !== 'jump_wild4'));
+                             }
+                           }}
+                           className="mr-2"
+                         />
+                         Wild Draw 4
                        </label>
                      </div>
                    </div>
 
-                  {/* Draw Mode */}
-                  <div>
-                    <label className="block text-sm mb-2" style={{ color: THEME.onSurfaceVariant }}>Draw Mode</label>
-                        <div className="space-y-2">
-                          <label className="flex items-center" style={{ color: THEME.onSurface }}>
-                            <input
-                              type="radio"
-                              value="single"
-                              checked={draftDrawMode === 'single'}
-                              onChange={(e) => setDraftDrawMode(e.target.value as DrawMode)}
-                              className="mr-2"
-                            />
-                            Single card
-                          </label>
-                       <label className="flex items-center" style={{ color: THEME.onSurface }}>
-                         <input
-                           type="radio"
-                           value="until_playable"
-                           checked={drawMode === 'until_playable'}
-                           onChange={(e) => setDrawMode(e.target.value as DrawMode)}
-                           className="mr-2"
-                         />
-                         Draw until playable
-                      </label>
-                    </div>
-                  </div>
+                   {/* Draw Mode */}
+                   <div>
+                     <label className="block text-sm mb-2" style={{ color: THEME.onSurfaceVariant }}>Draw Mode</label>
+                       <div className="space-y-2">
+                         <label className="flex items-center" style={{ color: THEME.onSurface }}>
+                           <input
+                             type="radio"
+                             name="drawMode"
+                             value="single"
+                             checked={draftDrawMode === 'single'}
+                             onChange={(e) => setDraftDrawMode(e.target.value as DrawMode)}
+                             className="mr-2"
+                           />
+                           Single card
+                         </label>
+                         <label className="flex items-center" style={{ color: THEME.onSurface }}>
+                           <input
+                             type="radio"
+                             name="drawMode"
+                             value="until_playable"
+                             checked={draftDrawMode === 'until_playable'}
+                             onChange={(e) => setDraftDrawMode(e.target.value as DrawMode)}
+                             className="mr-2"
+                           />
+                           Draw until playable
+                         </label>
+                       </div>
+                   </div>
                </div>
              )}
            </div>

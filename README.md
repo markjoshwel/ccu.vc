@@ -2,18 +2,20 @@
 
 A web-based multiplayer UNO game with chess clock time pressure. Built with React, Socket.io, and Bun.
 
-## Features
+## Quick Start
 
-- **Multiplayer UNO** - 2-10 players per room
-- **Chess Clock Timer** - Each player has limited time with millisecond display for urgency
-- **Real-time Gameplay** - Server-authoritative game state with Socket.io
-- **UNO Mechanics** - Call UNO when you have one card, catch opponents who forget
-- **AI Opponents** - Add bot players when starting a game
-- **Room Chat** - Chat with other players in your room
-- **Custom Avatars** - Upload an image or use a URL
-- **Mobile Responsive** - Works on desktop and mobile devices
-- **Share Links** - Invite players with `?server=...&room=...` URLs
-- **Reduced Motion Support** - Respects `prefers-reduced-motion`
+```bash
+# Install dependencies
+bun install
+
+# Start server (terminal 1)
+cd server && bun run dev
+
+# Start client (terminal 2)
+cd client && bun run dev
+
+# Open http://localhost:5173
+```
 
 ## Tech Stack
 
@@ -28,64 +30,32 @@ A web-based multiplayer UNO game with chess clock time pressure. Built with Reac
 ccu.vc/
 ├── client/           # Vite + React frontend
 │   └── src/
-│       ├── App.tsx   # Main application component
+│       ├── App.tsx   # Main application (2000+ lines)
 │       ├── main.tsx  # Entry point
-│       └── index.css # Tailwind imports + utilities
+│       └── index.css # Tailwind + custom utilities
 ├── server/           # Bun + Socket.io backend
 │   └── src/
 │       ├── index.ts      # Server entry & socket handlers
 │       ├── RoomManager.ts # Room & game logic
 │       ├── Deck.ts       # UNO deck implementation
-│       ├── AvatarStore.ts # Avatar storage
-│       ├── ImagePipeline.ts # Image processing
-│       └── RateLimiter.ts   # Rate limiting
+│       └── server.test.ts # 339 tests
 ├── shared/           # Shared TypeScript types
 │   └── src/
 │       └── index.ts  # Type definitions
-└── IMPLEMENTATION.md # Detailed specification
+└── DEPLOY.md         # Deployment guide
 ```
 
-## Setup
+## Key Features
 
-1. Install Bun (>=1.0) from https://bun.sh
-2. Install dependencies:
-   ```bash
-   bun install
-   ```
+- **Real-time Multiplayer** - 2-10 players per room with Socket.io
+- **Chess Clock Timer** - Millisecond precision with urgency effects
+- **Customizable UNO Rules** - Stacking, jump-in modes, draw behaviors
+- **AI Opponents** - Configurable bot players
+- **Niconico-style Chat** - Flying messages across screen
+- **Card Animations** - Flying cards from hand to discard pile
+- **Mobile Responsive** - Touch-friendly with keyboard shortcuts
 
-## Development
-
-Start both server and client in separate terminals:
-
-```bash
-# Terminal 1 - Start the server
-cd server && bun run dev
-
-# Terminal 2 - Start the client
-cd client && bun run dev
-```
-
-Open http://localhost:5173 in your browser.
-
-## Sharing Game Links
-
-You can share links that include both server and room code:
-
-```
-https://your-client.com/?server=your-server.com&room=ABCD
-```
-
-This will:
-1. Automatically connect to the specified server
-2. Pre-fill the room code in the join form
-3. User just enters their name and joins
-
-Server-only links are also supported:
-```
-https://your-client.com/?server=your-server.com
-```
-
-## Other Commands
+## Development Commands
 
 ```bash
 # Type check all workspaces
@@ -96,33 +66,66 @@ bun run build
 
 # Run server tests
 cd server && bun test
+
+# Lint (if configured)
+bun run lint
 ```
 
-## Game Rules
+## Game Rules & Settings
 
-- Standard UNO rules apply
-- Special cards: Skip, Reverse, Draw 2, Wild, Wild Draw 4
-- When you have one card left, you can call "UNO!"
-- If you forget to call UNO, other players can catch you (draw 2 penalty)
-- If your timer runs out, you automatically draw a card and your turn ends
+### Standard UNO (Default)
+- **Stacking**: Plus cards of same denomination (+2 on +2, +4 on +4)
+- **Jump-In**: Exact color+value match only
+- **Draw**: Single card per turn
+
+### Customizable Options
+
+**Stacking Modes:**
+- Colors: Stack cards of same color
+- Numbers: Stack cards of same number
+- Plus (same): Stack +2 on +2, +4 on +4
+- Plus (any): Stack any draw card on any draw card
+- Skip/Reverse: Stack Skip on Skip, Reverse on Reverse
+
+**Jump-In Modes:**
+- Exact: Jump in with matching color+number
+- Skip: Jump in with Skip cards
+- Reverse: Jump in with Reverse cards
+- Draw 2: Jump in with Draw 2 cards
+- Wild: Jump in with Wild cards
+- Wild Draw 4: Jump in with Wild Draw 4 cards
+
+**Draw Modes:**
+- Single: Draw one card per turn
+- Until Playable: Auto-draw until playable card
 
 ## Architecture
 
-- **Server-Authoritative**: All game logic runs on the server
-- **Ephemeral Rooms**: Rooms exist only while players are connected
-- **Reconnection**: Players can rejoin using stored credentials
+- **Server-Authoritative**: All game logic on server prevents cheating
+- **Ephemeral Rooms**: No database, rooms deleted after grace period
+- **Reconnection**: 5-minute grace period for dropped connections
 - **Hidden Information**: Server only sends each player their own hand
-- **Configurable Server**: Client can connect to any server URL
 
-## UI Features
+## Configuration
 
-- **Chess Clock Display**: Prominent clocks with M:SS.cc format
-- **Clock Carousel**: All players' times visible at top of game
-- **Urgency Effects**: Clocks pulse red when time is low
-- **Tabletop Design**: Green felt background with card arrangements
-- **UNO Minimalista Cards**: Clean, modern card styling
-- **Drag-and-Drop**: Drag cards to the discard pile to play
+### Environment Variables (Build Time)
+- `VITE_GIT_COMMIT_HASH`: Git commit hash for version tag
+- `VITE_BUILD_NUMBER`: Build number for version tag
+
+### Server Settings
+- Max rooms: 1000 concurrent
+- Room TTL: 30 minutes inactivity
+- Grace period: 5 minutes (empty rooms)
+- Rate limits: Chat 3/s, Actions 10/s, Room ops 2/5s
+
+## Deployment
+
+See [DEPLOY.md](./DEPLOY.md) for:
+- Docker Compose setup
+- Nix flake builds
+- Reverse proxy configuration (Caddy)
 
 ## Contributing
 
 See [AGENTS.md](./AGENTS.md) for development notes and session history.
+See [IMPLEMENTATION.md](./IMPLEMENTATION.md) for detailed technical specification.

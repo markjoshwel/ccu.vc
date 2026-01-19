@@ -4136,8 +4136,8 @@ describe('AI player functionality', () => {
         maxPlayers: 8,
         aiPlayerCount: 3,
         timePerTurnMs: 45000,
-        stackingMode: [],
-        jumpInMode: [],
+        stackingMode: ['plus_same'],
+        jumpInMode: ['exact'],
         drawMode: 'single'
       });
     });
