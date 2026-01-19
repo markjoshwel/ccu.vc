@@ -222,6 +222,29 @@ export class Room {
     this.state.settings = this.settings;
   }
 
+  updateSettings(newSettings: Partial<RoomSettings>): void {
+    if (typeof newSettings.maxPlayers === 'number') {
+      this.settings.maxPlayers = newSettings.maxPlayers;
+    }
+    if (typeof newSettings.aiPlayerCount === 'number') {
+      this.settings.aiPlayerCount = newSettings.aiPlayerCount;
+    }
+    if (typeof newSettings.timePerTurnMs === 'number') {
+      this.settings.timePerTurnMs = newSettings.timePerTurnMs;
+      this.timePerTurnMs = newSettings.timePerTurnMs;
+    }
+    if (newSettings.stackingMode !== undefined) {
+      this.settings.stackingMode = newSettings.stackingMode;
+    }
+    if (newSettings.jumpInMode !== undefined) {
+      this.settings.jumpInMode = newSettings.jumpInMode;
+    }
+    if (newSettings.drawMode !== undefined) {
+      this.settings.drawMode = newSettings.drawMode;
+    }
+    this.state.settings = this.settings;
+  }
+
   addAIPlayers(): void {
     const existingAICount = Array.from(this.players.values()).filter(p => p.isAI).length;
     const toAdd = this.settings.aiPlayerCount - existingAICount;

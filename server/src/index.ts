@@ -279,7 +279,78 @@ io.on('connection', (socket) => {
     socket.emit('actionAck', { actionId, ok: true });
     callback({ success: true });
   });
-  
+
+  socket.on('update_room_settings', (actionId: string, settings: Partial<RoomSettings>, callback: (response: { success: boolean; error?: string }) => void) => {
+    const roomCode = socketRoomMap.get(socket.id);
+
+    if (!roomCode) {
+      socket.emit('actionAck', { actionId, ok: false });
+      callback({ success: false, error: 'Not in a room' });
+      return;
+    }
+
+    const room = roomManager.getRoom(roomCode);
+
+    if (!room) {
+      socket.emit('actionAck', { actionId, ok: false });
+      callback({ success: false, error: 'Room not found' });
+      return;
+    }
+
+    const playerData = socketPlayerMap.get(socket.id);
+    if (!playerData) {
+      socket.emit('actionAck', { actionId, ok: false });
+      callback({ success: false, error: 'Player not found' });
+      return;
+    }
+
+    // Only host can update settings
+    const players = room.state.players;
+    if (players.length === 0 || players[0].id !== playerData.playerId) {
+      socket.emit('actionAck', { actionId, ok: false });
+      callback({ success: false, error: 'Only the host can update room settings' });
+      return;
+    }
+
+    // Only allow settings changes in 'waiting' state
+    if (room.state.gameStatus !== 'waiting') {
+      socket.emit('actionAck', { actionId, ok: false });
+      callback({ success: false, error: 'Can only update settings when game is not playing' });
+      return;
+    }
+
+    // Validate and apply settings
+    const sanitizedSettings: Partial<RoomSettings> = {};
+
+    if (typeof settings.maxPlayers === 'number') {
+      sanitizedSettings.maxPlayers = Math.min(10, Math.max(2, Math.floor(settings.maxPlayers)));
+    }
+    if (typeof settings.aiPlayerCount === 'number') {
+      sanitizedSettings.aiPlayerCount = Math.min(9, Math.max(0, Math.floor(settings.aiPlayerCount)));
+    }
+    if (typeof settings.timePerTurnMs === 'number') {
+      sanitizedSettings.timePerTurnMs = Math.min(300000, Math.max(10000, Math.floor(settings.timePerTurnMs)));
+    }
+    if (settings.stackingMode !== undefined) {
+      sanitizedSettings.stackingMode = settings.stackingMode;
+    }
+    if (settings.jumpInMode !== undefined) {
+      sanitizedSettings.jumpInMode = settings.jumpInMode;
+    }
+    if (settings.drawMode !== undefined) {
+      sanitizedSettings.drawMode = settings.drawMode;
+    }
+
+    // Update room settings
+    room.updateSettings(sanitizedSettings);
+
+    // Broadcast updated room state to all players
+    io.to(roomCode).emit('roomUpdated', room.state);
+
+    socket.emit('actionAck', { actionId, ok: true });
+    callback({ success: true });
+  });
+
   socket.on('start_game', (actionId: string, callback: (response: { success: boolean; error?: string }) => void) => {
     const roomCode = socketRoomMap.get(socket.id);
     
