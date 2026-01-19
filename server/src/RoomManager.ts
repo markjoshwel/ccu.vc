@@ -308,27 +308,27 @@ export class Room {
     }
   }
 
-  scheduleAIMove(): void {
-    if (this.aiMoveTimeoutId) {
-      clearTimeout(this.aiMoveTimeoutId);
-      this.aiMoveTimeoutId = undefined;
-    }
+   scheduleAIMove(): void {
+     if (this.aiMoveTimeoutId) {
+       clearTimeout(this.aiMoveTimeoutId);
+       this.aiMoveTimeoutId = undefined;
+     }
 
-    if (this.state.gameStatus !== 'playing') return;
-    if (!this.isCurrentPlayerAI()) return;
+     if (this.state.gameStatus !== 'playing') return;
+     if (!this.isCurrentPlayerAI()) return;
 
-    // AI thinks for 1-3 seconds, sometimes longer
-    let delay = 1000 + Math.random() * 2000;
-    if (Math.random() < 0.2) { // 20% chance for extra hesitation
-      delay += 2000 + Math.random() * 3000; // +2-5s
-    }
-    this.aiMoveTimeoutId = setTimeout(() => {
-      this.makeAIMove();
-      if (this.onAIMove) {
-        this.onAIMove();
-      }
-    }, delay);
-  }
+     // AI thinks for 1-2 seconds normally, 3-5 seconds rarely
+     let delay = 1000 + Math.random() * 1000; // 1-2 seconds
+     if (Math.random() < 0.1) { // 10% chance for extra hesitation
+       delay += 2000 + Math.random() * 1000; // +2-3s, making it 3-5s total
+     }
+     this.aiMoveTimeoutId = setTimeout(() => {
+       this.makeAIMove();
+       if (this.onAIMove) {
+         this.onAIMove();
+       }
+     }, delay);
+   }
 
   startGame(rng?: () => number): void {
     if (this.state.gameStatus !== 'waiting') {

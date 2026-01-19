@@ -1022,7 +1022,7 @@ function ColorPickerModal({ onSelect, onCancel }: ColorPickerModalProps) {
   }, [colors, onSelect, onCancel]);
 
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
       <div 
         className="rounded-2xl p-6 max-w-sm w-full shadow-2xl border"
         style={{ backgroundColor: THEME.surfaceContainer, borderColor: THEME.outlineVariant }}
@@ -1534,11 +1534,12 @@ function ChatDrawer({ messages, myPlayerId, onSend, isPending }: ChatDrawerProps
 interface GameFinishedOverlayProps {
   reason: string;
   onLeave: () => void;
+  onBackToLobby?: () => void;
 }
 
-function GameFinishedOverlay({ reason, onLeave }: GameFinishedOverlayProps) {
+function GameFinishedOverlay({ reason, onLeave, onBackToLobby }: GameFinishedOverlayProps) {
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
       <div 
         className="rounded-3xl p-8 max-w-md w-full shadow-2xl text-center border"
         style={{ backgroundColor: THEME.surfaceContainer, borderColor: THEME.primary }}
@@ -1561,13 +1562,24 @@ function GameFinishedOverlay({ reason, onLeave }: GameFinishedOverlayProps) {
         >
           {reason}
         </p>
-        <button
-          onClick={onLeave}
-          className="px-8 py-3 font-bold rounded-xl transition-colors shadow-lg hover:opacity-90"
-          style={{ backgroundColor: THEME.primary, color: THEME.onPrimary }}
-        >
-          Leave Room
-        </button>
+        <div className="flex flex-col gap-3">
+          {onBackToLobby && (
+            <button
+              onClick={onBackToLobby}
+              className="px-8 py-3 font-bold rounded-xl transition-colors shadow-lg hover:opacity-90"
+              style={{ backgroundColor: THEME.surfaceContainerHighest, color: THEME.onSurface }}
+            >
+              Back to Lobby
+            </button>
+          )}
+          <button
+            onClick={onLeave}
+            className="px-8 py-3 font-bold rounded-xl transition-colors shadow-lg hover:opacity-90"
+            style={{ backgroundColor: THEME.primary, color: THEME.onPrimary }}
+          >
+            Leave Room
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -1715,37 +1727,36 @@ function HandArea({
           // Vertical curve: center cards slightly lower (arc effect)
           const yOffset = Math.abs(offset) * 3;
           
-          return (
-            <animated.div
-              key={index}
-              ref={(el) => {
-                localCardRefs.current[index] = el;
-                if (cardRefs) {
-                  cardRefs.current[index] = el;
-                }
-              }}
-              {...bind(card, index)}
-              style={{
-                x: springs[index].x,
-                y: springs[index].y,
-                scale: springs[index].scale,
-                rotateZ: springs[index].rotateZ,
-                zIndex: draggingIndex === index ? 100 : selectedCardIndex === index ? 50 : index,
-                marginLeft: index === 0 ? 0 : -cardWidth + overlapAmount,
-                transform: `rotate(${angle}deg) translateY(${yOffset}px)`,
-                pointerEvents: draggingIndex === index ? 'auto' : 'none',
-              }}
-              className="cursor-grab active:cursor-grabbing transition-transform hover:-translate-y-2"
-            >
-              <CardDisplay
-                card={card}
-                onClick={() => handleCardClick(card, index)}
-                disabled={!myTurn || isPending}
-                selected={selectedCardIndex === index}
-                dragging={draggingIndex === index}
-              />
-            </animated.div>
-          );
+            return (
+              <animated.div
+                key={index}
+                ref={(el) => {
+                  localCardRefs.current[index] = el;
+                  if (cardRefs) {
+                    cardRefs.current[index] = el;
+                  }
+                }}
+                {...bind(card, index)}
+                style={{
+                  x: springs[index].x,
+                  y: springs[index].y,
+                  scale: springs[index].scale,
+                  rotateZ: springs[index].rotateZ,
+                  zIndex: draggingIndex === index ? 100 : selectedCardIndex === index ? 50 : index,
+                  marginLeft: index === 0 ? 0 : -cardWidth + overlapAmount,
+                  transform: `rotate(${angle}deg) translateY(${yOffset}px)`,
+                }}
+                className="cursor-grab active:cursor-grabbing transition-transform hover:-translate-y-2"
+              >
+                <CardDisplay
+                  card={card}
+                  onClick={() => handleCardClick(card, index)}
+                  disabled={!myTurn || isPending}
+                  selected={selectedCardIndex === index}
+                  dragging={draggingIndex === index}
+                />
+              </animated.div>
+            );
         })}
       </div>
       {isOverDiscard && (
@@ -1858,8 +1869,10 @@ function App() {
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [pendingWildCard, setPendingWildCard] = useState<Card | null>(null);
 
-  const discardRef = useRef<HTMLDivElement>(null);
-  const gameTableRef = useRef<HTMLDivElement>(null);
+   const discardRef = useRef<HTMLDivElement>(null);
+   const discardCardRef = useRef<HTMLDivElement>(null);
+   const drawPileRef = useRef<HTMLButtonElement>(null);
+   const gameTableRef = useRef<HTMLDivElement>(null);
 
   const reducedMotion = useReducedMotion();
   const interpolatedTime = useClockInterpolation(clockSync, reducedMotion);
@@ -1867,20 +1880,21 @@ function App() {
   // Keyboard navigation state
   const [selectedCardIndex, setSelectedCardIndex] = useState<number | null>(null);
   
-  // Flying chat overlay state
-  const [showChatOverlay, setShowChatOverlay] = useState(false);
-  const [chatInput, setChatInput] = useState('');
-  const [flyingMessages, setFlyingMessages] = useState<Array<{ id: number; message: string; playerName: string; top: number; duration: number }>>([]);
-  const chatInputRef = useRef<HTMLInputElement>(null);
-  const flyingMessageIdRef = useRef(0);
-  const flyingCardIdRef = useRef(0);
-  const playerCardRefs = useRef<(HTMLDivElement | null)[]>([]);
+   // Flying chat overlay state
+   const [showChatOverlay, setShowChatOverlay] = useState(false);
+   const [chatInput, setChatInput] = useState('');
+   const [flyingMessages, setFlyingMessages] = useState<Array<{ id: number; message: string; playerName: string; top: number; duration: number }>>([]);
+   const chatInputRef = useRef<HTMLInputElement>(null);
+   const flyingMessageIdRef = useRef(0);
+   const flyingCardIdRef = useRef(0);
+   const playerCardRefs = useRef<(HTMLDivElement | null)[]>([]);
+   const lastProcessedMessageRef = useRef<number>(0);
 
   // Flying cards state
   const [flyingCards, setFlyingCards] = useState<Array<{ id: number; card: Card; fromX: number; fromY: number; toX: number; toY: number; duration: number; animate: boolean }>>([]);
-  const [previousDiscardLength, setPreviousDiscardLength] = useState(0);
-  const [previousPlayerId, setPreviousPlayerId] = useState<string | null>(null);
-  const [showSettingsModal, setShowSettingsModal] = useState(false);
+   const previousDiscardLengthRef = useRef(0);
+   const previousPlayerIdRef = useRef<string | null>(null);
+   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [modalTab, setModalTab] = useState<'settings' | 'rules'>('settings');
   const [draftMaxPlayers, setDraftMaxPlayers] = useState(6);
   const [draftAiPlayerCount, setDraftAiPlayerCount] = useState(0);
@@ -1936,53 +1950,60 @@ function App() {
         setLoading(false);
       });
 
-      sock.on('gameStateUpdate', (view) => {
-        const currentDiscardLength = view.room.discardPile?.length || 0;
-        const currentPlayerId = view.room.players?.[view.room.currentPlayerIndex || 0]?.id;
+        sock.on('gameStateUpdate', (view) => {
+         const currentDiscardLength = view.room.discardPile?.length || 0;
+         const currentPlayerId = view.room.players?.[view.room.currentPlayerIndex || 0]?.id;
+         const prevPlayerId = previousPlayerIdRef.current;
+         const prevDiscardLength = previousDiscardLengthRef.current;
 
-        // Animate card play
-        if (currentDiscardLength > previousDiscardLength && previousPlayerId && gameTableRef.current && view.room.discardPile) {
-          const playedCard = view.room.discardPile[currentDiscardLength - 1];
-          const opponentElement = document.querySelector(`[data-player-id="${previousPlayerId}"]`) as HTMLElement;
-          const discardElement = discardRef.current;
+         // Initialize previous player ID on first game state update if not set
+         if (previousPlayerIdRef.current === null && currentPlayerId) {
+           previousPlayerIdRef.current = currentPlayerId;
+         }
 
-          if (opponentElement && discardElement) {
-            const tableRect = gameTableRef.current.getBoundingClientRect();
-            const opponentRect = opponentElement.getBoundingClientRect();
-            const discardRect = discardElement.getBoundingClientRect();
+         // Animate card play from previous player to discard pile
+         if (currentDiscardLength > prevDiscardLength && prevPlayerId && gameTableRef.current && view.room.discardPile) {
+           const playedCard = view.room.discardPile[currentDiscardLength - 1];
+           const opponentElement = document.querySelector(`[data-player-id="${prevPlayerId}"]`) as HTMLElement;
+           const discardElement = discardCardRef.current;
 
-            const fromX = opponentRect.left - tableRect.left + opponentRect.width / 2 - 32;
-            const fromY = opponentRect.top - tableRect.top + opponentRect.height / 2 - 32;
-            const toX = discardRect.left - tableRect.left + discardRect.width / 2 - 32;
-            const toY = discardRect.top - tableRect.top + discardRect.height / 2 - 32;
+           if (opponentElement && discardElement) {
+             const tableRect = gameTableRef.current.getBoundingClientRect();
+             const opponentRect = opponentElement.getBoundingClientRect();
+             const discardRect = discardElement.getBoundingClientRect();
 
-            const distance = Math.sqrt((toX - fromX) ** 2 + (toY - fromY) ** 2);
-            const duration = Math.max(0.3, distance / 600);
+             const fromX = opponentRect.left - tableRect.left + opponentRect.width / 2 - 32;
+             const fromY = opponentRect.top - tableRect.top + opponentRect.height / 2 - 32;
+             const toX = discardRect.left - tableRect.left + discardRect.width / 2 - 32;
+             const toY = discardRect.top - tableRect.top + discardRect.height / 2 - 32;
 
-            const cardId = flyingCardIdRef.current++;
-            setFlyingCards(prev => [...prev, {
-              id: cardId,
-              card: playedCard,
-              fromX,
-              fromY,
-              toX,
-              toY,
-              duration,
-              animate: false
-            }]);
+             const distance = Math.sqrt((toX - fromX) ** 2 + (toY - fromY) ** 2);
+             const duration = Math.max(0.2, distance / 800);
 
-            setTimeout(() => {
-              setFlyingCards(prev => prev.map(c => c.id === cardId ? { ...c, animate: true } : c));
-            }, 0);
+             const cardId = flyingCardIdRef.current++;
+             setFlyingCards(prev => [...prev, {
+               id: cardId,
+               card: playedCard,
+               fromX,
+               fromY,
+               toX,
+               toY,
+               duration,
+               animate: false
+             }]);
 
-            setTimeout(() => {
-              setFlyingCards(prev => prev.filter(c => c.id !== cardId));
-            }, duration * 1000 + 500);
-          }
-        }
+             setTimeout(() => {
+               setFlyingCards(prev => prev.map(c => c.id === cardId ? { ...c, animate: true } : c));
+             }, 0);
 
-        setPreviousDiscardLength(currentDiscardLength);
-        setPreviousPlayerId(currentPlayerId);
+             setTimeout(() => {
+               setFlyingCards(prev => prev.filter(c => c.id !== cardId));
+             }, duration * 1000 + 200);
+           }
+         }
+
+         previousDiscardLengthRef.current = currentDiscardLength;
+         previousPlayerIdRef.current = currentPlayerId;
 
         if (view.room.gameStatus === 'finished') {
           setRoom({ ...view.room, gameStatus: 'waiting' });
@@ -2217,38 +2238,43 @@ function App() {
     }
   }, [myTurn, selectedCardIndex, handCards.length]);
 
-  // Add flying messages when new chat arrives from OTHER players
-  // (own messages are shown immediately in handleChatOverlaySubmit for zero delay)
-  useEffect(() => {
-    if (chatMessages.length === 0) return;
-    const latestMessage = chatMessages[chatMessages.length - 1];
-    
-    // Only add flying message if game is playing
-    if (room?.gameStatus !== 'playing') return;
-    
-    // Skip if this is the current player's message (already shown via optimistic UI)
-    if (latestMessage.playerId === myPlayerId) return;
-    
-    const messageId = flyingMessageIdRef.current++;
-    const randomTop = 10 + Math.random() * 60; // Random position 10-70% from top
-    // Calculate duration based on game table width: ~200px/s for readable speed
-    // Message travels from right edge to left edge + its own width (estimate ~300px for message)
-    const gameTableWidth = gameTableRef.current?.clientWidth || window.innerWidth;
-    const duration = (gameTableWidth + 300) / 200;
-    
-    setFlyingMessages(prev => [...prev, {
-      id: messageId,
-      message: latestMessage.message,
-      playerName: latestMessage.playerName,
-      top: randomTop,
-      duration
-    }]);
+   // Add flying messages when new chat arrives from OTHER players
+   // (own messages are shown immediately in handleChatOverlaySubmit for zero delay)
+   useEffect(() => {
+     if (chatMessages.length === 0) return;
+     if (room?.gameStatus !== 'playing') return;
 
-    // Remove after animation completes + 500ms buffer
-    setTimeout(() => {
-      setFlyingMessages(prev => prev.filter(m => m.id !== messageId));
-    }, duration * 1000 + 500);
-  }, [chatMessages.length, room?.gameStatus, myPlayerId]);
+     const latestMessage = chatMessages[chatMessages.length - 1];
+
+     // Skip if this is the current player's message (already shown via optimistic UI)
+     if (latestMessage.playerId === myPlayerId) return;
+
+     // Skip if we've already processed this message (use timestamp as unique identifier)
+     if (lastProcessedMessageRef.current >= latestMessage.timestamp) return;
+     lastProcessedMessageRef.current = latestMessage.timestamp;
+
+     const messageId = flyingMessageIdRef.current++;
+     const randomTop = 10 + Math.random() * 60; // Random position 10-70% from top
+     // Calculate duration based on game table width: ~200px/s for readable speed
+     // Message travels from right edge to left edge + its own width (estimate ~300px for message)
+     const gameTableWidth = gameTableRef.current?.clientWidth || window.innerWidth;
+     const duration = (gameTableWidth + 300) / 200;
+
+     setFlyingMessages(prev => [...prev, {
+       id: messageId,
+       message: latestMessage.message,
+       playerName: latestMessage.playerName,
+       top: randomTop,
+       duration
+     }]);
+
+     // Remove after animation completes + buffer
+     const timeoutId = setTimeout(() => {
+       setFlyingMessages(prev => prev.filter(m => m.id !== messageId));
+     }, duration * 1000 + 1000);
+
+     return () => clearTimeout(timeoutId);
+   }, [chatMessages.length, room?.gameStatus, myPlayerId]);
 
   // Actions
   const handleCreateRoom = () => {
@@ -2401,47 +2427,47 @@ function App() {
     setShowSettingsModal(false);
   };
 
-   const handlePlayCard = (card: Card) => {
-    if (!socket) return;
+    const handlePlayCard = (card: Card) => {
+     if (!socket) return;
 
-    // Trigger player card play animation
-    if (gameTableRef.current && discardRef.current && selectedCardIndex !== null) {
-      const tableRect = gameTableRef.current.getBoundingClientRect();
-      const discardRect = discardRef.current.getBoundingClientRect();
-      const handElement = playerCardRefs.current[selectedCardIndex];
+     // Trigger player card play animation
+     if (gameTableRef.current && discardCardRef.current && selectedCardIndex !== null) {
+       const tableRect = gameTableRef.current.getBoundingClientRect();
+       const discardRect = discardCardRef.current.getBoundingClientRect();
+       const handElement = playerCardRefs.current[selectedCardIndex];
 
-      if (handElement) {
-        const handRect = handElement.getBoundingClientRect();
-        const cardId = flyingCardIdRef.current++;
+       if (handElement) {
+         const handRect = handElement.getBoundingClientRect();
+         const cardId = flyingCardIdRef.current++;
 
-        const fromX = handRect.left - tableRect.left + handRect.width / 2 - 32;
-        const fromY = handRect.top - tableRect.top + handRect.height / 2 - 32;
-        const toX = discardRect.left - tableRect.left + discardRect.width / 2 - 32;
-        const toY = discardRect.top - tableRect.top + discardRect.height / 2 - 32;
+         const fromX = handRect.left - tableRect.left + handRect.width / 2 - 32;
+         const fromY = handRect.top - tableRect.top + handRect.height / 2 - 32;
+         const toX = discardRect.left - tableRect.left + discardRect.width / 2 - 32;
+         const toY = discardRect.top - tableRect.top + discardRect.height / 2 - 32;
 
-        const distance = Math.sqrt((toX - fromX) ** 2 + (toY - fromY) ** 2);
-        const duration = Math.max(0.3, distance / 600);
+         const distance = Math.sqrt((toX - fromX) ** 2 + (toY - fromY) ** 2);
+         const duration = Math.max(0.2, distance / 800);
 
-        setFlyingCards(prev => [...prev, {
-          id: cardId,
-          card: card,
-          fromX,
-          fromY,
-          toX,
-          toY,
-          duration,
-          animate: false
-        }]);
+         setFlyingCards(prev => [...prev, {
+           id: cardId,
+           card: card,
+           fromX,
+           fromY,
+           toX,
+           toY,
+           duration,
+           animate: false
+         }]);
 
-        setTimeout(() => {
-          setFlyingCards(prev => prev.map(c => c.id === cardId ? { ...c, animate: true } : c));
-        }, 0);
+         setTimeout(() => {
+           setFlyingCards(prev => prev.map(c => c.id === cardId ? { ...c, animate: true } : c));
+         }, 0);
 
-        setTimeout(() => {
-          setFlyingCards(prev => prev.filter(c => c.id !== cardId));
-        }, duration * 1000 + 500);
-      }
-    }
+         setTimeout(() => {
+           setFlyingCards(prev => prev.filter(c => c.id !== cardId));
+         }, duration * 1000 + 200);
+       }
+     }
 
     if (card.color === 'wild') {
       setPendingWildCard(card);
@@ -2475,18 +2501,60 @@ function App() {
     setPendingWildCard(null);
   };
 
-  const handleDrawCard = () => {
-    if (!socket) return;
+   const handleDrawCard = () => {
+     if (!socket) return;
 
-    const actionId = generateActionId();
-    setPendingActions((prev) => new Set(prev).add(actionId));
+     // Trigger draw animation from draw pile to hand
+     if (gameTableRef.current && drawPileRef.current && discardCardRef.current && selectedCardIndex !== null) {
+       const tableRect = gameTableRef.current.getBoundingClientRect();
+       const drawRect = drawPileRef.current.getBoundingClientRect();
+       const handElement = playerCardRefs.current[selectedCardIndex];
 
-    socket.emit('drawCard', actionId, (response) => {
-      if (!response.success) {
-        setError(response.error || 'Failed to draw card');
-      }
-    });
-  };
+       if (handElement) {
+         const handRect = handElement.getBoundingClientRect();
+         const cardId = flyingCardIdRef.current++;
+
+         const fromX = drawRect.left - tableRect.left + drawRect.width / 2 - 32;
+         const fromY = drawRect.top - tableRect.top + drawRect.height / 2 - 32;
+         const toX = handRect.left - tableRect.left + handRect.width / 2 - 32;
+         const toY = handRect.top - tableRect.top + handRect.height / 2 - 32;
+
+         const distance = Math.sqrt((toX - fromX) ** 2 + (toY - fromY) ** 2);
+         const duration = Math.max(0.15, distance / 1000);
+
+         // Create a placeholder card for the draw animation
+         const placeholderCard: Card = { color: 'red', value: '0' }; // placeholder
+
+         setFlyingCards(prev => [...prev, {
+           id: cardId,
+           card: placeholderCard,
+           fromX,
+           fromY,
+           toX,
+           toY,
+           duration,
+           animate: false
+         }]);
+
+         setTimeout(() => {
+           setFlyingCards(prev => prev.map(c => c.id === cardId ? { ...c, animate: true } : c));
+         }, 0);
+
+         setTimeout(() => {
+           setFlyingCards(prev => prev.filter(c => c.id !== cardId));
+         }, duration * 1000 + 150);
+       }
+     }
+
+     const actionId = generateActionId();
+     setPendingActions((prev) => new Set(prev).add(actionId));
+
+     socket.emit('drawCard', actionId, (response) => {
+       if (!response.success) {
+         setError(response.error || 'Failed to draw card');
+       }
+     });
+   };
 
   const handleCallUno = () => {
     if (!socket) return;
@@ -2676,7 +2744,7 @@ function App() {
 
   return (
   <div 
-    className="min-h-screen flex flex-col p-4"
+    className="min-h-screen flex items-center justify-center p-4"
     style={{ backgroundColor: THEME.surfaceDim }}
   >
         <div className="max-w-md w-full">
@@ -2772,16 +2840,16 @@ function App() {
       !room.unoWindow.called &&
       handCards.length === 1;
 
-    // Find active player for prominent clock display
-    const activePlayerIndex = room.currentPlayerIndex ?? 0;
-    const activePlayer = allPlayers[activePlayerIndex];
+     // Find active player for prominent clock display
+    const activePlayerId = room.currentPlayerIndex !== undefined ? room.players[room.currentPlayerIndex]?.id : undefined;
+    const activePlayer = allPlayers.find(p => p.id === activePlayerId) || allPlayers[0];
 
     return (
     <div 
       className="min-h-screen flex flex-col p-4"
       style={{ backgroundColor: THEME.surfaceDim }}
     >
-        <div className={room.gameStatus === 'playing' ? 'max-w-5xl mx-auto' : 'max-w-2xl mx-auto'}>
+        <div className="w-full max-w-4xl md:max-w-6xl mx-auto">
           {/* Header */}
           <div className="flex items-center justify-between mb-3">
             <div>
@@ -2834,7 +2902,7 @@ function App() {
 
           {/* Game Finished Overlay */}
           {room.gameStatus === 'finished' && room.gameEndedReason && (
-            <GameFinishedOverlay reason={room.gameEndedReason} onLeave={handleLeave} />
+            <GameFinishedOverlay reason={room.gameEndedReason} onLeave={handleLeave} onBackToLobby={() => { setRoom(null); setGameView(null); setView('lobby'); }} />
           )}
 
           {/* Waiting for game to start */}
@@ -3260,6 +3328,7 @@ function App() {
                 <div className="flex items-center gap-4 md:gap-8">
                   {/* Draw pile */}
                   <button
+                    ref={drawPileRef}
                     onClick={handleDrawCard}
                     disabled={!myTurn || isPending}
                     className="relative transition-transform hover:scale-105 active:scale-95 disabled:opacity-70"
@@ -3279,12 +3348,14 @@ function App() {
                     </div>
                   </button>
 
-                  {/* Discard pile */}
+                   {/* Discard pile */}
                   <div 
                     ref={discardRef}
                     className="relative"
                   >
-                    <CardDisplay card={topCard} size="md" disabled />
+                    <div ref={discardCardRef}>
+                      <CardDisplay card={topCard} size="md" disabled />
+                    </div>
                     {/* Active color indicator */}
                     {room.activeColor && (
                       <div 
@@ -3401,23 +3472,24 @@ function App() {
                </div>
 
                {/* Flying cards */}
-               <div className="absolute inset-0 pointer-events-none overflow-hidden z-10">
-                 {flyingCards.map(card => (
-                   <div
-                     key={card.id}
-                     className="absolute"
-                     style={{
-                       left: card.fromX,
-                       top: card.fromY,
-                       transform: card.animate ? `translate(${card.toX - card.fromX}px, ${card.toY - card.fromY}px)` : 'translate(0,0)',
-                       transition: `transform ${card.duration}s linear`,
-                       zIndex: 10,
-                     }}
-                   >
-                     <CardDisplay card={card.card} size="sm" />
-                   </div>
-                 ))}
-               </div>
+                <div className="absolute inset-0 pointer-events-none overflow-hidden z-10">
+                  {flyingCards.map(card => (
+                    <div
+                      key={card.id}
+                      className="absolute"
+                      style={{
+                        left: card.fromX,
+                        top: card.fromY,
+                        transform: card.animate ? `translate(${card.toX - card.fromX}px, ${card.toY - card.fromY}px)` : 'translate(0,0)',
+                        transition: `transform ${card.duration}s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.1s ease-in`,
+                        opacity: card.animate ? 1 : 0,
+                        zIndex: 10,
+                      }}
+                    >
+                      <CardDisplay card={card.card} size="md" />
+                    </div>
+                  ))}
+                </div>
 
               {/* Chat input overlay */}
               {showChatOverlay && (
