@@ -2055,6 +2055,13 @@ function App() {
     }
   }, [handCards.length, selectedCardIndex]);
 
+  // Auto-select first card when turn starts
+  useEffect(() => {
+    if (myTurn && selectedCardIndex === null && handCards.length > 0) {
+      setSelectedCardIndex(0);
+    }
+  }, [myTurn, selectedCardIndex, handCards.length]);
+
   // Add flying messages when new chat arrives from OTHER players
   // (own messages are shown immediately in handleChatOverlaySubmit for zero delay)
   useEffect(() => {
