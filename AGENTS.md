@@ -1,6 +1,6 @@
 # Agent Session Notes
 
-## Version: 2026.1.19+6-58b87b3
+## Version: 2026.1.19+6-aafe55e
 
 ### Overview
 Chess Clock UNO - Real-time multiplayer UNO with chess clock mechanics, keyboard controls, and niconico-style flying chat.
@@ -48,7 +48,7 @@ Chess Clock UNO - Real-time multiplayer UNO with chess clock mechanics, keyboard
 
 #### Dynamic Version Tag
 - **Version Display**: All pages now display a dynamic version tag in the footer
-- **Format**: `YYYY.MM.DD+BUILD-<git-hash>` (e.g., `2026.1.19+6-58b87b3`)
+- **Format**: `YYYY.MM.DD+BUILD-<git-hash>` (e.g., `2026.1.19+6-aafe55e`)
 - **Build Info**: Reads from environment variables (VITE_GIT_COMMIT_HASH, VITE_BUILD_NUMBER) at build time
 - **Fallback**: Falls back to hardcoded version if build variables not available
 

@@ -1,6 +1,6 @@
 # Chess Clock UNO - Implementation Reference
 
-## Version: 2026.1.19+6-58b87b3
+## Version: 2026.1.19+6-aafe55e
 
 ## Overview
 
@@ -375,7 +375,7 @@ STORAGE_KEYS = {
 ### Dynamic Version Tag
 
 - Version displayed in footer on all pages: `YYYY.MM.DD+BUILD-<git-hash>`
-- Example: `2026.1.19+6-58b87b3`
+- Example: `2026.1.19+6-aafe55e`
 - Reads from Vite environment variables at build time:
   - `VITE_GIT_COMMIT_HASH`: Git commit hash (truncated to 7 chars)
   - `VITE_BUILD_NUMBER`: Build number (defaults to '0')
