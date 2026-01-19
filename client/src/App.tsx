@@ -1628,7 +1628,7 @@ function HandArea({
   };
 
   return (
-    <div className="py-2 md:py-4 overflow-x-auto scrollbar-hide" ref={containerRef}>
+    <div className="py-2 md:py-4 overflow-visible scrollbar-hide" ref={containerRef}>
       {/* Fanned hand display */}
       <div 
         className="flex justify-center items-end px-8"
