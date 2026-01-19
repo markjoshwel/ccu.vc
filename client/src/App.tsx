@@ -495,9 +495,10 @@ interface RangeSliderProps {
   max: number;
   value: number;
   onChange: (value: number) => void;
+  step?: number;
 }
 
-function RangeSlider({ min, max, value, onChange }: RangeSliderProps) {
+function RangeSlider({ min, max, value, onChange, step }: RangeSliderProps) {
   const percentage = ((value - min) / (max - min)) * 100;
   
   return (
@@ -505,7 +506,7 @@ function RangeSlider({ min, max, value, onChange }: RangeSliderProps) {
       type="range"
       min={min}
       max={max}
-      step={1}
+      step={step || 1}
       value={value}
       onChange={(e) => onChange(Math.round(Number(e.target.value)))}
       className="w-full appearance-none h-2 rounded-xl cursor-pointer"
@@ -1763,6 +1764,9 @@ function App() {
   // Room settings
   const [maxPlayers, setMaxPlayers] = useState(6);
   const [aiPlayerCount, setAiPlayerCount] = useState(0);
+  const [timePerTurnMs, setTimePerTurnMs] = useState(60000);
+  const [activeTab, setActiveTab] = useState<'settings' | 'rules'>('settings');
+  const [stackingMode, setStackingMode] = useState('none');
 
   // Clamp AI count when max players changes
   useEffect(() => {
@@ -1845,8 +1849,8 @@ function App() {
         const currentDiscardLength = view.room.discardPile?.length || 0;
         const currentPlayerId = view.room.players?.[view.room.currentPlayerIndex || 0]?.id;
 
-        // Animate opponent card play
-        if (currentDiscardLength > previousDiscardLength && previousPlayerId && previousPlayerId !== myPlayerId && gameTableRef.current && view.room.discardPile) {
+        // Animate card play
+        if (currentDiscardLength > previousDiscardLength && previousPlayerId && gameTableRef.current && view.room.discardPile) {
           const playedCard = view.room.discardPile[currentDiscardLength - 1];
           const opponentElement = document.querySelector(`[data-player-id="${previousPlayerId}"]`) as HTMLElement;
           const discardElement = discardRef.current;
@@ -2160,7 +2164,8 @@ function App() {
 
     const roomSettings: Partial<RoomSettings> = {
       maxPlayers,
-      aiPlayerCount
+      aiPlayerCount,
+      timePerTurnMs
     };
 
     const newSocket = io(serverUrl);
@@ -3314,53 +3319,100 @@ function App() {
             </div>
           </div>
 
-          {/* Room Settings */}
-          <div 
-            className="mb-6 p-4 rounded-xl border"
-            style={{ backgroundColor: THEME.surfaceContainerHigh, borderColor: THEME.outlineVariant }}
-          >
-            <h3 
-              className="text-sm font-medium mb-4"
-              style={{ color: THEME.onSurface }}
-            >
-              Room Settings
-            </h3>
-            
-            <div className="space-y-4">
-              {/* Max Players */}
-              <div>
-                <div className="flex justify-between mb-2">
-                  <label className="text-sm" style={{ color: THEME.onSurfaceVariant }}>Max Players</label>
-                  <span className="text-sm font-medium" style={{ color: THEME.onSurface }}>{maxPlayers}</span>
-                </div>
-                <RangeSlider
-                  min={2}
-                  max={10}
-                  value={maxPlayers}
-                  onChange={setMaxPlayers}
-                />
-              </div>
+           {/* Room Settings */}
+           <div 
+             className="mb-6 p-4 rounded-xl border"
+             style={{ backgroundColor: THEME.surfaceContainerHigh, borderColor: THEME.outlineVariant }}
+           >
+             <div className="flex space-x-1 mb-4 border-b border-outlineVariant">
+               <button
+                 onClick={() => setActiveTab('settings')}
+                 className={`px-3 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'settings' ? 'border-primary text-primary' : 'border-transparent text-onSurfaceVariant'}`}
+               >
+                 Settings
+               </button>
+               <button
+                 onClick={() => setActiveTab('rules')}
+                 className={`px-3 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'rules' ? 'border-primary text-primary' : 'border-transparent text-onSurfaceVariant'}`}
+               >
+                 UNO Rules
+               </button>
+             </div>
+             
+             {activeTab === 'settings' && (
+               <div className="space-y-4">
+                 {/* Max Players */}
+                 <div>
+                   <div className="flex justify-between mb-2">
+                     <label className="text-sm" style={{ color: THEME.onSurfaceVariant }}>Max Players</label>
+                     <span className="text-sm font-medium" style={{ color: THEME.onSurface }}>{maxPlayers}</span>
+                   </div>
+                   <RangeSlider
+                     min={2}
+                     max={10}
+                     value={maxPlayers}
+                     onChange={setMaxPlayers}
+                   />
+                 </div>
 
-              {/* AI Players */}
-              <div>
-                <div className="flex justify-between mb-2">
-                  <label className="text-sm" style={{ color: THEME.onSurfaceVariant }}>AI Opponents</label>
-                  <span className="text-sm font-medium" style={{ color: THEME.onSurface }}>{aiPlayerCount}</span>
-                </div>
-                <RangeSlider
-                  min={0}
-                  max={Math.min(9, maxPlayers - 1)}
-                  value={aiPlayerCount}
-                  onChange={setAiPlayerCount}
-                />
-                {aiPlayerCount > 0 && (
-                  <p className="text-xs mt-1" style={{ color: THEME.onSurfaceVariant }}>
-                    AI players will be added when the game starts
-                  </p>
-                )}
-              </div>
-            </div>
-          </div>
+                 {/* AI Players */}
+                 <div>
+                   <div className="flex justify-between mb-2">
+                     <label className="text-sm" style={{ color: THEME.onSurfaceVariant }}>AI Opponents</label>
+                     <span className="text-sm font-medium" style={{ color: THEME.onSurface }}>{aiPlayerCount}</span>
+                   </div>
+                   <RangeSlider
+                     min={0}
+                     max={Math.min(9, maxPlayers - 1)}
+                     value={aiPlayerCount}
+                     onChange={setAiPlayerCount}
+                   />
+                   {aiPlayerCount > 0 && (
+                     <p className="text-xs mt-1" style={{ color: THEME.onSurfaceVariant }}>
+                       AI players will be added when the game starts
+                     </p>
+                   )}
+                 </div>
+               </div>
+             )}
+
+             {activeTab === 'rules' && (
+               <div className="space-y-4">
+                 {/* Stacking Mode */}
+                 <div>
+                   <label className="block text-sm mb-2" style={{ color: THEME.onSurfaceVariant }}>Stacking Mode</label>
+                   <select
+                     value={stackingMode}
+                     onChange={(e) => setStackingMode(e.target.value)}
+                     className="w-full px-4 py-3 rounded-xl border outline-none"
+                     style={{ backgroundColor: THEME.surfaceContainerHigh, borderColor: THEME.outline, color: THEME.onSurface }}
+                   >
+                     <option value="none">None</option>
+                     <option value="colors">Colors</option>
+                     <option value="numbers">Numbers</option>
+                     <option value="colors-numbers">Colors and Numbers</option>
+                     <option value="plus-same">Plus cards (same denomination)</option>
+                     <option value="plus-any">Plus cards (any denomination)</option>
+                   </select>
+                 </div>
+
+                 {/* Time per Turn */}
+                 <div>
+                   <div className="flex justify-between mb-2">
+                     <label className="text-sm" style={{ color: THEME.onSurfaceVariant }}>Time per Turn</label>
+                     <span className="text-sm font-medium" style={{ color: THEME.onSurface }}>{Math.floor(timePerTurnMs / 1000)}s</span>
+                   </div>
+                   <RangeSlider
+                     min={15000}
+                     max={120000}
+                     step={5000}
+                     value={timePerTurnMs}
+                     onChange={setTimePerTurnMs}
+                   />
+                 </div>
+               </div>
+             )}
+           </div>
 
           {/* Create Room */}
           <button
