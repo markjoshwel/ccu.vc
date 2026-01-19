@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/sh
 set -e
 
 cd "$(dirname "$0")"
@@ -17,13 +17,13 @@ docker load -i result
 echo ""
 echo "=== Retagging as latest ==="
 # Extract version from flake.nix
-VERSION=$(grep 'version = "' flake.nix | head -1 | sed 's/.*version = "\(.*\)"/\1/')
+VERSION=$(grep 'version = "' flake.nix | head -1 | sed 's/.*version = "\([^"]*\)".*/\1/')
 
 echo "Tagging ccu-server:${VERSION} as ccu-server:latest"
-docker tag ccu-server:${VERSION} ccu-server:latest
+docker tag "ccu-server:${VERSION}" ccu-server:latest
 
 echo "Tagging ccu-client:${VERSION} as ccu-client:latest"
-docker tag ccu-client:${VERSION} ccu-client:latest
+docker tag "ccu-client:${VERSION}" ccu-client:latest
 
 echo ""
 echo "=== Cleanup (optional - remove old <none> images) ==="
@@ -31,4 +31,4 @@ docker image prune -f
 
 echo ""
 echo "Done! Images:"
-docker image ls ccu-{client,server}
+docker image ls ccu-client ccu-server
