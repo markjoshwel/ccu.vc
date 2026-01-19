@@ -4148,7 +4148,8 @@ describe('AI player functionality', () => {
       expect(room.state.settings).toEqual({
         maxPlayers: 8,
         aiPlayerCount: 3,
-        timePerTurnMs: 45000
+        timePerTurnMs: 45000,
+        stackingMode: 'none'
       });
     });
 

@@ -788,11 +788,6 @@ export class RoomManager {
     }
     room.markPlayerDisconnected(playerId);
     
-    if (room.connectedPlayerCount === 0) {
-      this.removeRoom(roomCode);
-      return null;
-    }
-    
     return room;
   }
 

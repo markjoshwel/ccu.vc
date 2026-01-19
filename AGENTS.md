@@ -9,7 +9,7 @@ Chess Clock UNO - Real-time multiplayer UNO with chess clock mechanics, keyboard
 
 #### Production Robustness
 - **Max Room Limit**: Server caps at 1000 concurrent rooms to prevent resource exhaustion
-- **TTL-based Room Cleanup**: Stale rooms (30 min inactive, no humans) auto-cleaned every 5 min
+- **Room Grace Period**: Removed immediate room deletion on last player disconnect; rooms now persist until TTL cleanup (30 min), allowing hosts to leave and return
 - **React Error Boundary**: Catches React crashes, shows user-friendly error with reload button
 - **Socket Auto-Reconnection**: Automatic rejoin attempts when connection is lost
 - **Deck Reshuffling**: Discard pile automatically reshuffled into deck when empty (standard UNO rule)
