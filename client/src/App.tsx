@@ -1893,8 +1893,13 @@ function App() {
         setPreviousDiscardLength(currentDiscardLength);
         setPreviousPlayerId(currentPlayerId);
 
-        setGameView(view);
-        setRoom(view.room);
+        if (view.room.gameStatus === 'finished') {
+          setRoom({ ...view.room, gameStatus: 'waiting' });
+          setGameView(null);
+        } else {
+          setGameView(view);
+          setRoom(view.room);
+        }
       });
 
       sock.on('clockSync', (data) => {
