@@ -219,237 +219,76 @@ git rev-parse HEAD
 
 ---
 
-## NEW SESSION - 2026.1.19+8-de4e408
+## NEW SESSION - 2026.1.19+9-93927fd
 
 ### Date: Mon Jan 19 2026
 
-**Status**: Multiple issues reported and being fixed
+**Status**: Settings editing fixed
 
-### Issues Reported
+### Issues Fixed
 
 | # | Issue | Priority | Status |
 |---|-------|----------|--------|
-| 1 | Draw animation moves to wrong target (discard + turn label) | high | in_progress |
-| 2 | Draw animation should be faster with fade in/out | high | pending |
-| 3 | Player card animation source wrong (from timer, not hand) | high | pending |
-| 4 | Add animation for player drawing cards | high | pending |
-| 5 | 1v1 room bug: wrong player active, unselectable cursor | high | pending |
-| 6 | Hand card selection: default select, honor hover/click | high | pending |
-| 7 | Color picker z-index: selected wild card below picker | high | pending |
-| 8 | Niconico chat messages disappearing prematurely | high | pending |
-| 9 | Game end: add back to lobby option | medium | pending |
-| 10 | AI hesitation delay: 1-2s normal, 3-5s rare | low | pending |
+| 1 | Settings editing: only host should be able to edit | high | completed |
+| 2 | Settings saving stuck at "Saving..." | high | completed |
 
----
+### Tasks Done (Bullet Points)
 
----
+- Added server-side `update_room_settings` handler with host validation
+- Added `updateSettings` method to Room class
+- Server now validates that only the first player (host) can update settings
+- Server validates that settings can only be updated in 'waiting' state
+- Server responds properly with success/error to avoid hanging client
 
-## Tasks Done (Bullet Points)
+### Details and Learnings
 
-- Added separate `discardCardRef` for discard pile card only (not turn label)
-- Added `drawPileRef` for draw pile button
-- Updated card play animation to use `discardCardRef` for correct target
-- Updated opponent card animation to use `discardCardRef`
-- Added draw animation (from draw pile to hand) with faster speed (800px/s)
-- Added fade in/out to flying cards (opacity transition)
-- Fixed 1v1 room bug by using player ID lookup instead of index
-- Fixed color picker z-index from `z-50` to `z-[100]`
-- Fixed niconico chat by tracking last processed timestamp and using cleanup
-- Added "Back to Lobby" button to GameFinishedOverlay
-- Restored AI hesitation delay to 1-2s normal, 3-5s rare (10% chance)
+#### Issue 1 & 2: Settings Editing and Stuck "Saving..."
 
----
+**Problem**: 
+1. Non-hosts could potentially access settings (client already had check, but server didn't validate)
+2. Settings saving was stuck at "Saving..." because server didn't have a handler for `update_room_settings`
 
-## Details and Learnings
-
-### Issue 1: Draw Animation Target Wrong
-
-**Problem**: Draw animation moves toward the div containing both discard pile AND turn label, instead of just the discard pile.
-
-**Root Cause**: The `discardRef` was attached to a parent div that contained both the CardDisplay and the turn label div.
-
-**Fix**: Created separate `discardCardRef` attached only to a wrapper div around the CardDisplay. Updated all animation code to use `discardCardRef.current` instead of `discardRef.current`.
-
-### Issue 2: Draw Animation Speed and Fade
-
-**Problem**: Draw animation is too slow and lacks visual clarity for rapid succession.
+**Root Cause**: The `update_room_settings` event was defined in shared types but no handler was implemented on the server.
 
 **Fix**: 
-- Increased speed from 600px/s to 800px/s
-- Added `opacity` transition for fade in/out effect
-- Reduced buffer time from 500ms to 200ms
+1. Added `updateSettings` method to `Room` class in `RoomManager.ts`
+2. Added `update_room_settings` handler in `server/src/index.ts` with:
+   - Host validation (only first player in room.players)
+   - Game state validation (only in 'waiting' state)
+   - Settings sanitization (same as create_room)
+   - Proper callback response
 
-### Issue 3: Player Card Animation Source Wrong
-
-**Problem**: When player plays a card, animation spawns from their timer on chess clock bar instead of their hand.
-
-**Root Cause**: The animation was already using `playerCardRefs` to get the hand position, but the `discardRef` was pointing to the wrong element.
-
-**Fix**: Updated to use `discardCardRef` for the target position.
-
-### Issue 4: Player Draw Animation Missing
-
-**Problem**: No animation when player draws a card from deck.
-
-**Fix**: Added `drawPileRef` to draw pile button. Added new animation logic in `handleDrawCard` that creates a flying card from draw pile to the selected card position in hand.
-
-### Issue 5: 1v1 Room Bug
-
-**Problem**: In 2-player room, host sees guest as active, guest sees host as active, chess clock shows wrong player, timer wrong, cards unplayable.
-
-**Root Cause**: The code was using `room.currentPlayerIndex` to index into `allPlayers`, but `allPlayers` is constructed as `[gameView.me, ...gameView.otherPlayers]`, which puts the local player first. The server's `currentPlayerIndex` refers to the order in `room.players`, which may differ.
-
-**Fix**: Changed from index-based to ID-based lookup:
-```tsx
-// Before:
-const activePlayerIndex = room.currentPlayerIndex ?? 0;
-const activePlayer = allPlayers[activePlayerIndex];
-
-// After:
-const activePlayerId = room.currentPlayerIndex !== undefined ? room.players[room.currentPlayerIndex]?.id : undefined;
-const activePlayer = allPlayers.find(p => p.id === activePlayerId) || allPlayers[0];
-```
-
-### Issue 6: Hand Card Selection
-
-**Problem**: Card selection not honoring hover/click consistently.
-
-**Status**: Already fixed in previous session by removing `pointerEvents: 'none'`.
-
-### Issue 7: Color Picker Z-Index
-
-**Problem**: Selected wild card appears on top of color picker.
-
-**Root Cause**: Color picker had `z-50`, but selected cards also have `z-50`.
-
-**Fix**: Increased color picker z-index to `z-[100]`.
-
-### Issue 8: Niconico Chat Messages Disappearing
-
-**Problem**: Chat messages disappear prematurely, don't complete animation.
-
-**Root Cause**: 
-1. Effect runs on every `chatMessages.length` change
-2. No tracking of which messages have been processed
-3. Multiple rapid messages could cause conflicting timeouts
-
-**Fix**:
-- Added `lastProcessedMessageRef` to track processed messages by timestamp
-- Changed from `id` (which doesn't exist on ChatMessage) to `timestamp`
-- Added cleanup function with `clearTimeout`
-- Increased buffer time to 1000ms for better visibility
-
-### Issue 9: Game End Options
-
-**Problem**: Only "Leave Room" option at game end, need "Back to Lobby" too.
-
-**Fix**: Added `onBackToLobby` optional prop to `GameFinishedOverlay`:
-```tsx
-interface GameFinishedOverlayProps {
-  reason: string;
-  onLeave: () => void;
-  onBackToLobby?: () => void;
+**Code Changes**:
+```typescript
+// RoomManager.ts - new method
+updateSettings(newSettings: Partial<RoomSettings>): void {
+  if (typeof newSettings.maxPlayers === 'number') {
+    this.settings.maxPlayers = newSettings.maxPlayers;
+  }
+  if (typeof newSettings.aiPlayerCount === 'number') {
+    this.settings.aiPlayerCount = newSettings.aiPlayerCount;
+  }
+  // ... handle other settings
+  this.state.settings = this.settings;
 }
+
+// server/src/index.ts - new handler
+socket.on('update_room_settings', (actionId, settings, callback) => {
+  // Validate room, player, host status, and game state
+  // Apply sanitized settings
+  room.updateSettings(sanitizedSettings);
+  io.to(roomCode).emit('roomUpdated', room.state);
+  callback({ success: true });
+});
 ```
-
-Updated usage to pass both handlers.
-
-### Issue 10: AI Hesitation Delay
-
-**Problem**: AI hesitation delay not per spec (1-2s normal, 3-5s rare).
-
-**Fix**: Updated server code in `RoomManager.ts`:
-```tsx
-// Before: 1-3s normal, +2-5s with 20% chance (3-8s total)
-// After: 1-2s normal, +2-3s with 10% chance (3-5s total)
-let delay = 1000 + Math.random() * 1000; // 1-2 seconds
-if (Math.random() < 0.1) { // 10% chance for extra hesitation
-  delay += 2000 + Math.random() * 1000; // +2-3s, making it 3-5s total
-}
-```
-
----
-
-Copy this template when creating a new session entry:
-
-```markdown
-# Agent Session Notes - [YYYY.MM.DD]
-
-## Session: [VERSION]
-
-### Date: [Day Mon DD YYYY]
-
----
-
-## NOTE FOR FUTURE AGENTS
-
-When writing to this file, please follow this layout:
-1. **Current Task / Todo** - What you're working on now, what's pending
-2. **Tasks Done (Bullet Points)** - Simple list of every task completed
-3. **Details and Learnings** - Detailed explanation of issues, root causes, fixes, and code snippets
-4. **Files Modified** - Summary of what changed
-5. **Version Information** - Current version strings
-6. **Commands Used** - Common commands for this project
-
----
-
-## Current Task / Todo
-
-**Status**: [in progress | completed]
-
-**Completed in this session**:
-- [ ] Task 1
-- [ ] Task 2
-
-**Pending / Future work**:
-- [ ] Item 1
-- [ ] Item 2
-
----
-
-## Tasks Done (Bullet Points)
-
-- Bullet point of task
-- Another task
-- More tasks
-
----
-
-## Details and Learnings
-
-### Issue X: [Title]
-
-**Problem**: [Description]
-
-**Root Cause**: [Why it happened]
-
-**Fix**: [What was changed]
-
-**Code Change**:
-```tsx
-// Before:
-code
-
-// After:
-code
-```
-
----
-
-## Files Modified
-
-| File | Changes |
-|------|---------|
-| `client/src/App.tsx` | Added discardCardRef, drawPileRef, lastProcessedMessageRef; updated animations; fixed 1v1 bug; added Back to Lobby button |
-| `server/src/RoomManager.ts` | Updated AI hesitation delay (1-2s normal, 3-5s rare) |
 
 ---
 
 ## Version Information
 
-- **App displays**: `2026.1.19+8-de4e408`
-- **Docker images**: `2026.1.19-8`
-- **Latest commit**: `de4e408`
+- **App displays**: `2026.1.19+9-93927fd`
+- **Docker images**: `2026.1.19-9`
+- **Latest commit**: `60ba051`
 - **Build**: All workspaces built successfully
 
 ---
