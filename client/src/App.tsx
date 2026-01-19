@@ -1800,6 +1800,12 @@ function App() {
   const chatInputRef = useRef<HTMLInputElement>(null);
   const flyingMessageIdRef = useRef(0);
 
+  // Flying cards state
+  const [flyingCards, setFlyingCards] = useState<Array<{ id: number; card: Card; fromX: number; fromY: number; toX: number; toY: number; duration: number; animate: boolean }>>([]);
+  const flyingCardIdRef = useRef(0);
+  const [previousDiscardLength, setPreviousDiscardLength] = useState(0);
+  const [previousPlayerId, setPreviousPlayerId] = useState<string | null>(null);
+
   // Derived state
   const myPlayerId = localStorage.getItem(STORAGE_KEYS.PLAYER_ID);
   const myPlayerSecret = localStorage.getItem(STORAGE_KEYS.PLAYER_SECRET);
@@ -1836,6 +1842,53 @@ function App() {
       });
 
       sock.on('gameStateUpdate', (view) => {
+        const currentDiscardLength = view.room.discardPile?.length || 0;
+        const currentPlayerId = view.room.players?.[view.room.currentPlayerIndex || 0]?.id;
+
+        // Animate opponent card play
+        if (currentDiscardLength > previousDiscardLength && previousPlayerId && previousPlayerId !== myPlayerId && gameTableRef.current && view.room.discardPile) {
+          const playedCard = view.room.discardPile[currentDiscardLength - 1];
+          const opponentElement = document.querySelector(`[data-player-id="${previousPlayerId}"]`) as HTMLElement;
+          const discardElement = discardRef.current;
+
+          if (opponentElement && discardElement) {
+            const tableRect = gameTableRef.current.getBoundingClientRect();
+            const opponentRect = opponentElement.getBoundingClientRect();
+            const discardRect = discardElement.getBoundingClientRect();
+
+            const fromX = opponentRect.left - tableRect.left + opponentRect.width / 2 - 32;
+            const fromY = opponentRect.top - tableRect.top + opponentRect.height / 2 - 32;
+            const toX = discardRect.left - tableRect.left + discardRect.width / 2 - 32;
+            const toY = discardRect.top - tableRect.top + discardRect.height / 2 - 32;
+
+            const distance = Math.sqrt((toX - fromX) ** 2 + (toY - fromY) ** 2);
+            const duration = Math.max(0.3, distance / 600);
+
+            const cardId = flyingCardIdRef.current++;
+            setFlyingCards(prev => [...prev, {
+              id: cardId,
+              card: playedCard,
+              fromX,
+              fromY,
+              toX,
+              toY,
+              duration,
+              animate: false
+            }]);
+
+            setTimeout(() => {
+              setFlyingCards(prev => prev.map(c => c.id === cardId ? { ...c, animate: true } : c));
+            }, 0);
+
+            setTimeout(() => {
+              setFlyingCards(prev => prev.filter(c => c.id !== cardId));
+            }, duration * 1000 + 500);
+          }
+        }
+
+        setPreviousDiscardLength(currentDiscardLength);
+        setPreviousPlayerId(currentPlayerId);
+
         setGameView(view);
         setRoom(view.room);
       });
@@ -2829,26 +2882,45 @@ function App() {
                 />
               </div>
 
-              {/* Flying chat messages (niconico-style) */}
-              <div className="absolute inset-0 pointer-events-none overflow-hidden">
-                {flyingMessages.map(msg => (
-                  <div
-                    key={msg.id}
-                    className="absolute whitespace-nowrap"
-                    style={{
-                      top: `${msg.top}%`,
-                      right: '-100%',
-                      textShadow: '2px 2px 4px rgba(0,0,0,0.8), -1px -1px 2px rgba(0,0,0,0.5)',
-                      color: '#FFFFFF',
-                      fontWeight: 600,
-                      fontSize: '1.1rem',
-                      animation: `fly-across ${msg.duration}s linear forwards`,
-                    }}
-                  >
-                    <span style={{ color: THEME.primary }}>{msg.playerName}:</span> {msg.message}
-                  </div>
-                ))}
-              </div>
+               {/* Flying chat messages (niconico-style) */}
+               <div className="absolute inset-0 pointer-events-none overflow-hidden">
+                 {flyingMessages.map(msg => (
+                   <div
+                     key={msg.id}
+                     className="absolute whitespace-nowrap"
+                     style={{
+                       top: `${msg.top}%`,
+                       right: '-100%',
+                       textShadow: '2px 2px 4px rgba(0,0,0,0.8), -1px -1px 2px rgba(0,0,0,0.5)',
+                       color: '#FFFFFF',
+                       fontWeight: 600,
+                       fontSize: '1.1rem',
+                       animation: `fly-across ${msg.duration}s linear forwards`,
+                     }}
+                   >
+                     <span style={{ color: THEME.primary }}>{msg.playerName}:</span> {msg.message}
+                   </div>
+                 ))}
+               </div>
+
+               {/* Flying cards */}
+               <div className="absolute inset-0 pointer-events-none overflow-hidden z-10">
+                 {flyingCards.map(card => (
+                   <div
+                     key={card.id}
+                     className="absolute"
+                     style={{
+                       left: card.fromX,
+                       top: card.fromY,
+                       transform: card.animate ? `translate(${card.toX - card.fromX}px, ${card.toY - card.fromY}px)` : 'translate(0,0)',
+                       transition: `transform ${card.duration}s linear`,
+                       zIndex: 10,
+                     }}
+                   >
+                     <CardDisplay card={card.card} size="sm" />
+                   </div>
+                 ))}
+               </div>
 
               {/* Chat input overlay */}
               {showChatOverlay && (
