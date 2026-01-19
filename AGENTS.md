@@ -1,6 +1,6 @@
 # Agent Session Notes
 
-## Version: v2026.1.19
+## Version: v2026.1.19.2
 
 ### Overview
 Chess Clock UNO - Real-time multiplayer UNO with chess clock mechanics, keyboard controls, and niconico-style flying chat.
@@ -30,10 +30,11 @@ Chess Clock UNO - Real-time multiplayer UNO with chess clock mechanics, keyboard
 - Keybinds help displayed at bottom of game screen (desktop only)
 
 #### Flying Chat (Niconico-style)
-- Messages fly across the screen right-to-left like niconico/bilibili
+- Messages fly across the screen right-to-left within game table area like niconico/bilibili
 - Press `/` to open floating chat input overlay
 - Messages visible without scrolling down
-- Dynamic animation duration based on screen width (~200px/s speed)
+- Start at `right: -100%` (completely off-screen), travel full viewport width
+- Dynamic animation duration based on game table width (~350px/s for faster, niconico-like speed)
 - Own messages appear instantly (optimistic UI, no server round-trip delay)
 - Original ChatDrawer still available at bottom
 
@@ -46,6 +47,11 @@ Chess Clock UNO - Real-time multiplayer UNO with chess clock mechanics, keyboard
 #### Range Slider Fix
 - Added `step={1}` and `Math.round()` for proper integer rounding
 
+#### Color Picker Keyboard Shortcuts
+- Press `1-4` to quickly select red, yellow, green, or blue when color picker is open
+- `Escape` cancels color selection
+- Keyboard shortcuts displayed on color buttons
+
 #### Timeout Behavior Update
 - Timed-out players marked as disconnected (unplayable) instead of ending game immediately
 - Game continues until only one active player remains
@@ -55,6 +61,13 @@ Chess Clock UNO - Real-time multiplayer UNO with chess clock mechanics, keyboard
 #### AI Hesitation
 - AI players now hesitate 1-3 seconds normally, with 20% chance for extra 2-5 seconds delay
 - Makes AI behavior more human-like and less predictable
+
+#### Autoscroll & Carousel Fixes
+- **Hand Autoscroll**: Selected card automatically centered in view using `scrollIntoView({ inline: 'center' })`
+- **Opponent Carousel Autoscroll**: Active player's hand automatically centered in view
+- **Timer Carousel Autoscroll**: Active player's clock automatically centered in view with 100ms delay for DOM rendering
+- **Carousel Clipping Fix**: Removed `justify-center` from overflow containers to prevent left-side clipping when scrolling
+- **Carousel Padding**: Added 8rem horizontal padding to ensure proper scroll range without clipping
 
 #### Deployment
 - Added `flake.nix` for Nix-based builds and Docker images
@@ -102,7 +115,8 @@ ccu.vc/
 
 #### Layout Components
 - `OpponentHand`: Fanned card backs (up to 12 visible) with player info
-- `HandArea`: Player's hand with drag-to-play and keyboard selection
+- `OpponentCarousel`: Horizontal carousel of opponent hands with autoscroll to active player
+- `HandArea`: Player's hand with drag-to-play, keyboard selection, and autoscroll to selected card
 - `ColorPickerModal`: Wild card color selection (overlay)
 - `ErrorMessage`: Floating toast notification
 - `ChatDrawer`: Collapsible room chat
@@ -117,17 +131,18 @@ ccu.vc/
 | `←` `→` | Select card in hand |
 | `↑` or `Enter` | Play selected card |
 | `↓` or `Space` | Draw card |
+| `1-4` | Choose wild card color (when color picker is open) |
 | `/` | Open chat input |
-| `Escape` | Close chat input |
+| `Escape` | Close color picker or chat input |
 
 ### CSS Animations Added
 ```css
 /* Flying chat message animation (niconico-style) */
 @keyframes fly-across {
   0% { transform: translateX(0); }
-  100% { transform: translateX(calc(-100% - 100vw)); }
+  100% { transform: translateX(calc(-100vw - 100%)); }
 }
-/* Duration set dynamically via inline styles: (screenWidth + 300) / 200 seconds */
+/* Duration set dynamically via inline styles: (gameTableWidth + 300) / 350 seconds */
 ```
 
 ### How to Run
@@ -180,6 +195,8 @@ sendChat: (actionId, message, callback?) => void
 - URL params cleaned after processing to keep URLs clean
 - Mobile breakpoint uses Tailwind's `md:` prefix (768px)
 - Keyboard controls only active when not typing in input fields
-- Flying message duration calculated as `(screenWidth + 300) / 200` seconds for consistent speed
+- Flying message duration calculated as `(gameTableWidth + 300) / 350` seconds for faster, niconico-like speed
 - Own flying messages shown immediately via optimistic UI (no server round-trip)
 - Opponent cards capped at 12 visible for performance
+- Autoscroll uses `scrollIntoView({ inline: 'center', block: 'nearest' })` for reliable centering
+- Carousel containers use explicit `paddingLeft`/`paddingRight` instead of `justify-center` to prevent overflow clipping

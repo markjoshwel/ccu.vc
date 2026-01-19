@@ -290,12 +290,12 @@ type ChatMessage = {
 **Game UI Components:**
 - `ChessClock` - Large clock with M:SS.cc format, urgency effects
 - `ClockChip` - Compact clock for carousel display
-- `ChessClockBar` - Horizontal carousel of all player clocks
+- `ChessClockBar` - Horizontal carousel of all player clocks with autoscroll to active player
 - `CardDisplay` - UNO Minimalista styled card
 - `CardBack` - Card back for opponent hands
-- `OpponentHand` - Fanned card backs (up to 12 visible)
-- `HandArea` - Player's hand with drag-to-play and keyboard selection
-- `ColorPickerModal` - Wild card color selection overlay
+- `OpponentHand` - Fanned card backs (up to 12 visible) with autoscroll to active player
+- `HandArea` - Player's hand with drag-to-play, keyboard selection, and autoscroll to selected card
+- `ColorPickerModal` - Wild card color selection overlay with keyboard shortcuts (1-4)
 - `ChatDrawer` - Collapsible room chat at bottom
 - `GameFinishedOverlay` - Game over modal with result
 
@@ -332,14 +332,17 @@ STORAGE_KEYS = {
 | `←` `→` | Select card in hand |
 | `↑` or `Enter` | Play selected card |
 | `↓` or `Space` | Draw card |
-| `/` | Open chat input overlay |
-| `Escape` | Close chat input |
+| `1-4` | Choose wild card color (when color picker is open) |
+| `/` | Open chat input |
+| `Escape` | Close color picker or chat input |
 
 ### Flying Chat (Niconico-style)
 
-- Messages fly across screen right-to-left
+- Messages fly across screen right-to-left within game table area
+- Start position: `right: -100%` (completely off-screen to right)
+- End position: off-screen left, traveling full viewport width
 - Random vertical position (10-70% from top)
-- Dynamic duration: `(screenWidth + 300) / 200` seconds (~200px/s for consistent speed)
+- Dynamic duration: `(gameTableWidth + 300) / 350` seconds (~350px/s for faster, niconico-like speed)
 - Own messages appear instantly (optimistic UI, no server round-trip delay)
 - Other players' messages appear when received from server
 - Removed from DOM 500ms after animation completes
@@ -480,4 +483,6 @@ docker-compose up -d
 5. **Mobile-first**: Touch-friendly tap-to-select, drag-to-play optional
 6. **UNO Minimalista style**: Clean, minimal card design with thin fonts
 7. **Material Design 3**: Dark theme color palette
-8. **Keyboard controls**: Desktop users can play without mouse
+8. **Keyboard controls**: Desktop users can play without mouse, including wild card color selection
+9. **Autoscroll behavior**: Active player/carousel and selected card automatically centered in view using `scrollIntoView({ inline: 'center' })` with multiple scroll attempts for timing reliability
+10. **Carousel padding**: Horizontal padding (8rem) prevents clipping while allowing full scroll range, no `justify-center` on overflow containers to avoid rendering bugs

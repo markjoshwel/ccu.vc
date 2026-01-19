@@ -838,11 +838,7 @@ function OpponentCarousel({ players, currentPlayerIndex, interpolatedTime }: Opp
     const activeOpponent = container.querySelector(`[data-player-id="${currentPlayerId}"]`) as HTMLElement;
     if (!activeOpponent) return;
     
-    const containerRect = container.getBoundingClientRect();
-    const activeRect = activeOpponent.getBoundingClientRect();
-    
-    const scrollLeft = container.scrollLeft + (activeRect.left + activeRect.width / 2 - containerRect.left - containerRect.width / 2);
-    container.scrollTo({ left: scrollLeft, behavior: 'smooth' });
+    activeOpponent.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
   }, [currentPlayerId]);
 
   useEffect(() => {
@@ -864,7 +860,11 @@ function OpponentCarousel({ players, currentPlayerIndex, interpolatedTime }: Opp
   return (
     <div 
       ref={containerRef}
-      className="flex justify-center gap-2 md:gap-6 pt-2 pb-1 px-2 md:px-4 overflow-x-auto overflow-y-visible scrollbar-hide"
+      className="flex gap-2 md:gap-6 pt-2 pb-1 overflow-x-auto overflow-y-visible scrollbar-hide"
+      style={{ 
+        paddingLeft: '8rem',
+        paddingRight: '8rem',
+      }}
     >
       {players.map((player) => {
         const playerIdx = players.findIndex((p) => p.id === player.id);
@@ -891,12 +891,28 @@ interface ColorPickerModalProps {
 }
 
 function ColorPickerModal({ onSelect, onCancel }: ColorPickerModalProps) {
-  const colors: Array<{ name: 'red' | 'yellow' | 'green' | 'blue'; bg: string; text: string }> = [
-    { name: 'red', bg: THEME.cardRed, text: '#FFFFFF' },
-    { name: 'yellow', bg: THEME.cardYellow, text: '#1C1B1F' },
-    { name: 'green', bg: THEME.cardGreen, text: '#FFFFFF' },
-    { name: 'blue', bg: THEME.cardBlue, text: '#FFFFFF' },
+  const colors: Array<{ name: 'red' | 'yellow' | 'green' | 'blue'; bg: string; text: string; key: string }> = [
+    { name: 'red', bg: THEME.cardRed, text: '#FFFFFF', key: '1' },
+    { name: 'yellow', bg: THEME.cardYellow, text: '#1C1B1F', key: '2' },
+    { name: 'green', bg: THEME.cardGreen, text: '#FFFFFF', key: '3' },
+    { name: 'blue', bg: THEME.cardBlue, text: '#FFFFFF', key: '4' },
   ];
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onCancel();
+      } else if (e.key >= '1' && e.key <= '4') {
+        const color = colors[parseInt(e.key) - 1];
+        if (color) {
+          onSelect(color.name);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [colors, onSelect, onCancel]);
 
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -915,10 +931,11 @@ function ColorPickerModal({ onSelect, onCancel }: ColorPickerModalProps) {
             <button
               key={color.name}
               onClick={() => onSelect(color.name)}
-              className="py-8 rounded-xl font-bold text-lg capitalize shadow-lg
+              className="py-8 rounded-xl font-bold text-lg capitalize shadow-lg relative
                          transform transition-all duration-150 hover:scale-105 hover:shadow-xl active:scale-95"
               style={{ backgroundColor: color.bg, color: color.text }}
             >
+              <span className="absolute top-1 left-2 text-xs opacity-70">{color.key}</span>
               {color.name}
             </button>
           ))}
@@ -1028,9 +1045,10 @@ interface ClockChipProps {
   isActive: boolean;
   playerName: string;
   isMe: boolean;
+  'data-player-id'?: string;
 }
 
-function ClockChip({ timeMs, isActive, playerName, isMe }: ClockChipProps) {
+function ClockChip({ timeMs, isActive, playerName, isMe, 'data-player-id': dataPlayerId }: ClockChipProps) {
   const criticalThreshold = 10000; // 10 seconds
   const urgentThreshold = 30000; // 30 seconds
   const isCritical = timeMs < criticalThreshold;
@@ -1044,6 +1062,7 @@ function ClockChip({ timeMs, isActive, playerName, isMe }: ClockChipProps) {
   
   return (
     <div 
+      data-player-id={dataPlayerId}
       className={`flex flex-col items-center px-3 py-2 rounded-xl transition-all duration-300 flex-shrink-0
                   ${isActive ? 'scale-110 z-10' : 'scale-95'}`}
       style={{ 
@@ -1119,15 +1138,22 @@ function ChessClockBar({ players, currentPlayerId, interpolatedTime, myPlayerId 
     const activeChip = container.querySelector(`[data-player-id="${currentPlayerId}"]`) as HTMLElement;
     if (!activeChip) return;
     
-    const containerRect = container.getBoundingClientRect();
-    const activeRect = activeChip.getBoundingClientRect();
-    
-    const scrollLeft = container.scrollLeft + (activeRect.left + activeRect.width / 2 - containerRect.left - containerRect.width / 2);
-    container.scrollTo({ left: scrollLeft, behavior: 'smooth' });
+    activeChip.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
   }, [currentPlayerId]);
 
   useEffect(() => {
-    scrollToCenter();
+    // Use multiple attempts to ensure DOM is fully rendered before scrolling
+    const rafId1 = requestAnimationFrame(() => {
+      scrollToCenter();
+    });
+    const timeoutId = setTimeout(() => {
+      scrollToCenter();
+    }, 150);
+    
+    return () => {
+      cancelAnimationFrame(rafId1);
+      clearTimeout(timeoutId);
+    };
   }, [currentPlayerId, scrollToCenter]);
 
   // Always center when container resizes
@@ -1145,8 +1171,12 @@ function ChessClockBar({ players, currentPlayerId, interpolatedTime, myPlayerId 
   return (
     <div 
       ref={containerRef}
-      className="flex justify-center items-center gap-2 py-2 md:py-3 px-2 md:px-4 overflow-x-auto scrollbar-hide"
-      style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)' }}
+      className="flex items-center gap-2 py-2 md:py-3 overflow-x-auto scrollbar-hide"
+      style={{ 
+        backgroundColor: 'rgba(0, 0, 0, 0.4)',
+        paddingLeft: '8rem',
+        paddingRight: '8rem',
+      }}
     >
       {players.map((player) => (
         <ClockChip
@@ -1459,6 +1489,24 @@ function HandArea({
 }: HandAreaProps) {
   const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
   const [isOverDiscard, setIsOverDiscard] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
+
+  // Autoscroll to selected card
+  useEffect(() => {
+    if (selectedCardIndex === null || !containerRef.current) return;
+    
+    const cardElement = cardRefs.current[selectedCardIndex];
+    if (!cardElement) return;
+    
+    const container = containerRef.current;
+    const containerRect = container.getBoundingClientRect();
+    const cardRect = cardElement.getBoundingClientRect();
+    
+    // Calculate scroll position to center the card with some padding
+    const scrollLeft = container.scrollLeft + (cardRect.left + cardRect.width / 2 - containerRect.left - containerRect.width / 2);
+    container.scrollTo({ left: scrollLeft, behavior: 'smooth' });
+  }, [selectedCardIndex, cards.length]);
 
   const [springs, api] = useSprings(cards.length, () => ({
     x: 0,
@@ -1531,10 +1579,10 @@ function HandArea({
   };
 
   return (
-    <div className="py-2 md:py-4 overflow-x-auto scrollbar-hide">
+    <div className="py-2 md:py-4 overflow-x-auto scrollbar-hide" ref={containerRef}>
       {/* Fanned hand display */}
       <div 
-        className="flex justify-center items-end"
+        className="flex justify-center items-end px-8"
         style={{ minHeight: 100 }}
       >
         {cards.map((card, index) => {
@@ -1558,6 +1606,7 @@ function HandArea({
           return (
             <animated.div
               key={index}
+              ref={(el) => { cardRefs.current[index] = el; }}
               {...bind(card, index)}
               style={{
                 x: springs[index].x,
@@ -1687,6 +1736,7 @@ function App() {
   const [pendingWildCard, setPendingWildCard] = useState<Card | null>(null);
 
   const discardRef = useRef<HTMLDivElement>(null);
+  const gameTableRef = useRef<HTMLDivElement>(null);
 
   const reducedMotion = useReducedMotion();
   const interpolatedTime = useClockInterpolation(clockSync, reducedMotion);
@@ -1970,9 +2020,10 @@ function App() {
     
     const messageId = flyingMessageIdRef.current++;
     const randomTop = 10 + Math.random() * 60; // Random position 10-70% from top
-    // Calculate duration based on screen width: ~200px/s for readable speed
+    // Calculate duration based on game table width: ~350px/s for faster speed
     // Message travels from right edge to left edge + its own width (estimate ~300px for message)
-    const duration = (window.innerWidth + 300) / 200;
+    const gameTableWidth = gameTableRef.current?.clientWidth || window.innerWidth;
+    const duration = (gameTableWidth + 300) / 350;
     
     setFlyingMessages(prev => [...prev, {
       id: messageId,
@@ -2201,8 +2252,9 @@ function App() {
       if (room?.gameStatus === 'playing') {
         const messageId = flyingMessageIdRef.current++;
         const randomTop = 10 + Math.random() * 60;
-        // Calculate duration based on screen width: ~200px/s for readable speed
-        const duration = (window.innerWidth + 300) / 200;
+        // Calculate duration based on game table width: ~350px/s for faster speed
+        const gameTableWidth = gameTableRef.current?.clientWidth || window.innerWidth;
+        const duration = (gameTableWidth + 300) / 350;
         
         setFlyingMessages(prev => [...prev, {
           id: messageId,
@@ -2566,6 +2618,7 @@ function App() {
           {/* Playing - Tabletop View */}
           {room.gameStatus === 'playing' && topCard && (
             <div 
+              ref={gameTableRef}
               className="relative rounded-3xl overflow-hidden flex flex-col"
               style={{ 
                 background: `radial-gradient(ellipse at center, ${THEME.tableFelt} 0%, ${THEME.tableGreen} 100%)`,
