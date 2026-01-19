@@ -26,7 +26,7 @@
         b2n = bun2nix.packages.${system}.default;
         
         # Version from package.json
-        version = "2026.1.19+6-aafe55e";
+        version = "2026.1.19+7-0eb6879";
 
         # Fetch bun dependencies using bun2nix
         bunDeps = b2n.fetchBunDeps {

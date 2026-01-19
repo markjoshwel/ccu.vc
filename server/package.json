@@ -1,6 +1,6 @@
 {
   "name": "server",
-  "version": "2026.1.19+6-aafe55e",
+  "version": "2026.1.19+7-0eb6879",
   "type": "module",
   "scripts": {
     "build": "tsc -p tsconfig.build.json --outDir dist",
