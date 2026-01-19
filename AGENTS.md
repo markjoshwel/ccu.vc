@@ -46,6 +46,16 @@ Chess Clock UNO - Real-time multiplayer UNO with chess clock mechanics, keyboard
 #### Range Slider Fix
 - Added `step={1}` and `Math.round()` for proper integer rounding
 
+#### Timeout Behavior Update
+- Timed-out players marked as disconnected (unplayable) instead of ending game immediately
+- Game continues until only one active player remains
+- Prevents premature game end in multiplayer scenarios
+- 1v1 games still end instantly when one player times out
+
+#### AI Hesitation
+- AI players now hesitate 1-3 seconds normally, with 20% chance for extra 2-5 seconds delay
+- Makes AI behavior more human-like and less predictable
+
 #### Deployment
 - Added `flake.nix` for Nix-based builds and Docker images
 - Added `docker-compose.yml` for container deployment
@@ -149,7 +159,7 @@ docker-compose up -d
 - **340 server tests pass**
 - **956 expect() calls**
 - Client typecheck passes
-- Client builds successfully (~290KB JS)
+- Client builds successfully (~299KB JS)
 
 ### Socket Event Signatures
 ```typescript

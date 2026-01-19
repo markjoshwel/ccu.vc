@@ -116,7 +116,7 @@ waiting -> playing -> finished
 **Win Conditions:**
 - Player plays their last card
 - All other human players disconnect ("last-player-connected")
-- All human players disconnect ("All human players disconnected")
+- All human players disconnect ("Game ended - no active players left")
 
 ### Deck (`server/src/Deck.ts`)
 
@@ -389,13 +389,14 @@ A card can be played if:
 ### Timeout Policy
 
 When a player's clock reaches 0:
-- They automatically draw 1 card
+- They are marked as disconnected (unplayable)
 - Turn advances to next player
-- `timeOut` event emitted with `policy: 'autoDrawAndSkip'`
+- `timeOut` event emitted with `policy: 'playerTimedOut'`
+- Game continues until only one active player remains
 
 ### AI Behavior
 
-AI players (1-2 second "thinking" delay):
+AI players (1-3 second "thinking" delay, occasionally longer for realism):
 1. Find first playable card in hand
 2. For wilds: choose most common color in hand
 3. If no playable card: draw

@@ -162,7 +162,7 @@ const STORAGE_KEYS = {
 
 const DEFAULT_SERVER_URL = 'https://server.ccu.joshwel.co';
 
-type AppView = 'server-config' | 'lobby' | 'room';
+type AppView = 'server-config' | 'lobby' | 'join-room' | 'room';
 
 // Material Design 3-inspired color palette
 const THEME = {
@@ -709,13 +709,13 @@ function CardBack({ size = 'sm', rotation = 0, style }: CardBackProps) {
       }}
       className="flex items-center justify-center"
     >
-      {/* UNO back design - simple oval */}
+      {/* CCU back design - simple oval */}
       <div 
         style={{
           width: width * 0.7,
           height: height * 0.5,
           borderRadius: '50%',
-          border: '2px solid #E53935',
+          border: `2px solid ${THEME.primary}`,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -726,11 +726,11 @@ function CardBack({ size = 'sm', rotation = 0, style }: CardBackProps) {
             fontFamily: CARD_FONT, 
             fontWeight: 400, 
             fontSize: size === 'xs' ? '6px' : size === 'sm' ? '8px' : '10px',
-            color: '#E53935',
+            color: THEME.primary,
             letterSpacing: '0.1em',
           }}
         >
-          UNO
+          CCU
         </span>
       </div>
     </div>
@@ -815,6 +815,72 @@ function OpponentHand({ cardCount, position, playerName, isActive, timeRemaining
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+// Carousel of opponents
+interface OpponentCarouselProps {
+  players: Array<PlayerPublic | PlayerPrivate>;
+  currentPlayerIndex: number | undefined;
+  interpolatedTime: Record<string, number>;
+}
+
+function OpponentCarousel({ players, currentPlayerIndex, interpolatedTime }: OpponentCarouselProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const currentPlayerId = currentPlayerIndex !== undefined ? players[currentPlayerIndex]?.id : undefined;
+
+  const scrollToCenter = useCallback(() => {
+    if (!containerRef.current || !currentPlayerId) return;
+    
+    const container = containerRef.current;
+    const activeOpponent = container.querySelector(`[data-player-id="${currentPlayerId}"]`) as HTMLElement;
+    if (!activeOpponent) return;
+    
+    const containerRect = container.getBoundingClientRect();
+    const activeRect = activeOpponent.getBoundingClientRect();
+    
+    const scrollLeft = container.scrollLeft + (activeRect.left + activeRect.width / 2 - containerRect.left - containerRect.width / 2);
+    container.scrollTo({ left: scrollLeft, behavior: 'smooth' });
+  }, [currentPlayerId]);
+
+  useEffect(() => {
+    scrollToCenter();
+  }, [currentPlayerIndex, scrollToCenter]);
+
+  // Always center when container resizes
+  useEffect(() => {
+    if (!containerRef.current) return;
+    
+    const observer = new ResizeObserver(() => {
+      scrollToCenter();
+    });
+    observer.observe(containerRef.current);
+    
+    return () => observer.disconnect();
+  }, [scrollToCenter]);
+
+  return (
+    <div 
+      ref={containerRef}
+      className="flex justify-center gap-2 md:gap-6 pt-2 pb-1 px-2 md:px-4 overflow-x-auto overflow-y-visible scrollbar-hide"
+    >
+      {players.map((player) => {
+        const playerIdx = players.findIndex((p) => p.id === player.id);
+        const handCount = isPlayerPrivate(player) ? player.hand.length : player.handCount;
+        return (
+          <div key={player.id} data-player-id={player.id}>
+            <OpponentHand
+              cardCount={handCount}
+              position="top"
+              playerName={player.name}
+              isActive={currentPlayerIndex === playerIdx}
+              timeRemaining={interpolatedTime[player.id] || 0}
+            />
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -1044,9 +1110,42 @@ interface ChessClockBarProps {
 }
 
 function ChessClockBar({ players, currentPlayerId, interpolatedTime, myPlayerId }: ChessClockBarProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const scrollToCenter = useCallback(() => {
+    if (!containerRef.current || !currentPlayerId) return;
+    
+    const container = containerRef.current;
+    const activeChip = container.querySelector(`[data-player-id="${currentPlayerId}"]`) as HTMLElement;
+    if (!activeChip) return;
+    
+    const containerRect = container.getBoundingClientRect();
+    const activeRect = activeChip.getBoundingClientRect();
+    
+    const scrollLeft = container.scrollLeft + (activeRect.left + activeRect.width / 2 - containerRect.left - containerRect.width / 2);
+    container.scrollTo({ left: scrollLeft, behavior: 'smooth' });
+  }, [currentPlayerId]);
+
+  useEffect(() => {
+    scrollToCenter();
+  }, [currentPlayerId, scrollToCenter]);
+
+  // Always center when container resizes
+  useEffect(() => {
+    if (!containerRef.current) return;
+    
+    const observer = new ResizeObserver(() => {
+      scrollToCenter();
+    });
+    observer.observe(containerRef.current);
+    
+    return () => observer.disconnect();
+  }, [scrollToCenter]);
+
   return (
     <div 
-      className="flex justify-start md:justify-center items-center gap-2 py-2 md:py-3 px-2 md:px-4 overflow-x-auto scrollbar-hide"
+      ref={containerRef}
+      className="flex justify-center items-center gap-2 py-2 md:py-3 px-2 md:px-4 overflow-x-auto scrollbar-hide"
       style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)' }}
     >
       {players.map((player) => (
@@ -1056,6 +1155,7 @@ function ChessClockBar({ players, currentPlayerId, interpolatedTime, myPlayerId 
           isActive={player.id === currentPlayerId}
           playerName={player.name}
           isMe={player.id === myPlayerId}
+          data-player-id={player.id}
         />
       ))}
     </div>
@@ -1493,10 +1593,6 @@ function HandArea({
   );
 }
 
-// ============================================================================
-// Main App Component
-// ============================================================================
-
 // Helper to get initial params from URL
 function getInitialUrlParams(): { 
   serverUrl: string; 
@@ -1537,7 +1633,11 @@ function App() {
   const [connectionError, setConnectionError] = useState('');
 
   // State - skip config if we have a server from URL or storage
-  const [view, setView] = useState<AppView>(initialParams.serverSource !== 'none' ? 'lobby' : 'server-config');
+  const [view, setView] = useState<AppView>(() => {
+    if (initialParams.serverSource === 'none') return 'server-config';
+    if (initialParams.roomCode) return 'join-room';
+    return 'lobby';
+  });
   const [displayName, setDisplayName] = useState('');
   const [joinRoomCode, setJoinRoomCode] = useState(initialParams.roomCode || '');
   const [avatarId, setAvatarId] = useState<string | null>(null);
@@ -1565,6 +1665,11 @@ function App() {
   // Room settings
   const [maxPlayers, setMaxPlayers] = useState(6);
   const [aiPlayerCount, setAiPlayerCount] = useState(0);
+
+  // Clamp AI count when max players changes
+  useEffect(() => {
+    setAiPlayerCount(prev => Math.min(prev, Math.min(9, maxPlayers - 1)));
+  }, [maxPlayers]);
 
   const [socket, setSocket] = useState<Socket<ServerToClientEvents, ClientToServerEvents> | null>(
     null
@@ -1651,6 +1756,14 @@ function App() {
       sock.on('error', (message) => {
         setError(message);
         setLoading(false);
+      });
+
+      sock.on('timeOut', (data) => {
+        if (data.policy === 'gameEnd') {
+          // Immediately end the game locally for instant feedback
+          setRoom(prev => prev ? { ...prev, gameStatus: 'finished', gameEndedReason: `${data.playerId} ran out of time` } : null);
+        }
+        // For 'playerTimedOut', let gameStateUpdate handle the disconnected state
       });
     },
     []
@@ -2339,9 +2452,27 @@ function App() {
               >
                 Chess Clock UNO
               </h1>
-              <p className="text-sm" style={{ color: THEME.onSurfaceVariant }}>
-                Room: <span className="font-mono" style={{ color: THEME.primary }}>{room.id}</span>
-              </p>
+              <div className="flex items-center gap-2">
+                <p className="text-sm" style={{ color: THEME.onSurfaceVariant }}>
+                  Room: <span className="font-mono" style={{ color: THEME.primary }}>{room.id}</span>
+                </p>
+                <button
+                  onClick={async () => {
+                    const link = `${window.location.origin}?server=${encodeURIComponent(serverUrl)}&room=${room.id}`;
+                    try {
+                      await navigator.clipboard.writeText(link);
+                      setError('Link copied to clipboard!');
+                      setTimeout(() => setError(''), 2000);
+                    } catch (err) {
+                      setError('Failed to copy link');
+                    }
+                  }}
+                  className="px-2 py-1 text-xs font-medium rounded transition-colors hover:opacity-80"
+                  style={{ backgroundColor: THEME.surfaceContainerHigh, color: THEME.onSurface }}
+                >
+                  Copy Link
+                </button>
+              </div>
             </div>
             <button
               onClick={handleLeave}
@@ -2459,23 +2590,11 @@ function App() {
               />
 
               {/* Opponents at top */}
-              <div className="flex justify-center gap-2 md:gap-6 pt-2 pb-1 px-2 md:px-4 overflow-x-auto overflow-y-visible scrollbar-hide">
-                {allPlayers
-                  .filter((p) => p.id !== myPlayerId)
-                  .map((player) => {
-                    const playerIdx = allPlayers.findIndex((p) => p.id === player.id);
-                    return (
-                      <OpponentHand
-                        key={player.id}
-                        cardCount={getPlayerHandCount(player)}
-                        position="top"
-                        playerName={player.name}
-                        isActive={room.currentPlayerIndex === playerIdx}
-                        timeRemaining={interpolatedTime[player.id] || 0}
-                      />
-                    );
-                  })}
-              </div>
+              <OpponentCarousel 
+                players={allPlayers.filter((p) => p.id !== myPlayerId)}
+                currentPlayerIndex={room.currentPlayerIndex}
+                interpolatedTime={interpolatedTime}
+              />
 
               {/* Center play area */}
               <div className="flex-1 flex items-center justify-center py-4 md:py-8">
@@ -2686,6 +2805,180 @@ function App() {
             onSend={handleSendChat}
             isPending={isPending}
           />
+        </div>
+      </div>
+    );
+  }
+
+  // Join Room View (from link)
+  if (view === 'join-room') {
+    return (
+      <div 
+        className="min-h-screen flex items-center justify-center p-4"
+        style={{ backgroundColor: THEME.surfaceDim }}
+      >
+        <div className="max-w-md w-full">
+          <div className="text-center mb-8">
+            <h1 
+              className="text-4xl font-bold mb-2"
+              style={{ color: THEME.onSurface, fontFamily: CARD_FONT }}
+            >
+              Join Room
+            </h1>
+            <p style={{ color: THEME.onSurfaceVariant }}>Enter your details to join the game</p>
+          </div>
+
+          <div 
+            className="rounded-2xl p-6 shadow-2xl border"
+            style={{ backgroundColor: THEME.surfaceContainer, borderColor: THEME.outlineVariant }}
+          >
+            {/* Server indicator */}
+            <div 
+              className="flex items-center justify-between mb-4 p-3 rounded-xl"
+              style={{ backgroundColor: THEME.surfaceContainerHigh }}
+            >
+              <div className="flex-1 min-w-0">
+                <p className="text-xs uppercase tracking-wider" style={{ color: THEME.onSurfaceVariant }}>
+                  Joining room on
+                </p>
+                <p 
+                  className="text-sm font-mono truncate" 
+                  style={{ color: THEME.onSurface }}
+                  title={serverUrl}
+                >
+                  {serverUrl.replace(/^https?:\/\//, '')}
+                </p>
+              </div>
+              <button
+                onClick={() => setView('lobby')}
+                className="ml-3 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors hover:opacity-80"
+                style={{ backgroundColor: THEME.surfaceContainerHighest, color: THEME.onSurfaceVariant }}
+              >
+                Back
+              </button>
+            </div>
+
+            <ErrorMessage message={error} onDismiss={() => setError('')} />
+
+            {/* Display Name */}
+            <div className="mb-4">
+              <label 
+                className="block text-sm font-medium mb-2"
+                style={{ color: THEME.onSurface }}
+              >
+                Display Name
+              </label>
+              <input
+                type="text"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                placeholder="Enter your name"
+                className="w-full px-4 py-3 rounded-xl focus:outline-none focus:ring-2 border"
+                style={{ 
+                  backgroundColor: THEME.surfaceContainerHigh,
+                  borderColor: THEME.outlineVariant,
+                  color: THEME.onSurface,
+                }}
+              />
+            </div>
+
+            {/* Avatar */}
+            <div className="mb-6">
+              <label 
+                className="block text-sm font-medium mb-2"
+                style={{ color: THEME.onSurface }}
+              >
+                Avatar (optional)
+              </label>
+
+              {avatarId && (
+                <div 
+                  className="flex items-center gap-3 mb-3 p-3 rounded-xl"
+                  style={{ backgroundColor: `${THEME.cardGreen}22` }}
+                >
+                  <PlayerAvatar avatarId={avatarId} name={displayName || 'You'} size="lg" serverUrl={serverUrl} />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium" style={{ color: THEME.cardGreen }}>Avatar selected</p>
+                  </div>
+                  <button
+                    onClick={() => setAvatarId(null)}
+                    className="hover:opacity-70 transition-opacity"
+                    style={{ color: THEME.onSurfaceVariant }}
+                  >
+                    Remove
+                  </button>
+                </div>
+              )}
+
+              <div className="space-y-3">
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleAvatarUpload(file);
+                  }}
+                  disabled={isUploadingAvatar}
+                  className="w-full text-sm file:mr-4 file:py-2 file:px-4
+                             file:rounded-lg file:border-0 file:text-sm file:font-medium
+                             file:cursor-pointer file:transition-colors"
+                  style={{ color: THEME.onSurfaceVariant }}
+                />
+
+                <div className="flex gap-2">
+                  <input
+                    type="url"
+                    value={avatarUrlInput}
+                    onChange={(e) => setAvatarUrlInput(e.target.value)}
+                    placeholder="https://example.com/avatar.png"
+                    disabled={isUploadingAvatar}
+                    className="flex-1 px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 border"
+                    style={{ 
+                      backgroundColor: THEME.surfaceContainerHigh,
+                      borderColor: THEME.outlineVariant,
+                      color: THEME.onSurface,
+                    }}
+                  />
+                  <button
+                    onClick={handleAvatarUrlSubmit}
+                    disabled={isUploadingAvatar || !avatarUrlInput.trim()}
+                    className="px-4 py-2 text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+                    style={{ backgroundColor: THEME.primary, color: THEME.onPrimary }}
+                  >
+                    {isUploadingAvatar ? '...' : 'Use'}
+                  </button>
+                </div>
+
+                {avatarUploadError && (
+                  <p className="text-sm" style={{ color: THEME.error }}>{avatarUploadError}</p>
+                )}
+              </div>
+            </div>
+
+            {/* Join Room */}
+            <div className="mb-4">
+              <input
+                type="text"
+                value={joinRoomCode}
+                readOnly
+                className="w-full px-4 py-3 rounded-xl font-mono text-center uppercase
+                           tracking-widest bg-gray-100 cursor-not-allowed"
+                style={{ 
+                  backgroundColor: THEME.surfaceContainerHighest,
+                  color: THEME.onSurface,
+                }}
+              />
+            </div>
+
+            <button
+              onClick={handleJoinRoom}
+              disabled={loading || isPending || !displayName.trim()}
+              className="w-full py-3 font-semibold rounded-xl transition-colors disabled:opacity-50"
+              style={{ backgroundColor: THEME.primary, color: THEME.onPrimary }}
+            >
+              {isPending ? 'Joining...' : 'Join Room'}
+            </button>
+          </div>
         </div>
       </div>
     );

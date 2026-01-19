@@ -5519,7 +5519,7 @@ describe('timeout detection', () => {
 
     expect(timeOutCalls).toHaveLength(1);
     expect(timeOutCalls[0].playerId).toBe(playerId1);
-    expect(timeOutCalls[0].policy).toBe('autoDrawAndSkip');
+      expect(timeOutCalls[0].policy).toBe('playerTimedOut');
 
     room.stopClockSync();
   });

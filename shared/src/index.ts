@@ -89,7 +89,7 @@ export type ClockSyncData = {
 
 export type TimeOutEvent = {
   playerId: string;
-  policy: 'autoDrawAndSkip';
+  policy: 'autoDrawAndSkip' | 'gameEnd' | 'playerTimedOut';
 };
 
 export type ChatMessage = {

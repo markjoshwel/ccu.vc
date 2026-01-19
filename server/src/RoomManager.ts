@@ -222,8 +222,11 @@ export class Room {
     if (this.state.gameStatus !== 'playing') return;
     if (!this.isCurrentPlayerAI()) return;
 
-    // AI thinks for 1-2 seconds
-    const delay = 1000 + Math.random() * 1000;
+    // AI thinks for 1-3 seconds, sometimes longer
+    let delay = 1000 + Math.random() * 2000;
+    if (Math.random() < 0.2) { // 20% chance for extra hesitation
+      delay += 2000 + Math.random() * 3000; // +2-5s
+    }
     this.aiMoveTimeoutId = setTimeout(() => {
       this.makeAIMove();
       if (this.onAIMove) {
@@ -355,7 +358,7 @@ export class Room {
     // - Only 1 player total is active (could be 1 human with no AI, or edge case)
     if (connectedHumans === 0) {
       this.state.gameStatus = 'finished';
-      this.state.gameEndedReason = 'All human players disconnected';
+      this.state.gameEndedReason = 'Game ended - no active players left';
       this.updateState();
       this.stopClockSync();
     } else if (activeCount === 1) {
@@ -675,18 +678,15 @@ export class Room {
 
         if (this.timeRemainingMs[activePlayerId] === 0) {
           const player = this.players.get(activePlayerId);
-          if (player && this.deck && !this.deck.isEmpty()) {
-            const drawnCard = this.deck.draw();
-            if (drawnCard) {
-              player.hand.push(drawnCard);
-              this.updateState();
-            }
+          // Mark timed-out player as disconnected (unplayable)
+          if (player) {
+            player.connected = false;
           }
-
+          this.updateState();
           this.advanceTurn();
 
           if (this.onTimeOut) {
-            this.onTimeOut({ playerId: activePlayerId, policy: 'autoDrawAndSkip' });
+            this.onTimeOut({ playerId: activePlayerId, policy: 'playerTimedOut' });
           }
         }
       }
