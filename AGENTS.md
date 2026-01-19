@@ -288,16 +288,18 @@ When releasing changes, follow this workflow:
 3. **Increment version** - Update all version references:
    ```bash
    # Update package.json files (client, server, shared)
-   # Update flake.nix
    # Update shared/src/version.ts fallback
    # Update AGENTS.md version header
    # Update IMPLEMENTATION.md version header
    ```
 
-   Version format: `YYYY.MM.DD+BUILD-<git-hash>`
+   Version format: `YYYY.MM.DD+BUILD-hash` (full format for most files)
    - `YYYY.MM.DD`: Current date
    - `BUILD`: Increment build number (6, 7, 8...)
-   - `<git-hash>`: First 7 chars of commit hash (e.g., `aafe55e`)
+   - `<git-hash>`: First 7 chars of commit hash (e.g., `0eb6879`)
+   - Example: `2026.1.19+7-0eb6879`
+
+   **Exception:** `flake.nix` uses Docker-compatible format `YYYY.MM.DD-BUILD` (no + or hash)
 
 4. **Commit version bump**:
    ```bash
@@ -311,15 +313,15 @@ When releasing changes, follow this workflow:
    ```
 
 **Files to update for version bumps:**
-| File | Location |
-|------|----------|
-| `client/package.json` | `"version": "YYYY.MM.DD+BUILD-hash"` |
-| `server/package.json` | `"version": "YYYY.MM.DD+BUILD-hash"` |
-| `shared/package.json` | `"version": "YYYY.MM.DD+BUILD-hash"` |
-| `flake.nix` | `version = "YYYY.MM.DD+BUILD-hash"` |
-| `shared/src/version.ts` | Fallback string and BUILD_NUMBER default |
-| `AGENTS.md` | `## Version: YYYY.MM.DD+BUILD-hash` |
-| `IMPLEMENTATION.md` | `## Version: YYYY.MM.DD+BUILD-hash` |
+| File | Format | Example |
+|------|--------|---------|
+| `client/package.json` | `YYYY.MM.DD+BUILD-hash` | `2026.1.19+7-0eb6879` |
+| `server/package.json` | `YYYY.MM.DD+BUILD-hash` | `2026.1.19+7-0eb6879` |
+| `shared/package.json` | `YYYY.MM.DD+BUILD-hash` | `2026.1.19+7-0eb6879` |
+| `flake.nix` | `YYYY.MM.DD-BUILD` (Docker) | `2026.1.19-7` |
+| `shared/src/version.ts` | Fallback with `+HASH` | `2026.1.19+7-0eb6879` |
+| `AGENTS.md` | Full `+HASH` format | `2026.1.19+7-0eb6879` |
+| `IMPLEMENTATION.md` | Full `+HASH` format | `2026.1.19+7-0eb6879` |
 
 **Build with version:**
 ```bash
@@ -327,4 +329,6 @@ When releasing changes, follow this workflow:
 bun run build
 ```
 
-The dynamic version tag will display: `YYYY.MM.DD+BUILD-hash` (e.g., `2026.1.19+7-aafe55e`)
+**Version Display:**
+- App footer: `YYYY.MM.DD+BUILD-HASH` (e.g., `2026.1.19+7-0eb6879`)
+- Docker image tag: `YYYY.MM.DD-BUILD` (e.g., `2026.1.19-7`)

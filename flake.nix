@@ -25,8 +25,8 @@
         pkgs = nixpkgs.legacyPackages.${system};
         b2n = bun2nix.packages.${system}.default;
         
-        # Version from package.json
-        version = "2026.1.19+7-0eb6879";
+        # Version from package.json (Docker-compatible format: no + character)
+        version = "2026.1.19-7";
 
         # Fetch bun dependencies using bun2nix
         bunDeps = b2n.fetchBunDeps {
