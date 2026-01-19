@@ -99,12 +99,12 @@ input[type="range"]::-moz-range-thumb:hover {
   }
 }
 
-/* Flying chat message animation (niconico-style) */
+/* Flying chat message animation (niconico-style) - travels full width */
 @keyframes fly-across {
   0% {
     transform: translateX(0);
   }
   100% {
-    transform: translateX(calc(-50vw - 50%));
+    transform: translateX(calc(-100vw - 120%));
   }
 }

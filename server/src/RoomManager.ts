@@ -10,6 +10,7 @@ const DEFAULT_TIME_PER_TURN_MS = 60000;
 const DEFAULT_MAX_PLAYERS = 6;
 const MAX_ROOMS = 1000;
 const ROOM_STALE_TTL_MS = 30 * 60 * 1000; // 30 minutes
+const ROOM_GRACE_PERIOD_MS = 5 * 60 * 1000; // 5 minutes grace period when room becomes empty
 const ROOM_CLEANUP_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 const AI_NAMES = ['Bot Alpha', 'Bot Beta', 'Bot Gamma', 'Bot Delta', 'Bot Epsilon', 'Bot Zeta', 'Bot Eta', 'Bot Theta', 'Bot Iota'];
 
@@ -33,13 +34,14 @@ export class Room {
   onAIMove?: () => void;
   unoWindow?: UnoWindow;
   chatHistory: ChatMessage[];
-   settings: RoomSettings;
-   aiMoveTimeoutId?: ReturnType<typeof setTimeout>;
-   pendingDraws: number;
-   pendingSkips: number;
-   pendingReverses: number;
+  settings: RoomSettings;
+    aiMoveTimeoutId?: ReturnType<typeof setTimeout>;
+    pendingDraws: number;
+    pendingSkips: number;
+    pendingReverses: number;
+    gracePeriodExpiresAt?: number; // Timestamp when grace period ends (5 min after empty)
 
-   constructor(code: RoomCode, settings?: Partial<RoomSettings>) {
+    constructor(code: RoomCode, settings?: Partial<RoomSettings>) {
      this.code = code;
      this.connectedPlayerIds = new Set();
      this.playerSocketMap = new Map();
@@ -48,8 +50,8 @@ export class Room {
       maxPlayers: settings?.maxPlayers ?? DEFAULT_MAX_PLAYERS,
       aiPlayerCount: settings?.aiPlayerCount ?? 0,
       timePerTurnMs: settings?.timePerTurnMs ?? DEFAULT_TIME_PER_TURN_MS,
-      stackingMode: settings?.stackingMode ?? 'none',
-      jumpInMode: settings?.jumpInMode ?? 'none',
+      stackingMode: settings?.stackingMode ?? [],
+      jumpInMode: settings?.jumpInMode ?? [],
       drawMode: settings?.drawMode ?? 'single'
     };
     this.pendingDraws = 0;
@@ -73,13 +75,30 @@ export class Room {
    }
 
   isStackable(card: Card): boolean {
-    if (this.settings.stackingMode === 'plus_same' || this.settings.stackingMode === 'plus_any') {
-      return card.value === 'draw2' || card.value === 'wild_draw4';
+    const topCard = this.discardPile[this.discardPile.length - 1];
+    if (!topCard) return false;
+
+    const effectiveColor = this.activeColor || topCard.color;
+
+    for (const mode of this.settings.stackingMode) {
+      switch (mode) {
+        case 'colors':
+          if (card.color === effectiveColor) return true;
+          break;
+        case 'numbers':
+          if (card.value === topCard.value) return true;
+          break;
+        case 'plus_same':
+          if ((card.value === 'draw2' || card.value === 'wild_draw4') && card.value === topCard.value) return true;
+          break;
+        case 'plus_any':
+          if (card.value === 'draw2' || card.value === 'wild_draw4') return true;
+          break;
+        case 'skip_reverse':
+          if ((card.value === 'skip' || card.value === 'reverse') && card.value === topCard.value) return true;
+          break;
+      }
     }
-    if (this.settings.stackingMode === 'skip_reverse') {
-      return card.value === 'skip' || card.value === 'reverse';
-    }
-    // TODO: implement other stacking modes (colors, numbers, etc.)
     return false;
   }
 
@@ -100,19 +119,19 @@ export class Room {
 
   canJumpIn(card: Card, playerId: string): boolean {
     if (this.state.gameStatus !== 'playing') return false;
-    if (this.settings.jumpInMode === 'none') return false;
 
     const topCard = this.discardPile[this.discardPile.length - 1];
     if (!topCard) return false;
 
-    // Jump-in for exact matches
-    if (this.settings.jumpInMode === 'exact' || this.settings.jumpInMode === 'both') {
-      if (card.color === topCard.color && card.value === topCard.value) return true;
-    }
-
-    // Jump-in for power cards
-    if (this.settings.jumpInMode === 'power' || this.settings.jumpInMode === 'both') {
-      if (['skip', 'reverse', 'draw2', 'wild', 'wild_draw4'].includes(card.value)) return true;
+    for (const mode of this.settings.jumpInMode) {
+      switch (mode) {
+        case 'exact':
+          if (card.color === topCard.color && card.value === topCard.value) return true;
+          break;
+        case 'power':
+          if (['skip', 'reverse', 'draw2', 'wild', 'wild_draw4'].includes(card.value)) return true;
+          break;
+      }
     }
 
     return false;
@@ -160,6 +179,14 @@ export class Room {
         this.playerSocketMap.delete(playerId);
       }
     }
+
+    // Check if room now has no connected humans (excluding AI)
+    const connectedHumans = Array.from(this.players.values()).filter(p => !p.isAI && p.connected).length;
+    if (connectedHumans === 0 && this.state.gameStatus === 'waiting') {
+      // Set grace period for reconnection (5 minutes)
+      this.gracePeriodExpiresAt = Date.now() + ROOM_GRACE_PERIOD_MS;
+    }
+
     this.updateState();
   }
 
@@ -821,16 +848,18 @@ export class RoomManager {
 
   private cleanupStaleRooms(): void {
     const now = Date.now();
-    
+
     for (const [code, room] of this.rooms) {
       // Count connected humans (AI don't count for keeping room alive)
       const connectedHumans = Array.from(room.players.values()).filter(p => !p.isAI && p.connected).length;
-      
-      // Room is stale if: no humans connected AND (room is old OR game is finished)
+
+      // Room is stale if: no humans connected AND (room is old OR grace period expired)
+      const isGracePeriodExpired = room.gracePeriodExpiresAt && now > room.gracePeriodExpiresAt;
       const isStaleAndEmpty = connectedHumans === 0 && (now - room.state.createdAt > ROOM_STALE_TTL_MS);
       const isFinishedAndEmpty = room.state.gameStatus === 'finished' && connectedHumans === 0;
-      
-      if (isStaleAndEmpty || isFinishedAndEmpty) {
+
+      // Don't delete if still in grace period
+      if (!isGracePeriodExpired && (isStaleAndEmpty || isFinishedAndEmpty)) {
         this.removeRoom(code);
       }
     }
@@ -897,17 +926,21 @@ export class RoomManager {
     if (!room) {
       return null;
     }
-    
+
     const player = room.getPlayer(playerId);
     if (!player) {
       return null;
     }
-    
+
     if (player.secret !== playerSecret) {
       return null;
     }
-    
+
     room.addPlayer(socketId, player);
+
+    // Clear grace period on successful reconnection
+    room.gracePeriodExpiresAt = undefined;
+
     return room;
   }
 

@@ -18,6 +18,8 @@ import type {
   DrawMode
 } from 'shared';
 
+import { APP_VERSION } from 'shared';
+
 // ============================================================================
 // Error Boundary
 // ============================================================================
@@ -824,9 +826,9 @@ function OpponentHand({ cardCount, position, playerName, avatarId, isActive, tim
           {formatTimeCompact(timeRemaining)}
         </span>
       </div>
-      
+
       {/* Fanned cards - similar to player's hand */}
-      <div 
+      <div
         className="flex justify-center items-end px-2"
         style={{ minHeight: 56, paddingTop: 4 }}
       >
@@ -872,7 +874,6 @@ function OpponentHand({ cardCount, position, playerName, avatarId, isActive, tim
   );
 }
 
-// Carousel of opponents
 interface OpponentCarouselProps {
   players: Array<PlayerPublic | PlayerPrivate>;
   currentPlayerId: string | undefined;
@@ -1528,6 +1529,7 @@ interface HandAreaProps {
   reducedMotion: boolean;
   selectedCardIndex: number | null;
   onSelectedCardIndexChange: (index: number | null) => void;
+  cardRefs?: React.MutableRefObject<(HTMLDivElement | null)[]>;
 }
 
 function HandArea({
@@ -1538,18 +1540,19 @@ function HandArea({
   discardRef,
   reducedMotion,
   selectedCardIndex,
-  onSelectedCardIndexChange
+  onSelectedCardIndexChange,
+  cardRefs
 }: HandAreaProps) {
   const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
   const [isOverDiscard, setIsOverDiscard] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-  const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const localCardRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   // Autoscroll to selected card
   useEffect(() => {
     if (selectedCardIndex === null || !containerRef.current) return;
     
-    const cardElement = cardRefs.current[selectedCardIndex];
+    const cardElement = localCardRefs.current[selectedCardIndex];
     if (!cardElement) return;
     
     const container = containerRef.current;
@@ -1617,9 +1620,12 @@ function HandArea({
 
           if (wasOver) {
             onPlayCard(card, index);
+            // Don't clear selection after successful play - let turn change handle it
+            return;
           }
         }
 
+        // Only clear selection if not playing a card
         onSelectedCardIndexChange(null);
       }
     },
@@ -1632,7 +1638,7 @@ function HandArea({
   };
 
   return (
-    <div className="py-2 md:py-4 overflow-visible scrollbar-hide" ref={containerRef}>
+    <div className="py-2 md:py-4 overflow-visible scrollbar-hide relative" ref={containerRef}>
       {/* Fanned hand display */}
       <div 
         className="flex justify-center items-end px-8"
@@ -1659,7 +1665,12 @@ function HandArea({
           return (
             <animated.div
               key={index}
-              ref={(el) => { cardRefs.current[index] = el; }}
+              ref={(el) => {
+                localCardRefs.current[index] = el;
+                if (cardRefs) {
+                  cardRefs.current[index] = el;
+                }
+              }}
               {...bind(card, index)}
               style={{
                 x: springs[index].x,
@@ -1669,6 +1680,7 @@ function HandArea({
                 zIndex: draggingIndex === index ? 100 : selectedCardIndex === index ? 50 : index,
                 marginLeft: index === 0 ? 0 : -cardWidth + overlapAmount,
                 transform: `rotate(${angle}deg) translateY(${yOffset}px)`,
+                pointerEvents: draggingIndex === index ? 'auto' : 'none',
               }}
               className="cursor-grab active:cursor-grabbing transition-transform hover:-translate-y-2"
             >
@@ -1764,12 +1776,14 @@ function App() {
     }
   }, []);
 
-  // Room settings
-  const [maxPlayers, setMaxPlayers] = useState(6);
-  const [aiPlayerCount, setAiPlayerCount] = useState(0);
-  const [timePerTurnMs, setTimePerTurnMs] = useState(60000);
-  const [activeTab, setActiveTab] = useState<'settings' | 'rules'>('settings');
-  const [stackingMode, setStackingMode] = useState('none');
+   // Room settings
+   const [maxPlayers, setMaxPlayers] = useState(6);
+   const [aiPlayerCount, setAiPlayerCount] = useState(0);
+   const [timePerTurnMs, setTimePerTurnMs] = useState(60000);
+   const [activeTab, setActiveTab] = useState<'settings' | 'rules'>('settings');
+    const [stackingMode, setStackingMode] = useState<StackingMode>([]);
+    const [jumpInMode, setJumpInMode] = useState<JumpInMode>([]);
+    const [drawMode, setDrawMode] = useState<DrawMode>('single');
 
   // Clamp AI count when max players changes
   useEffect(() => {
@@ -1807,6 +1821,7 @@ function App() {
   const chatInputRef = useRef<HTMLInputElement>(null);
   const flyingMessageIdRef = useRef(0);
   const flyingCardIdRef = useRef(0);
+  const playerCardRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   // Flying cards state
   const [flyingCards, setFlyingCards] = useState<Array<{ id: number; card: Card; fromX: number; fromY: number; toX: number; toY: number; duration: number; animate: boolean }>>([]);
@@ -1817,8 +1832,8 @@ function App() {
   const [draftMaxPlayers, setDraftMaxPlayers] = useState(6);
   const [draftAiPlayerCount, setDraftAiPlayerCount] = useState(0);
   const [draftTimePerTurnMs, setDraftTimePerTurnMs] = useState(60000);
-  const [draftStackingMode, setDraftStackingMode] = useState<StackingMode>('none');
-  const [draftJumpInMode, setDraftJumpInMode] = useState<JumpInMode>('none');
+  const [draftStackingMode, setDraftStackingMode] = useState<StackingMode>([]);
+  const [draftJumpInMode, setDraftJumpInMode] = useState<JumpInMode>([]);
   const [draftDrawMode, setDraftDrawMode] = useState<DrawMode>('single');
 
   // Initialize draft settings when modal opens
@@ -2140,10 +2155,12 @@ function App() {
     }
   }, [handCards.length, selectedCardIndex]);
 
-  // Auto-select first card when turn starts
+  // Auto-select first card when turn starts or hand changes
   useEffect(() => {
-    if (myTurn && selectedCardIndex === null && handCards.length > 0) {
-      setSelectedCardIndex(0);
+    if (myTurn && handCards.length > 0) {
+      if (selectedCardIndex === null || selectedCardIndex >= handCards.length) {
+        setSelectedCardIndex(0);
+      }
     }
   }, [myTurn, selectedCardIndex, handCards.length]);
 
@@ -2161,10 +2178,10 @@ function App() {
     
     const messageId = flyingMessageIdRef.current++;
     const randomTop = 10 + Math.random() * 60; // Random position 10-70% from top
-    // Calculate duration based on game table width: ~350px/s for faster speed
+    // Calculate duration based on game table width: ~200px/s for readable speed
     // Message travels from right edge to left edge + its own width (estimate ~300px for message)
     const gameTableWidth = gameTableRef.current?.clientWidth || window.innerWidth;
-    const duration = (gameTableWidth + 300) / 350;
+    const duration = (gameTableWidth + 300) / 200;
     
     setFlyingMessages(prev => [...prev, {
       id: messageId,
@@ -2190,11 +2207,14 @@ function App() {
     setLoading(true);
     setError('');
 
-    const roomSettings: Partial<RoomSettings> = {
-      maxPlayers,
-      aiPlayerCount,
-      timePerTurnMs
-    };
+     const roomSettings: Partial<RoomSettings> = {
+       maxPlayers,
+       aiPlayerCount,
+       timePerTurnMs,
+       stackingMode,
+       jumpInMode,
+       drawMode
+     };
 
     const newSocket = io(serverUrl);
     setupSocketListeners(newSocket);
@@ -2328,8 +2348,47 @@ function App() {
     setShowSettingsModal(false);
   };
 
-  const handlePlayCard = (card: Card) => {
+   const handlePlayCard = (card: Card) => {
     if (!socket) return;
+
+    // Trigger player card play animation
+    if (gameTableRef.current && discardRef.current && selectedCardIndex !== null) {
+      const tableRect = gameTableRef.current.getBoundingClientRect();
+      const discardRect = discardRef.current.getBoundingClientRect();
+      const handElement = playerCardRefs.current[selectedCardIndex];
+
+      if (handElement) {
+        const handRect = handElement.getBoundingClientRect();
+        const cardId = flyingCardIdRef.current++;
+
+        const fromX = handRect.left - tableRect.left + handRect.width / 2 - 32;
+        const fromY = handRect.top - tableRect.top + handRect.height / 2 - 32;
+        const toX = discardRect.left - tableRect.left + discardRect.width / 2 - 32;
+        const toY = discardRect.top - tableRect.top + discardRect.height / 2 - 32;
+
+        const distance = Math.sqrt((toX - fromX) ** 2 + (toY - fromY) ** 2);
+        const duration = Math.max(0.3, distance / 600);
+
+        setFlyingCards(prev => [...prev, {
+          id: cardId,
+          card: card,
+          fromX,
+          fromY,
+          toX,
+          toY,
+          duration,
+          animate: false
+        }]);
+
+        setTimeout(() => {
+          setFlyingCards(prev => prev.map(c => c.id === cardId ? { ...c, animate: true } : c));
+        }, 0);
+
+        setTimeout(() => {
+          setFlyingCards(prev => prev.filter(c => c.id !== cardId));
+        }, duration * 1000 + 500);
+      }
+    }
 
     if (card.color === 'wild') {
       setPendingWildCard(card);
@@ -2422,11 +2481,11 @@ function App() {
       
       // Immediately show flying message (optimistic UI - no server round-trip delay)
       if (room?.gameStatus === 'playing') {
-    const messageId = flyingMessageIdRef.current++;
-    const randomTop = 10 + Math.random() * 60; // Random position 10-70% from top
-    // Calculate duration based on game table width: ~200px/s for slower speed
-    const gameTableWidth = gameTableRef.current?.clientWidth || window.innerWidth;
-    const duration = (gameTableWidth + 300) / 200;
+        const messageId = flyingMessageIdRef.current++;
+        const randomTop = 10 + Math.random() * 60; // Random position 10-70% from top
+        // Calculate duration based on game table width: ~200px/s for readable speed
+        const gameTableWidth = gameTableRef.current?.clientWidth || window.innerWidth;
+        const duration = (gameTableWidth + 300) / 200;
         
         setFlyingMessages(prev => [...prev, {
           id: messageId,
@@ -2562,11 +2621,11 @@ function App() {
       }
     };
 
-    return (
-      <div 
-        className="min-h-screen flex items-center justify-center p-4"
-        style={{ backgroundColor: THEME.surfaceDim }}
-      >
+  return (
+  <div 
+    className="min-h-screen flex flex-col p-4"
+    style={{ backgroundColor: THEME.surfaceDim }}
+  >
         <div className="max-w-md w-full">
           <div className="text-center mb-8">
             <h1 
@@ -2644,6 +2703,9 @@ function App() {
               </a>
             </div>
           </div>
+          <div className="text-center py-4 text-xs" style={{ color: THEME.onSurfaceVariant }}>
+            Version: {APP_VERSION}
+          </div>
         </div>
       </div>
     );
@@ -2662,10 +2724,10 @@ function App() {
     const activePlayer = allPlayers[activePlayerIndex];
 
     return (
-      <div 
-        className="min-h-screen p-2 md:p-4"
-        style={{ backgroundColor: THEME.surfaceDim }}
-      >
+    <div 
+      className="min-h-screen flex flex-col p-4"
+      style={{ backgroundColor: THEME.surfaceDim }}
+    >
         <div className={room.gameStatus === 'playing' ? 'max-w-5xl mx-auto' : 'max-w-2xl mx-auto'}>
           {/* Header */}
           <div className="flex items-center justify-between mb-3">
@@ -2791,13 +2853,17 @@ function App() {
                 </p>
               )}
 
-              {!isHost && (
-                <p className="text-center" style={{ color: THEME.onSurfaceVariant }}>
-                  Waiting for host to start the game...
-                </p>
-              )}
-             </div>
-           )}
+               {!isHost && (
+                 <p className="text-center" style={{ color: THEME.onSurfaceVariant }}>
+                   Waiting for host to start the game...
+                 </p>
+               )}
+
+               <div className="text-center mt-4 text-xs" style={{ color: THEME.onSurfaceVariant }}>
+                 Version: {APP_VERSION}
+               </div>
+              </div>
+            )}
 
            {/* Settings Modal */}
            {showSettingsModal && (
@@ -2871,52 +2937,148 @@ function App() {
 
                  {modalTab === 'rules' && (
                    <div className="space-y-4">
-                     <div>
-                       <label className="block text-sm mb-2" style={{ color: THEME.onSurfaceVariant }}>Stacking Mode</label>
-                       <select
-                         value={draftStackingMode}
-                         onChange={(e) => setDraftStackingMode(e.target.value as StackingMode)}
-                         className="w-full px-4 py-3 rounded-xl border outline-none"
-                         style={{ backgroundColor: THEME.surfaceContainerHigh, borderColor: THEME.outline, color: THEME.onSurface }}
-                       >
-                         <option value="none">None</option>
-                         <option value="colors">Colors</option>
-                         <option value="numbers">Numbers</option>
-                         <option value="colors-numbers">Colors and Numbers</option>
-                      <option value="plus-same">Plus cards (same denomination)</option>
-                      <option value="plus-any">Plus cards (any denomination)</option>
-                      <option value="skip_reverse">Skip and Reverse</option>
-                         <option value="skip_reverse">Skip and Reverse</option>
-                       </select>
-                     </div>
+                      <div>
+                        <label className="block text-sm mb-2" style={{ color: THEME.onSurfaceVariant }}>Stacking Mode</label>
+                        <div className="space-y-2">
+                          <label className="flex items-center" title="Stack draw cards, skips, and reverses on same color" style={{ color: THEME.onSurface }}>
+                            <input
+                              type="checkbox"
+                              checked={draftStackingMode.includes('colors')}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setDraftStackingMode([...draftStackingMode, 'colors']);
+                                } else {
+                                  setDraftStackingMode(draftStackingMode.filter(m => m !== 'colors'));
+                                }
+                              }}
+                              className="mr-2"
+                            />
+                            Colors
+                          </label>
+                          <label className="flex items-center" title="Stack draw cards, skips, and reverses on same number" style={{ color: THEME.onSurface }}>
+                            <input
+                              type="checkbox"
+                              checked={draftStackingMode.includes('numbers')}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setDraftStackingMode([...draftStackingMode, 'numbers']);
+                                } else {
+                                  setDraftStackingMode(draftStackingMode.filter(m => m !== 'numbers'));
+                                }
+                              }}
+                              className="mr-2"
+                            />
+                            Numbers
+                          </label>
+                          <label className="flex items-center" title="Stack draw cards on same denomination (e.g., +2 on +2)" style={{ color: THEME.onSurface }}>
+                            <input
+                              type="checkbox"
+                              checked={draftStackingMode.includes('plus_same')}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setDraftStackingMode([...draftStackingMode, 'plus_same']);
+                                } else {
+                                  setDraftStackingMode(draftStackingMode.filter(m => m !== 'plus_same'));
+                                }
+                              }}
+                              className="mr-2"
+                            />
+                            Plus (same denomination)
+                          </label>
+                          <label className="flex items-center" title="Stack any draw card on any other draw card" style={{ color: THEME.onSurface }}>
+                            <input
+                              type="checkbox"
+                              checked={draftStackingMode.includes('plus_any')}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setDraftStackingMode([...draftStackingMode, 'plus_any']);
+                                } else {
+                                  setDraftStackingMode(draftStackingMode.filter(m => m !== 'plus_any'));
+                                }
+                              }}
+                              className="mr-2"
+                            />
+                            Plus (any)
+                          </label>
+                          <label className="flex items-center" title="Stack skips and reverses on same type" style={{ color: THEME.onSurface }}>
+                            <input
+                              type="checkbox"
+                              checked={draftStackingMode.includes('skip_reverse')}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setDraftStackingMode([...draftStackingMode, 'skip_reverse']);
+                                } else {
+                                  setDraftStackingMode(draftStackingMode.filter(m => m !== 'skip_reverse'));
+                                }
+                              }}
+                              className="mr-2"
+                            />
+                            <span style={{ color: THEME.onSurface }}>Skip and Reverse</span>
+                          </label>
+                        </div>
+                      </div>
 
-                     <div>
-                       <label className="block text-sm mb-2" style={{ color: THEME.onSurfaceVariant }}>Jump-In Mode</label>
-                       <select
-                         value={draftJumpInMode}
-                         onChange={(e) => setDraftJumpInMode(e.target.value as JumpInMode)}
-                         className="w-full px-4 py-3 rounded-xl border outline-none"
-                         style={{ backgroundColor: THEME.surfaceContainerHigh, borderColor: THEME.outline, color: THEME.onSurface }}
-                       >
-                         <option value="none">None</option>
-                         <option value="exact">Exact matches</option>
-                         <option value="power">Power cards only</option>
-                         <option value="both">Exact matches and power cards</option>
-                       </select>
-                     </div>
+                      <div>
+                        <label className="block text-sm mb-2" style={{ color: THEME.onSurfaceVariant }}>Jump-In Mode</label>
+                        <div className="space-y-2">
+                          <label className="flex items-center" title="Allow jumping in with exact card matches (same color and number)" style={{ color: THEME.onSurface }}>
+                            <input
+                              type="checkbox"
+                              checked={draftJumpInMode.includes('exact')}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setDraftJumpInMode([...draftJumpInMode, 'exact']);
+                                } else {
+                                  setDraftJumpInMode(draftJumpInMode.filter(m => m !== 'exact'));
+                                }
+                              }}
+                              className="mr-2"
+                            />
+                            Exact matches
+                          </label>
+                          <label className="flex items-center" title="Allow jumping in with power cards (skip, reverse, draw, wild)" style={{ color: THEME.onSurface }}>
+                            <input
+                              type="checkbox"
+                              checked={draftJumpInMode.includes('power')}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setDraftJumpInMode([...draftJumpInMode, 'power']);
+                                } else {
+                                  setDraftJumpInMode(draftJumpInMode.filter(m => m !== 'power'));
+                                }
+                              }}
+                              className="mr-2"
+                             />
+                             Colors
+                           </label>
+                        </div>
+                      </div>
 
-                     <div>
-                       <label className="block text-sm mb-2" style={{ color: THEME.onSurfaceVariant }}>Draw Mode</label>
-                       <select
-                         value={draftDrawMode}
-                         onChange={(e) => setDraftDrawMode(e.target.value as DrawMode)}
-                         className="w-full px-4 py-3 rounded-xl border outline-none"
-                         style={{ backgroundColor: THEME.surfaceContainerHigh, borderColor: THEME.outline, color: THEME.onSurface }}
-                       >
-                         <option value="single">Single card</option>
-                         <option value="until_playable">Draw until playable</option>
-                       </select>
-                     </div>
+                      <div>
+                        <label className="block text-sm mb-2" style={{ color: THEME.onSurfaceVariant }}>Draw Mode</label>
+                        <div className="space-y-2">
+                          <label className="flex items-center">
+                            <input
+                              type="radio"
+                              value="single"
+                              checked={draftDrawMode === 'single'}
+                              onChange={(e) => setDraftDrawMode(e.target.value as DrawMode)}
+                              className="mr-2"
+                            />
+                            Single card
+                          </label>
+                          <label className="flex items-center" style={{ color: THEME.onSurface }}>
+                            <input
+                              type="radio"
+                              value="until_playable"
+                              checked={draftDrawMode === 'until_playable'}
+                              onChange={(e) => setDraftDrawMode(e.target.value as DrawMode)}
+                              className="mr-2"
+                            />
+                            Draw until playable
+                          </label>
+                        </div>
+                      </div>
                    </div>
                  )}
 
@@ -2941,17 +3103,17 @@ function App() {
              </div>
            )}
 
-           {/* Playing - Tabletop View */}
-          {room.gameStatus === 'playing' && topCard && (
-            <div 
-              ref={gameTableRef}
-              className="relative rounded-3xl overflow-hidden flex flex-col"
-              style={{ 
-                background: `radial-gradient(ellipse at center, ${THEME.tableFelt} 0%, ${THEME.tableGreen} 100%)`,
-                minHeight: '70vh',
-                boxShadow: 'inset 0 0 100px rgba(0,0,0,0.3)',
-              }}
-            >
+            {/* Playing - Tabletop View */}
+           {room.gameStatus === 'playing' && topCard && (
+             <div 
+               ref={gameTableRef}
+               className="relative rounded-3xl overflow-visible flex flex-col"
+               style={{ 
+                 background: `radial-gradient(ellipse at center, ${THEME.tableFelt} 0%, ${THEME.tableGreen} 100%)`,
+                 minHeight: '70vh',
+                 boxShadow: 'inset 0 0 100px rgba(0,0,0,0.3)',
+               }}
+             >
               {/* Table felt texture overlay */}
               <div 
                 className="absolute inset-0 opacity-10 pointer-events-none"
@@ -3096,6 +3258,7 @@ function App() {
                   reducedMotion={reducedMotion}
                   selectedCardIndex={selectedCardIndex}
                   onSelectedCardIndexChange={setSelectedCardIndex}
+                  cardRefs={playerCardRefs}
                 />
               </div>
 
@@ -3195,13 +3358,13 @@ function App() {
                  </span>
                </div>
 
-               {/* Version */}
-               <div 
-                 className="absolute bottom-8 left-1/2 -translate-x-1/2 text-xs opacity-40 whitespace-nowrap"
-                 style={{ color: '#fff' }}
-               >
-                 v2026.1.19+4-58b87b3
-               </div>
+                {/* Version */}
+                <div 
+                  className="absolute bottom-8 left-1/2 -translate-x-1/2 text-xs opacity-40 whitespace-nowrap"
+                  style={{ color: '#fff' }}
+                >
+                  {APP_VERSION}
+                </div>
             </div>
           )}
 
@@ -3219,19 +3382,19 @@ function App() {
 
   // Join Room View (from link)
   if (view === 'join-room') {
-    return (
-      <div 
-        className="min-h-screen flex items-center justify-center p-4"
-        style={{ backgroundColor: THEME.surfaceDim }}
-      >
-        <div className="max-w-md w-full">
-          <div className="text-center mb-8">
-            <h1 
-              className="text-4xl font-bold mb-2"
-              style={{ color: THEME.onSurface, fontFamily: CARD_FONT }}
-            >
-              Join Room
-            </h1>
+  return (
+  <div 
+    className="min-h-screen flex items-center justify-center p-4"
+    style={{ backgroundColor: THEME.surfaceDim }}
+  >
+    <div className="max-w-md w-full">
+      <div className="text-center mb-8">
+        <h1 
+          className="text-4xl font-bold mb-2"
+          style={{ color: THEME.onSurface, fontFamily: CARD_FONT }}
+        >
+          Join Room
+        </h1>
             <p style={{ color: THEME.onSurfaceVariant }}>Enter your details to join the game</p>
           </div>
 
@@ -3386,6 +3549,10 @@ function App() {
               {isPending ? 'Joining...' : 'Join Room'}
             </button>
           </div>
+
+          <div className="text-center py-4 text-xs" style={{ color: THEME.onSurfaceVariant }}>
+            Version: {APP_VERSION}
+          </div>
         </div>
       </div>
     );
@@ -3393,18 +3560,18 @@ function App() {
 
   // Lobby View
   return (
-    <div 
-      className="min-h-screen flex items-center justify-center p-4"
-      style={{ backgroundColor: THEME.surfaceDim }}
-    >
-      <div className="max-w-md w-full">
-        <div className="text-center mb-8">
-          <h1 
-            className="text-4xl font-bold mb-2"
-            style={{ color: THEME.onSurface, fontFamily: CARD_FONT }}
-          >
-            Chess Clock UNO
-          </h1>
+      <div 
+        className="min-h-screen flex items-center justify-center p-4"
+        style={{ backgroundColor: THEME.surfaceDim }}
+      >
+        <div className="max-w-md w-full">
+          <div className="text-center mb-8">
+            <h1 
+              className="text-4xl font-bold mb-2"
+              style={{ color: THEME.onSurface, fontFamily: CARD_FONT }}
+            >
+              Chess Clock UNO
+            </h1>
           <p style={{ color: THEME.onSurfaceVariant }}>Play UNO with time pressure</p>
         </div>
 
@@ -3544,20 +3711,22 @@ function App() {
              className="mb-6 p-4 rounded-xl border"
              style={{ backgroundColor: THEME.surfaceContainerHigh, borderColor: THEME.outlineVariant }}
            >
-             <div className="flex space-x-1 mb-4 border-b border-outlineVariant">
-               <button
-                 onClick={() => setActiveTab('settings')}
-                 className={`px-3 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'settings' ? 'border-primary text-primary' : 'border-transparent text-onSurfaceVariant'}`}
-               >
-                 Settings
-               </button>
-               <button
-                 onClick={() => setActiveTab('rules')}
-                 className={`px-3 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'rules' ? 'border-primary text-primary' : 'border-transparent text-onSurfaceVariant'}`}
-               >
-                 UNO Rules
-               </button>
-             </div>
+              <div className="flex space-x-1 mb-4" style={{ borderBottom: `1px solid ${THEME.outlineVariant}` }}>
+                <button
+                  onClick={() => setActiveTab('settings')}
+                  className={`px-3 py-2 text-sm font-medium border-b-2 transition-colors`}
+                  style={activeTab === 'settings' ? { borderColor: THEME.primary, color: THEME.primary } : { borderColor: 'transparent', color: THEME.onSurfaceVariant }}
+                >
+                  Settings
+                </button>
+                <button
+                  onClick={() => setActiveTab('rules')}
+                  className={`px-3 py-2 text-sm font-medium border-b-2 transition-colors`}
+                  style={activeTab === 'rules' ? { borderColor: THEME.primary, color: THEME.primary } : { borderColor: 'transparent', color: THEME.onSurfaceVariant }}
+                >
+                  UNO Rules
+                </button>
+              </div>
              
              {activeTab === 'settings' && (
                <div className="space-y-4">
@@ -3593,43 +3762,170 @@ function App() {
                      </p>
                    )}
                  </div>
-               </div>
-             )}
+                  {/* Time per Turn */}
+                  <div>
+                    <div className="flex justify-between mb-2">
+                      <label className="text-sm" style={{ color: THEME.onSurfaceVariant }}>Time per Turn</label>
+                      <span className="text-sm font-medium" style={{ color: THEME.onSurface }}>{Math.floor(timePerTurnMs / 1000)}s</span>
+                    </div>
+                    <RangeSlider
+                      min={15000}
+                      max={120000}
+                      step={5000}
+                      value={timePerTurnMs}
+                      onChange={setTimePerTurnMs}
+                    />
+                  </div>
+                </div>
+              )}
 
-             {activeTab === 'rules' && (
-               <div className="space-y-4">
-                 {/* Stacking Mode */}
-                 <div>
-                   <label className="block text-sm mb-2" style={{ color: THEME.onSurfaceVariant }}>Stacking Mode</label>
-                   <select
-                     value={stackingMode}
-                     onChange={(e) => setStackingMode(e.target.value)}
-                     className="w-full px-4 py-3 rounded-xl border outline-none"
-                     style={{ backgroundColor: THEME.surfaceContainerHigh, borderColor: THEME.outline, color: THEME.onSurface }}
-                   >
-                     <option value="none">None</option>
-                     <option value="colors">Colors</option>
-                     <option value="numbers">Numbers</option>
-                     <option value="colors-numbers">Colors and Numbers</option>
-                     <option value="plus-same">Plus cards (same denomination)</option>
-                     <option value="plus-any">Plus cards (any denomination)</option>
-                   </select>
-                 </div>
+              {activeTab === 'rules' && (
+                <div className="space-y-4">
+                  {/* Stacking Mode */}
+                  <div>
+                    <label className="block text-sm mb-2" style={{ color: THEME.onSurfaceVariant }}>Stacking Mode</label>
+                    <div className="space-y-2">
+                      <label className="flex items-center" title="Stack draw cards, skips, and reverses on same color" style={{ color: THEME.onSurface }}>
+                        <input
+                          type="checkbox"
+                          checked={stackingMode.includes('colors')}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setStackingMode([...stackingMode, 'colors']);
+                            } else {
+                              setStackingMode(stackingMode.filter(m => m !== 'colors'));
+                            }
+                          }}
+                          className="mr-2"
+                        />
+                        Colors
+                      </label>
+                      <label className="flex items-center" title="Stack draw cards, skips, and reverses on same number" style={{ color: THEME.onSurface }}>
+                        <input
+                          type="checkbox"
+                          checked={stackingMode.includes('numbers')}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setStackingMode([...stackingMode, 'numbers']);
+                            } else {
+                              setStackingMode(stackingMode.filter(m => m !== 'numbers'));
+                            }
+                          }}
+                          className="mr-2"
+                        />
+                        Numbers
+                      </label>
+                       <label className="flex items-center" title="Stack draw cards on same denomination (e.g., +2 on +2)" style={{ color: THEME.onSurface }}>
+                         <input
+                           type="checkbox"
+                           checked={stackingMode.includes('plus_same')}
+                           onChange={(e) => {
+                             if (e.target.checked) {
+                               setStackingMode([...stackingMode, 'plus_same']);
+                             } else {
+                               setStackingMode(stackingMode.filter(m => m !== 'plus_same'));
+                             }
+                           }}
+                           className="mr-2"
+                         />
+                         Plus (same denomination)
+                       </label>
+                       <label className="flex items-center" title="Stack any draw card on any other draw card" style={{ color: THEME.onSurface }}>
+                         <input
+                           type="checkbox"
+                           checked={stackingMode.includes('plus_any')}
+                           onChange={(e) => {
+                             if (e.target.checked) {
+                               setStackingMode([...stackingMode, 'plus_any']);
+                             } else {
+                               setStackingMode(stackingMode.filter(m => m !== 'plus_any'));
+                             }
+                           }}
+                           className="mr-2"
+                         />
+                         Plus (any)
+                       </label>
+                       <label className="flex items-center" title="Stack skips and reverses on same type" style={{ color: THEME.onSurface }}>
+                         <input
+                           type="checkbox"
+                           checked={stackingMode.includes('skip_reverse')}
+                           onChange={(e) => {
+                             if (e.target.checked) {
+                               setStackingMode([...stackingMode, 'skip_reverse']);
+                             } else {
+                               setStackingMode(stackingMode.filter(m => m !== 'skip_reverse'));
+                             }
+                           }}
+                           className="mr-2"
+                         />
+                         Skip and Reverse
+                       </label>
+                    </div>
+                  </div>
 
-                 {/* Time per Turn */}
-                 <div>
-                   <div className="flex justify-between mb-2">
-                     <label className="text-sm" style={{ color: THEME.onSurfaceVariant }}>Time per Turn</label>
-                     <span className="text-sm font-medium" style={{ color: THEME.onSurface }}>{Math.floor(timePerTurnMs / 1000)}s</span>
+                   {/* Jump-In Mode */}
+                   <div>
+                     <label className="block text-sm mb-2" style={{ color: THEME.onSurfaceVariant }}>Jump-In Mode</label>
+                     <div className="space-y-2">
+                       <label className="flex items-center" title="Allow jumping in with exact card matches (same color and number)" style={{ color: THEME.onSurface }}>
+                         <input
+                           type="checkbox"
+                           checked={jumpInMode.includes('exact')}
+                           onChange={(e) => {
+                             if (e.target.checked) {
+                               setJumpInMode([...jumpInMode, 'exact']);
+                             } else {
+                               setJumpInMode(jumpInMode.filter(m => m !== 'exact'));
+                             }
+                           }}
+                           className="mr-2"
+                         />
+                         Exact matches
+                       </label>
+                       <label className="flex items-center" title="Allow jumping in with power cards (skip, reverse, draw, wild)" style={{ color: THEME.onSurface }}>
+                         <input
+                           type="checkbox"
+                           checked={jumpInMode.includes('power')}
+                           onChange={(e) => {
+                             if (e.target.checked) {
+                               setJumpInMode([...jumpInMode, 'power']);
+                             } else {
+                               setJumpInMode(jumpInMode.filter(m => m !== 'power'));
+                             }
+                           }}
+                           className="mr-2"
+                         />
+                         Power cards
+                       </label>
+                     </div>
                    </div>
-                   <RangeSlider
-                     min={15000}
-                     max={120000}
-                     step={5000}
-                     value={timePerTurnMs}
-                     onChange={setTimePerTurnMs}
-                   />
-                 </div>
+
+                  {/* Draw Mode */}
+                  <div>
+                    <label className="block text-sm mb-2" style={{ color: THEME.onSurfaceVariant }}>Draw Mode</label>
+                        <div className="space-y-2">
+                          <label className="flex items-center" style={{ color: THEME.onSurface }}>
+                            <input
+                              type="radio"
+                              value="single"
+                              checked={draftDrawMode === 'single'}
+                              onChange={(e) => setDraftDrawMode(e.target.value as DrawMode)}
+                              className="mr-2"
+                            />
+                            Single card
+                          </label>
+                       <label className="flex items-center" style={{ color: THEME.onSurface }}>
+                         <input
+                           type="radio"
+                           value="until_playable"
+                           checked={drawMode === 'until_playable'}
+                           onChange={(e) => setDrawMode(e.target.value as DrawMode)}
+                           className="mr-2"
+                         />
+                         Draw until playable
+                      </label>
+                    </div>
+                  </div>
                </div>
              )}
            </div>
@@ -3669,18 +3965,22 @@ function App() {
             />
           </div>
 
-          <button
-            onClick={handleJoinRoom}
-            disabled={loading || isPending}
-            className="w-full py-3 font-semibold rounded-xl transition-colors disabled:opacity-50"
-            style={{ backgroundColor: THEME.surfaceContainerHighest, color: THEME.onSurface }}
-          >
-            {isPending ? 'Joining...' : 'Join Room'}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
+           <button
+             onClick={handleJoinRoom}
+             disabled={loading || isPending}
+             className="w-full py-3 font-semibold rounded-xl transition-colors disabled:opacity-50"
+             style={{ backgroundColor: THEME.surfaceContainerHighest, color: THEME.onSurface }}
+           >
+             {isPending ? 'Joining...' : 'Join Room'}
+           </button>
+
+           <div className="text-center mt-4 text-xs" style={{ color: THEME.onSurfaceVariant }}>
+             Version: {APP_VERSION}
+           </div>
+         </div>
+       </div>
+     </div>
+   );
 }
 
 function AppWithErrorBoundary() {

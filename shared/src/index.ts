@@ -1,6 +1,6 @@
-export type StackingMode = 'none' | 'colors' | 'numbers' | 'colors+numbers' | 'plus_same' | 'plus_any' | 'skip_reverse';
+export type StackingMode = string[]; // Array of: 'colors', 'numbers', 'plus_same', 'plus_any', 'skip_reverse'
 
-export type JumpInMode = 'none' | 'exact' | 'power' | 'both';
+export type JumpInMode = string[]; // Array of: 'exact', 'power'
 
 export type DrawMode = 'single' | 'until_playable';
 
@@ -8,8 +8,8 @@ export type RoomSettings = {
   maxPlayers: number;      // 2-10, default 6
   aiPlayerCount: number;   // 0-9, default 0
   timePerTurnMs: number;   // default 60000
-  stackingMode: StackingMode; // default 'none'
-  jumpInMode: JumpInMode;  // default 'none'
+  stackingMode: StackingMode; // default []
+  jumpInMode: JumpInMode;  // default []
   drawMode: DrawMode;      // default 'single'
 };
 
@@ -122,3 +122,5 @@ export type ServerToClientEvents = {
   chatMessage: (data: ChatMessage) => void;
   chatHistory: (data: ChatMessage[]) => void;
 };
+
+export { APP_VERSION } from './version';

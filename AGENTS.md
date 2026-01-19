@@ -1,13 +1,22 @@
 # Agent Session Notes
 
-## Version: 2026.1.19+4-58b87b3
+## Version: 2026.1.19+6-58b87b3
 
 ### Overview
 Chess Clock UNO - Real-time multiplayer UNO with chess clock mechanics, keyboard controls, and niconico-style flying chat.
 
 ### Recent Changes (v2026.1.19)
 
+#### Bug Fixes
+- **Card Selection Bug Fixed**: At least one card is now always selected when it's the player's turn, on both mobile and desktop. Fixed issue where players couldn't play even when it was their turn.
+- **Drag-to-Deck Clipping Fixed**: Cards no longer clip out of hand view when being dragged. Added `pointer-events` handling and proper z-index management.
+- **Power Card Stacking Fixed**: Players can no longer stay in turn after playing power cards (wild, reverse, +2, +4). Turn properly advances to the next player.
+- **Auto-Reset After Game End**: When a game finishes, all players now correctly return to the "waiting for players" view, allowing hosts to play consecutive rounds without creating new rooms.
+- **UNO Rules Label Styling Fixed**: All checkboxes and radio buttons in the UNO Rules tab now have proper `THEME.onSurface` color styling, fixing black text on dark background.
+- **Version Footer Visibility Fixed**: Version tag now displayed in Lobby and Room views. Game table container changed from `overflow-hidden` to `overflow-visible` to prevent clipping.
+
 #### Production Robustness
+- **Room Grace Period**: Added 5-minute grace period when room becomes empty of connected humans. Hosts can switch tabs/apps and reconnect without losing the room. Room is deleted only after grace period expires (5 min) OR after 30 minutes of inactivity.
 - **Max Room Limit**: Server caps at 1000 concurrent rooms to prevent resource exhaustion
 - **Room Grace Period**: Removed immediate room deletion on last player disconnect; rooms now persist until TTL cleanup (30 min), allowing hosts to leave and return
 - **React Error Boundary**: Catches React crashes, shows user-friendly error with reload button
@@ -20,6 +29,28 @@ Chess Clock UNO - Real-time multiplayer UNO with chess clock mechanics, keyboard
 - **Graceful Shutdown**: SIGTERM/SIGINT handlers for clean server shutdown
 - **Avatar LRU Eviction**: MAX_AVATARS=5000 limit with least-recently-used eviction
 - **Health Endpoint**: `GET /health` returns status, uptime, room/player/avatar counts
+
+#### Card Play Animation
+- **Player Card Animation**: When a player plays a card, it now animates flying from their hand to the discard pile
+- **Opponent Card Animation**: When an opponent plays a card, it animates flying from their position to the discard pile
+- Visual distinction between different players' card plays
+- Smooth 600px/s animation speed with distance-based duration
+
+#### Niconico Chat Improvements
+- **Full Screen Travel**: Chat messages now travel the full width of the screen (from right edge to left edge), no longer stopping at center
+- **Slower Speed**: Animation speed reduced from 350px/s to 200px/s for better readability
+- **CSS Animation Updated**: `@keyframes fly-across` now translates to `calc(-100vw - 120%)` for full-width travel
+
+#### Room Creation UI
+- **Tabbed Interface**: Settings and UNO Rules tabs in lobby and room creation
+- **Settings Tab**: Max players slider (2-10), AI opponents counter (0-9), time-per-turn slider (15-120s)
+- **UNO Rules Tab**: Granular checkboxes for stacking modes (colors, numbers, plus_same, plus_any, skip_reverse), jump-in modes (exact, power), and radio buttons for draw mode (single, until_playable) - server-side logic implemented for all combinations
+
+#### Dynamic Version Tag
+- **Version Display**: All pages now display a dynamic version tag in the footer
+- **Format**: `YYYY.MM.DD+BUILD-<git-hash>` (e.g., `2026.1.19+6-58b87b3`)
+- **Build Info**: Reads from environment variables (VITE_GIT_COMMIT_HASH, VITE_BUILD_NUMBER) at build time
+- **Fallback**: Falls back to hardcoded version if build variables not available
 
 #### Keyboard Controls
 - **Arrow Left/Right**: Select card in hand
@@ -79,7 +110,7 @@ Chess Clock UNO - Real-time multiplayer UNO with chess clock mechanics, keyboard
 #### Room Creation UI Enhancements
 - **Tabbed Interface**: Settings and UNO Rules tabs in lobby
 - **Settings Tab**: Max players slider (2-10), AI opponents counter (0-9), time-per-turn slider (15-120s)
-- **UNO Rules Tab**: Stacking mode selector (none, colors, numbers, colors+numbers, plus cards same/any denomination, skip and reverse), jump-in rules (none, exact matches, power cards, both), draw mode (single card, until playable) - server-side logic implemented for plus_same/plus_any, skip_reverse, jump-in, and draw-until-playable modes
+- **UNO Rules Tab**: Granular checkboxes for stacking modes (colors, numbers, plus_same, plus_any, skip_reverse), jump-in modes (exact, power), and radio buttons for draw mode (single, until_playable) - server-side logic implemented for all combinations
 - **Auto-Selection**: First card automatically selected when player's turn starts
 - **Card Animation**: Flying card animations for all card plays (opponents and player)
 - **Drag Clipping Fix**: Hand container overflow changed to prevent card clipping
@@ -214,52 +245,16 @@ ccu.vc/
 /* Flying chat message animation (niconico-style) */
 @keyframes fly-across {
   0% { transform: translateX(0); }
-  100% { transform: translateX(calc(-100vw - 100%)); }
+  100% { transform: translateX(calc(-100vw - 120%)); }
 }
-/* Duration set dynamically via inline styles: (gameTableWidth + 300) / 350 seconds */
-```
+/* Duration set dynamically via inline styles: (gameTableWidth + 300) / 200 seconds for readable speed */
 
-### How to Run
-
-```bash
-# Terminal 1 - Server
-cd server && bun run dev
-
-# Terminal 2 - Client
-cd client && bun run dev
-```
-
-Open http://localhost:5173 in browser.
-
-### Deployment
-
-See `DEPLOY.md` for full instructions. Quick start:
-
-```bash
-# Build Docker images with Nix
-nix build .#serverImage && docker load < result
-nix build .#clientImage && docker load < result
-
-# Start with Docker Compose
-docker-compose up -d
-```
-
-### Test Results
-- **340 server tests pass**
-- **956 expect() calls**
-- Client typecheck passes
-- Client builds successfully (~299KB JS)
-
-### Socket Event Signatures
-```typescript
-// playCard: chosenColor comes BEFORE callback (Socket.io callback must be last)
-playCard: (actionId, card, chosenColor, callback?) => void
-
-// All callbacks are now optional (use callback?.() pattern)
-drawCard: (actionId, callback?) => void
-callUno: (actionId, callback?) => void
-catchUno: (actionId, targetPlayerId, callback?) => void
-sendChat: (actionId, message, callback?) => void
+/* Flying card animation for card plays */
+@keyframes fly-card {
+  0% { transform: translate(0, 0); }
+  100% { transform: translate(targetX, targetY); }
+}
+/* Duration calculated as: distance / 600 seconds */
 ```
 
 ### Key Technical Decisions
@@ -269,8 +264,11 @@ sendChat: (actionId, message, callback?) => void
 - URL params cleaned after processing to keep URLs clean
 - Mobile breakpoint uses Tailwind's `md:` prefix (768px)
 - Keyboard controls only active when not typing in input fields
-- Flying message duration calculated as `(gameTableWidth + 300) / 350` seconds for faster, niconico-like speed
+- Flying message duration calculated as `(gameTableWidth + 300) / 200` seconds for readable speed
+- Flying card duration calculated as `distance / 600` seconds
 - Own flying messages shown immediately via optimistic UI (no server round-trip)
 - Opponent cards capped at 12 visible for performance
 - Autoscroll uses `scrollIntoView({ inline: 'center', block: 'nearest' })` for reliable centering
 - Carousel containers use explicit `paddingLeft`/`paddingRight` instead of `justify-center` to prevent overflow clipping
+- Room grace period of 5 minutes allows hosts to switch tabs/apps and reconnect
+- Dynamic version tag reads from `import.meta.env.VITE_GIT_COMMIT_HASH` and `VITE_BUILD_NUMBER`

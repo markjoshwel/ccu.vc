@@ -1,6 +1,6 @@
 {
   "name": "shared",
-  "version": "2026.1.19+4-58b87b3",
+  "version": "2026.1.19+6-58b87b3",
   "type": "module",
   "exports": {
     ".": {

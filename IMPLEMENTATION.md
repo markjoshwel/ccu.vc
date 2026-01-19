@@ -1,6 +1,6 @@
 # Chess Clock UNO - Implementation Reference
 
-## Version: 2026.1.19+4-58b87b3
+## Version: 2026.1.19+6-58b87b3
 
 ## Overview
 
@@ -93,6 +93,7 @@ DEFAULT_TIME_PER_TURN_MS = 60000 // 1 minute
 DEFAULT_MAX_PLAYERS = 6
 MAX_ROOMS = 1000                // Server capacity limit
 ROOM_STALE_TTL_MS = 30 * 60 * 1000   // 30 minutes
+ROOM_GRACE_PERIOD_MS = 5 * 60 * 1000 // 5 minutes grace for reconnection
 ROOM_CLEANUP_INTERVAL_MS = 5 * 60 * 1000 // 5 minutes
 ```
 
@@ -108,7 +109,14 @@ ROOM_CLEANUP_INTERVAL_MS = 5 * 60 * 1000 // 5 minutes
 2. Players join via `addPlayer(socketId, player)`
 3. Host starts game via `startGame()` - deals 7 cards each, sets up clocks
 4. Game plays until someone empties their hand or all humans disconnect
-5. Room deleted when no humans connected (immediately or via cleanup interval)
+5. Room deleted when no humans connected (5-minute grace period OR 30 minutes inactivity)
+
+**Room Grace Period:**
+- When last human player disconnects and game is in 'waiting' state, a 5-minute grace period starts
+- During grace period, room persists even with no connected players
+- Host can switch tabs/apps and reconnect without losing the room
+- Reconnection via `reconnect_room` clears the grace period
+- Room deleted only after grace period expires OR 30 minutes of inactivity
 
 **Game State Machine:**
 ```
@@ -347,12 +355,32 @@ STORAGE_KEYS = {
 
 - Messages fly across screen right-to-left within game table area
 - Start position: `right: -100%` (completely off-screen to right)
-- End position: off-screen left, traveling full viewport width
+- End position: off-screen left, traveling full viewport width (not stopping at center)
 - Random vertical position (10-70% from top)
-- Dynamic duration: `(gameTableWidth + 300) / 350` seconds (~350px/s for faster, niconico-like speed)
+- Dynamic duration: `(gameTableWidth + 300) / 200` seconds (~200px/s for readable speed)
 - Own messages appear instantly (optimistic UI, no server round-trip delay)
 - Other players' messages appear when received from server
 - Removed from DOM 500ms after animation completes
+- CSS `@keyframes fly-across` translates to `calc(-100vw - 120%)` for full-width travel
+
+### Card Play Animation
+
+- **Player Cards**: When local player plays a card, it animates flying from their hand position to the discard pile
+- **Opponent Cards**: When opponent plays a card, it animates flying from their avatar/hand position to the discard pile
+- Smooth 600px/s animation speed with distance-based duration (minimum 0.3s)
+- Visual distinction between different players' card plays
+- CSS transition with `transform` for smooth animation
+- Card removed from DOM after animation completes
+
+### Dynamic Version Tag
+
+- Version displayed in footer on all pages: `YYYY.MM.DD+BUILD-<git-hash>`
+- Example: `2026.1.19+6-58b87b3`
+- Reads from Vite environment variables at build time:
+  - `VITE_GIT_COMMIT_HASH`: Git commit hash (truncated to 7 chars)
+  - `VITE_BUILD_NUMBER`: Build number (defaults to '0')
+- Falls back to hardcoded version if environment variables not available
+- Format: `${YYYY-MM-DD}+${BUILD}-${HASH}` ( dashes in date replaced with dots)
 
 ### Socket Reconnection
 
@@ -486,10 +514,11 @@ docker-compose up -d
 
 ## Test Coverage
 
-- **340 server tests pass**
-- **956 expect() calls**
+- **339 server tests pass** (1 flaky timeout in AI scheduling test)
+- **953 expect() calls**
 - Tests cover:
   - Room creation/joining/reconnection
+  - Room grace period and reconnection
   - Game flow (start, play, draw, win conditions)
   - All card types and special effects
   - UNO call/catch mechanics
@@ -506,7 +535,7 @@ docker-compose up -d
 
 1. **Server-authoritative**: All game logic runs on server to prevent cheating
 2. **Full snapshots**: Send complete game state after each action (not deltas)
-3. **Ephemeral everything**: No database, rooms deleted when empty
+3. **Ephemeral everything**: No database, rooms deleted when empty (after grace period)
 4. **Clock precision**: Centiseconds displayed for urgency, interpolated client-side
 5. **Mobile-first**: Touch-friendly tap-to-select, drag-to-play optional
 6. **UNO Minimalista style**: Clean, minimal card design with thin fonts
@@ -517,3 +546,9 @@ docker-compose up -d
 11. **Stacking logic**: Pending draws/skips/reverses accumulate when stackable cards are played on pending actions, resolved when drawing or advancing turns
 12. **In-room settings**: Hosts can update room settings between rounds in waiting state, allowing dynamic rule changes without recreating rooms
 13. **Tab styling**: Uses inline styles for color and border theming to ensure proper contrast and avoid invalid Tailwind class issues
+14. **Card selection**: Always at least one card selected when it's player's turn (auto-selects first card on turn start, prevents selection clearing on card play)
+15. **Drag handling**: Uses `pointer-events` and proper z-index management to prevent card clipping during drag-to-play
+16. **Power card turn advancement**: Wild, Reverse, +2, and +4 cards always advance turn (no staying in round)
+17. **Game reset**: Games auto-reset to waiting view after completion, allowing consecutive rounds without creating new rooms
+18. **UNO Rules label styling**: All checkboxes and radio buttons use inline `style={{ color: THEME.onSurface }}` for proper contrast on dark backgrounds
+19. **Version footer visibility**: Game table container uses `overflow-visible` instead of `overflow-hidden` to prevent clipping of absolute positioned elements
