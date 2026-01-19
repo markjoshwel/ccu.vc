@@ -1,5 +1,7 @@
 # Chess Clock UNO - Implementation Reference
 
+## Version: 2026.1.19+4-58b87b3
+
 ## Overview
 
 Chess Clock UNO (`ccu.vc`) is a real-time multiplayer UNO game with chess clock mechanics. Features include:
@@ -175,6 +177,7 @@ Token bucket algorithm:
 | `join_room` | `(actionId, roomCode, displayName, avatarId?, callback)` | Join existing room |
 | `reconnect_room` | `(actionId, roomCode, playerId, playerSecret, callback)` | Rejoin after disconnect |
 | `start_game` | `(actionId, callback)` | Start game (host only) |
+| `update_room_settings` | `(actionId, settings, callback)` | Update room settings (host only, waiting state) |
 | `playCard` | `(actionId, card, chosenColor, callback)` | Play a card |
 | `drawCard` | `(actionId, callback)` | Draw from deck |
 | `callUno` | `(actionId, callback)` | Call UNO on yourself |
@@ -207,6 +210,9 @@ type RoomSettings = {
   maxPlayers: number;      // 2-10, default 6
   aiPlayerCount: number;   // 0-9, default 0
   timePerTurnMs: number;   // default 60000
+  stackingMode: 'none' | 'colors' | 'numbers' | 'colors+numbers' | 'plus_same' | 'plus_any' | 'skip_reverse';
+  jumpInMode: 'none' | 'exact' | 'power' | 'both';
+  drawMode: 'single' | 'until_playable';
 };
 
 type RoomState = {
@@ -296,6 +302,7 @@ type ChatMessage = {
 - `OpponentHand` - Fanned card backs (up to 12 visible) with autoscroll to active player, avatar display (uploaded image or colored initial)
 - `HandArea` - Player's hand with drag-to-play, keyboard selection, and autoscroll to selected card
 - `ColorPickerModal` - Wild card color selection overlay with keyboard shortcuts (1-4)
+- `SettingsModal` - In-room settings update for hosts in waiting state (overlay)
 - `ChatDrawer` - Collapsible room chat at bottom
 - `GameFinishedOverlay` - Game over modal with result
 
@@ -397,6 +404,27 @@ When a player's clock reaches 0:
 - `timeOut` event emitted with `policy: 'playerTimedOut'`
 - Game continues until only one active player remains
 
+### Customizable Rules
+
+#### Stacking Modes
+- **none**: No stacking allowed
+- **colors**: Stack cards of the same color (including wilds on colored cards)
+- **numbers**: Stack cards of the same number
+- **colors+numbers**: Stack cards of the same color or number
+- **plus_same**: Stack Draw 2 and Wild Draw 4 cards (same denomination)
+- **plus_any**: Stack Draw 2 and Wild Draw 4 cards (any denomination)
+- **skip_reverse**: Stack Skip and Reverse cards (same type)
+
+#### Jump-In Modes
+- **none**: No jump-in allowed
+- **exact**: Jump-in with exact color+value match
+- **power**: Jump-in with Skip, Reverse, Draw 2, Wild, Wild Draw 4
+- **both**: Jump-in with exact matches or power cards
+
+#### Draw Modes
+- **single**: Draw one card per turn
+- **until_playable**: Draw until you get a playable card (maximum deck size to prevent infinite draws)
+
 ### AI Behavior
 
 AI players (1-3 second "thinking" delay, occasionally longer for realism):
@@ -486,3 +514,5 @@ docker-compose up -d
 8. **Keyboard controls**: Desktop users can play without mouse, including wild card color selection
 9. **Autoscroll behavior**: Active player/carousel and selected card automatically centered in view using `scrollIntoView({ inline: 'center' })` with multiple scroll attempts for timing reliability
 10. **Carousel padding**: Horizontal padding (8rem) prevents clipping while allowing full scroll range, no `justify-center` on overflow containers to avoid rendering bugs
+11. **Stacking logic**: Pending draws/skips/reverses accumulate when stackable cards are played on pending actions, resolved when drawing or advancing turns
+12. **In-room settings**: Hosts can update room settings between rounds in waiting state, allowing dynamic rule changes without recreating rooms

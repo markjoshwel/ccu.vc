@@ -1,6 +1,6 @@
 # Agent Session Notes
 
-## Version: v2026.1.19.3
+## Version: 2026.1.19+4-58b87b3
 
 ### Overview
 Chess Clock UNO - Real-time multiplayer UNO with chess clock mechanics, keyboard controls, and niconico-style flying chat.
@@ -79,18 +79,13 @@ Chess Clock UNO - Real-time multiplayer UNO with chess clock mechanics, keyboard
 #### Room Creation UI Enhancements
 - **Tabbed Interface**: Settings and UNO Rules tabs in lobby
 - **Settings Tab**: Max players slider (2-10), AI opponents counter (0-9), time-per-turn slider (15-120s)
-- **UNO Rules Tab**: Stacking mode selector (none, colors, numbers, colors+numbers, plus cards same/any denomination), jump-in rules (none, exact matches, power cards, both), draw mode (single card, until playable) - server-side logic implemented for plus_same/plus_any modes
+- **UNO Rules Tab**: Stacking mode selector (none, colors, numbers, colors+numbers, plus cards same/any denomination, skip and reverse), jump-in rules (none, exact matches, power cards, both), draw mode (single card, until playable) - server-side logic implemented for plus_same/plus_any, skip_reverse, jump-in, and draw-until-playable modes
 - **Auto-Selection**: First card automatically selected when player's turn starts
 - **Card Animation**: Flying card animations for all card plays (opponents and player)
 - **Drag Clipping Fix**: Hand container overflow changed to prevent card clipping
 - **Chat Speed**: Niconico-style chat at ~350px/s, stops at screen center
 - **Continuous Rounds**: Games auto-reset to waiting view after completion
-
-#### Deployment
-- Added `flake.nix` for Nix-based builds and Docker images
-- Added `docker-compose.yml` for container deployment
-- Added `Caddyfile` for reverse proxy configuration
-- Added `DEPLOY.md` with deployment documentation
+- **In-Room Settings Changes**: Hosts can update room settings in the waiting view between rounds via settings modal
 
 #### Keyboard Controls
 - **Arrow Left/Right**: Select card in hand
@@ -198,6 +193,7 @@ ccu.vc/
 - `ErrorMessage`: Floating toast notification
 - `ChatDrawer`: Collapsible room chat
 - `RangeSlider`: Styled range input with filled track
+- `SettingsModal`: In-room settings update for hosts in waiting state (overlay)
 
 #### Input Components
 - `RangeSlider`: Custom styled range input with gradient fill

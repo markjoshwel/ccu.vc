@@ -36,6 +36,8 @@ export class Room {
    settings: RoomSettings;
    aiMoveTimeoutId?: ReturnType<typeof setTimeout>;
    pendingDraws: number;
+   pendingSkips: number;
+   pendingReverses: number;
 
    constructor(code: RoomCode, settings?: Partial<RoomSettings>) {
      this.code = code;
@@ -50,7 +52,9 @@ export class Room {
       jumpInMode: settings?.jumpInMode ?? 'none',
       drawMode: settings?.drawMode ?? 'single'
     };
-     this.pendingDraws = 0;
+    this.pendingDraws = 0;
+    this.pendingSkips = 0;
+    this.pendingReverses = 0;
     this.state = {
       id: code,
       name: code,
@@ -68,13 +72,51 @@ export class Room {
      this.chatHistory = [];
    }
 
-   isStackable(card: Card): boolean {
-     if (this.settings.stackingMode === 'plus_same' || this.settings.stackingMode === 'plus_any') {
-       return card.value === 'draw2' || card.value === 'wild_draw4';
-     }
-     // TODO: implement other stacking modes (colors, numbers, etc.)
-     return false;
-   }
+  isStackable(card: Card): boolean {
+    if (this.settings.stackingMode === 'plus_same' || this.settings.stackingMode === 'plus_any') {
+      return card.value === 'draw2' || card.value === 'wild_draw4';
+    }
+    if (this.settings.stackingMode === 'skip_reverse') {
+      return card.value === 'skip' || card.value === 'reverse';
+    }
+    // TODO: implement other stacking modes (colors, numbers, etc.)
+    return false;
+  }
+
+  isCardPlayable(card: Card, playerId: string): boolean {
+    if (this.state.gameStatus !== 'playing') return false;
+
+    const topCard = this.discardPile[this.discardPile.length - 1];
+    if (!topCard) return false;
+
+    const effectiveColor = this.activeColor || topCard.color;
+
+    if (this.pendingDraws > 0 && !this.isStackable(card)) return false;
+    if (card.color === 'wild') return true;
+    if (card.color === effectiveColor) return true;
+    if (card.value === topCard.value) return true;
+    return false;
+  }
+
+  canJumpIn(card: Card, playerId: string): boolean {
+    if (this.state.gameStatus !== 'playing') return false;
+    if (this.settings.jumpInMode === 'none') return false;
+
+    const topCard = this.discardPile[this.discardPile.length - 1];
+    if (!topCard) return false;
+
+    // Jump-in for exact matches
+    if (this.settings.jumpInMode === 'exact' || this.settings.jumpInMode === 'both') {
+      if (card.color === topCard.color && card.value === topCard.value) return true;
+    }
+
+    // Jump-in for power cards
+    if (this.settings.jumpInMode === 'power' || this.settings.jumpInMode === 'both') {
+      if (['skip', 'reverse', 'draw2', 'wild', 'wild_draw4'].includes(card.value)) return true;
+    }
+
+    return false;
+  }
 
    addChatMessage(message: ChatMessage): void {
     this.chatHistory.push(message);
@@ -437,7 +479,10 @@ export class Room {
     }
 
     const currentPlayerId = this.playerOrder[this.currentPlayerIndex];
-    if (playerId !== currentPlayerId) {
+    const isCurrentPlayer = playerId === currentPlayerId;
+    const isJumpIn = !isCurrentPlayer && this.canJumpIn(card, playerId);
+
+    if (!isCurrentPlayer && !isJumpIn) {
       throw new Error('Not your turn');
     }
 
@@ -479,8 +524,7 @@ export class Room {
       card.color === 'wild' ||
       card.color === effectiveColor ||
       card.value === topCard.value ||
-      topCard.value === 'wild' ||
-      topCard.value === 'wild_draw4';
+      (isJumpIn && this.canJumpIn(card, playerId)); // Allow jump-in matches
 
     if (!isMatch) {
       throw new Error('Card does not match top discard');
@@ -508,6 +552,11 @@ export class Room {
       this.activeColor = undefined;
     }
 
+    // If this was a jump-in, set this player as current
+    if (isJumpIn) {
+      this.currentPlayerIndex = this.playerOrder.indexOf(playerId);
+    }
+
     this.updateState();
 
     if (card.value === 'draw2' || card.value === 'wild_draw4') {
@@ -515,15 +564,25 @@ export class Room {
       this.pendingDraws += draws;
       this.advanceTurn();
     } else if (card.value === 'skip') {
-      this.advanceTurn();
-      this.advanceTurn();
-    } else if (card.value === 'reverse') {
-      if (this.playerOrder.length >= 3) {
-        this.reverseDirection();
+      if (this.pendingDraws > 0 && this.isStackable(card)) {
+        this.pendingSkips += 1;
         this.advanceTurn();
       } else {
         this.advanceTurn();
         this.advanceTurn();
+      }
+    } else if (card.value === 'reverse') {
+      if (this.pendingDraws > 0 && this.isStackable(card)) {
+        this.pendingReverses += 1;
+        this.advanceTurn();
+      } else {
+        if (this.playerOrder.length >= 3) {
+          this.reverseDirection();
+          this.advanceTurn();
+        } else {
+          this.advanceTurn();
+          this.advanceTurn();
+        }
       }
     } else {
       this.advanceTurn();
@@ -562,14 +621,54 @@ export class Room {
       }
       this.pendingDraws = 0;
     } else {
-      const drawnCard = this.deck!.draw();
-      if (drawnCard) {
-        player.hand.push(drawnCard);
+      if (this.settings.drawMode === 'until_playable') {
+        // Draw until playable or deck empty
+        let drawnCard;
+        let drawCount = 0;
+        const maxDraws = this.deck!.size; // Prevent infinite loop
+        
+        do {
+          drawnCard = this.deck!.draw();
+          if (drawnCard) {
+            player.hand.push(drawnCard);
+            drawCount++;
+          }
+        } while (drawnCard && !this.isCardPlayable(drawnCard, playerId) && drawCount < maxDraws && !this.deck!.isEmpty());
+        
+        // If we drew multiple cards, only the last one should be playable
+        // But since we add all to hand, the player can choose which to play
+      } else {
+        // Single card draw
+        const drawnCard = this.deck!.draw();
+        if (drawnCard) {
+          player.hand.push(drawnCard);
+        }
       }
     }
 
     this.updateState();
-    this.advanceTurn();
+    
+    // Only advance turn if not drawing until playable or if the drawn card isn't playable
+    const shouldAdvanceTurn = this.pendingDraws === 0 && 
+      !(this.settings.drawMode === 'until_playable' && player.hand.length > 0 && this.isCardPlayable(player.hand[player.hand.length - 1], playerId));
+    
+    if (shouldAdvanceTurn) {
+      this.advanceTurn();
+    }
+
+    // Apply pending stacked effects
+    if (this.pendingSkips > 0) {
+      for (let i = 0; i < this.pendingSkips; i++) {
+        this.advanceTurn();
+      }
+      this.pendingSkips = 0;
+    }
+    if (this.pendingReverses > 0) {
+      for (let i = 0; i < this.pendingReverses; i++) {
+        this.reverseDirection();
+      }
+      this.pendingReverses = 0;
+    }
 
     if (this.unoWindow && this.unoWindow.playerId !== playerId) {
       this.unoWindow = undefined;

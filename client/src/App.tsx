@@ -12,7 +12,10 @@ import type {
   GameView,
   ClockSyncData,
   ChatMessage,
-  RoomSettings
+  RoomSettings,
+  StackingMode,
+  JumpInMode,
+  DrawMode
 } from 'shared';
 
 // ============================================================================
@@ -1803,12 +1806,32 @@ function App() {
   const [flyingMessages, setFlyingMessages] = useState<Array<{ id: number; message: string; playerName: string; top: number; duration: number }>>([]);
   const chatInputRef = useRef<HTMLInputElement>(null);
   const flyingMessageIdRef = useRef(0);
+  const flyingCardIdRef = useRef(0);
 
   // Flying cards state
   const [flyingCards, setFlyingCards] = useState<Array<{ id: number; card: Card; fromX: number; fromY: number; toX: number; toY: number; duration: number; animate: boolean }>>([]);
-  const flyingCardIdRef = useRef(0);
   const [previousDiscardLength, setPreviousDiscardLength] = useState(0);
   const [previousPlayerId, setPreviousPlayerId] = useState<string | null>(null);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [modalTab, setModalTab] = useState<'settings' | 'rules'>('settings');
+  const [draftMaxPlayers, setDraftMaxPlayers] = useState(6);
+  const [draftAiPlayerCount, setDraftAiPlayerCount] = useState(0);
+  const [draftTimePerTurnMs, setDraftTimePerTurnMs] = useState(60000);
+  const [draftStackingMode, setDraftStackingMode] = useState<StackingMode>('none');
+  const [draftJumpInMode, setDraftJumpInMode] = useState<JumpInMode>('none');
+  const [draftDrawMode, setDraftDrawMode] = useState<DrawMode>('single');
+
+  // Initialize draft settings when modal opens
+  useEffect(() => {
+    if (showSettingsModal && room?.settings) {
+      setDraftMaxPlayers(room.settings.maxPlayers);
+      setDraftAiPlayerCount(room.settings.aiPlayerCount);
+      setDraftTimePerTurnMs(room.settings.timePerTurnMs);
+      setDraftStackingMode(room.settings.stackingMode);
+      setDraftJumpInMode(room.settings.jumpInMode);
+      setDraftDrawMode(room.settings.drawMode);
+    }
+  }, [showSettingsModal, room?.settings]);
 
   // Derived state
   const myPlayerId = localStorage.getItem(STORAGE_KEYS.PLAYER_ID);
@@ -2275,6 +2298,36 @@ function App() {
     });
   };
 
+  const handleOpenSettingsModal = () => {
+    setShowSettingsModal(true);
+  };
+
+  const handleSaveSettings = () => {
+    if (!socket) return;
+
+    const actionId = generateActionId();
+    setPendingActions((prev) => new Set(prev).add(actionId));
+
+    socket.emit('update_room_settings', actionId, {
+      maxPlayers: draftMaxPlayers,
+      aiPlayerCount: draftAiPlayerCount,
+      timePerTurnMs: draftTimePerTurnMs,
+      stackingMode: draftStackingMode,
+      jumpInMode: draftJumpInMode,
+      drawMode: draftDrawMode,
+    }, (response) => {
+      if (response.success) {
+        setShowSettingsModal(false);
+      } else {
+        setError(response.error || 'Failed to update settings');
+      }
+    });
+  };
+
+  const handleCancelSettings = () => {
+    setShowSettingsModal(false);
+  };
+
   const handlePlayCard = (card: Card) => {
     if (!socket) return;
 
@@ -2708,17 +2761,29 @@ function App() {
                 ))}
               </div>
 
-              {isHost && (allPlayers.length >= 2 || (allPlayers.length >= 1 && (room.settings?.aiPlayerCount ?? 0) >= 1)) && (
-                <button
-                  onClick={handleStartGame}
-                  disabled={isPending}
-                  className="w-full py-4 font-bold text-lg rounded-xl transition-all duration-150 
-                             disabled:opacity-50 shadow-lg hover:opacity-90"
-                  style={{ backgroundColor: THEME.cardGreen, color: '#FFFFFF' }}
-                >
-                  {isPending ? 'Starting...' : `Start Game${(room.settings?.aiPlayerCount ?? 0) > 0 ? ` (+ ${room.settings?.aiPlayerCount} AI)` : ''}`}
-                </button>
-              )}
+               {isHost && (allPlayers.length >= 2 || (allPlayers.length >= 1 && (room.settings?.aiPlayerCount ?? 0) >= 1)) && (
+                 <button
+                   onClick={handleStartGame}
+                   disabled={isPending}
+                   className="w-full py-4 font-bold text-lg rounded-xl transition-all duration-150 
+                              disabled:opacity-50 shadow-lg hover:opacity-90"
+                   style={{ backgroundColor: THEME.cardGreen, color: '#FFFFFF' }}
+                 >
+                   {isPending ? 'Starting...' : `Start Game${(room.settings?.aiPlayerCount ?? 0) > 0 ? ` (+ ${room.settings?.aiPlayerCount} AI)` : ''}`}
+                 </button>
+               )}
+
+               {isHost && (
+                 <button
+                   onClick={handleOpenSettingsModal}
+                   disabled={isPending}
+                   className="w-full py-3 font-semibold rounded-xl transition-all duration-150 
+                              disabled:opacity-50 mt-4 shadow-lg hover:opacity-90"
+                   style={{ backgroundColor: THEME.surfaceContainerHighest, color: THEME.onSurface }}
+                 >
+                   Settings
+                 </button>
+               )}
 
               {isHost && allPlayers.length < 2 && (room.settings?.aiPlayerCount ?? 0) === 0 && (
                 <p className="text-center" style={{ color: THEME.onSurfaceVariant }}>
@@ -2731,10 +2796,152 @@ function App() {
                   Waiting for host to start the game...
                 </p>
               )}
-            </div>
-          )}
+             </div>
+           )}
 
-          {/* Playing - Tabletop View */}
+           {/* Settings Modal */}
+           {showSettingsModal && (
+             <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+               <div className="max-w-md w-full rounded-2xl p-6 shadow-2xl border" style={{ backgroundColor: THEME.surfaceContainer, borderColor: THEME.outlineVariant }}>
+                 <h2 className="text-xl font-semibold mb-4" style={{ color: THEME.onSurface }}>Room Settings</h2>
+
+                 <div className="flex space-x-1 mb-4 border-b border-outlineVariant">
+                   <button
+                     onClick={() => setModalTab('settings')}
+                     className={`px-3 py-2 text-sm font-medium border-b-2 transition-colors ${modalTab === 'settings' ? 'border-primary text-primary' : 'border-transparent text-onSurfaceVariant'}`}
+                   >
+                     Settings
+                   </button>
+                   <button
+                     onClick={() => setModalTab('rules')}
+                     className={`px-3 py-2 text-sm font-medium border-b-2 transition-colors ${modalTab === 'rules' ? 'border-primary text-primary' : 'border-transparent text-onSurfaceVariant'}`}
+                   >
+                     UNO Rules
+                   </button>
+                 </div>
+
+                 {modalTab === 'settings' && (
+                   <div className="space-y-4">
+                     <div>
+                       <div className="flex justify-between mb-2">
+                         <label className="text-sm" style={{ color: THEME.onSurfaceVariant }}>Max Players</label>
+                         <span className="text-sm font-medium" style={{ color: THEME.onSurface }}>{draftMaxPlayers}</span>
+                       </div>
+                       <RangeSlider
+                         min={2}
+                         max={10}
+                         value={draftMaxPlayers}
+                         onChange={setDraftMaxPlayers}
+                       />
+                     </div>
+
+                     <div>
+                       <div className="flex justify-between mb-2">
+                         <label className="text-sm" style={{ color: THEME.onSurfaceVariant }}>AI Opponents</label>
+                         <span className="text-sm font-medium" style={{ color: THEME.onSurface }}>{draftAiPlayerCount}</span>
+                       </div>
+                       <RangeSlider
+                         min={0}
+                         max={Math.min(9, draftMaxPlayers - 1)}
+                         value={draftAiPlayerCount}
+                         onChange={setDraftAiPlayerCount}
+                       />
+                       {draftAiPlayerCount > 0 && (
+                         <p className="text-xs mt-1" style={{ color: THEME.onSurfaceVariant }}>
+                           AI players will be added when the game starts
+                         </p>
+                       )}
+                     </div>
+
+                     <div>
+                       <div className="flex justify-between mb-2">
+                         <label className="text-sm" style={{ color: THEME.onSurfaceVariant }}>Time per Turn</label>
+                         <span className="text-sm font-medium" style={{ color: THEME.onSurface }}>{Math.floor(draftTimePerTurnMs / 1000)}s</span>
+                       </div>
+                       <RangeSlider
+                         min={15000}
+                         max={120000}
+                         step={5000}
+                         value={draftTimePerTurnMs}
+                         onChange={setDraftTimePerTurnMs}
+                       />
+                     </div>
+                   </div>
+                 )}
+
+                 {modalTab === 'rules' && (
+                   <div className="space-y-4">
+                     <div>
+                       <label className="block text-sm mb-2" style={{ color: THEME.onSurfaceVariant }}>Stacking Mode</label>
+                       <select
+                         value={draftStackingMode}
+                         onChange={(e) => setDraftStackingMode(e.target.value as StackingMode)}
+                         className="w-full px-4 py-3 rounded-xl border outline-none"
+                         style={{ backgroundColor: THEME.surfaceContainerHigh, borderColor: THEME.outline, color: THEME.onSurface }}
+                       >
+                         <option value="none">None</option>
+                         <option value="colors">Colors</option>
+                         <option value="numbers">Numbers</option>
+                         <option value="colors-numbers">Colors and Numbers</option>
+                      <option value="plus-same">Plus cards (same denomination)</option>
+                      <option value="plus-any">Plus cards (any denomination)</option>
+                      <option value="skip_reverse">Skip and Reverse</option>
+                         <option value="skip_reverse">Skip and Reverse</option>
+                       </select>
+                     </div>
+
+                     <div>
+                       <label className="block text-sm mb-2" style={{ color: THEME.onSurfaceVariant }}>Jump-In Mode</label>
+                       <select
+                         value={draftJumpInMode}
+                         onChange={(e) => setDraftJumpInMode(e.target.value as JumpInMode)}
+                         className="w-full px-4 py-3 rounded-xl border outline-none"
+                         style={{ backgroundColor: THEME.surfaceContainerHigh, borderColor: THEME.outline, color: THEME.onSurface }}
+                       >
+                         <option value="none">None</option>
+                         <option value="exact">Exact matches</option>
+                         <option value="power">Power cards only</option>
+                         <option value="both">Exact matches and power cards</option>
+                       </select>
+                     </div>
+
+                     <div>
+                       <label className="block text-sm mb-2" style={{ color: THEME.onSurfaceVariant }}>Draw Mode</label>
+                       <select
+                         value={draftDrawMode}
+                         onChange={(e) => setDraftDrawMode(e.target.value as DrawMode)}
+                         className="w-full px-4 py-3 rounded-xl border outline-none"
+                         style={{ backgroundColor: THEME.surfaceContainerHigh, borderColor: THEME.outline, color: THEME.onSurface }}
+                       >
+                         <option value="single">Single card</option>
+                         <option value="until_playable">Draw until playable</option>
+                       </select>
+                     </div>
+                   </div>
+                 )}
+
+                 <div className="flex gap-3 mt-6">
+                   <button
+                     onClick={handleCancelSettings}
+                     className="flex-1 py-3 font-semibold rounded-xl transition-colors"
+                     style={{ backgroundColor: THEME.surfaceContainerHighest, color: THEME.onSurface }}
+                   >
+                     Cancel
+                   </button>
+                   <button
+                     onClick={handleSaveSettings}
+                     disabled={isPending}
+                     className="flex-1 py-3 font-semibold rounded-xl transition-colors disabled:opacity-50"
+                     style={{ backgroundColor: THEME.primary, color: THEME.onPrimary }}
+                   >
+                     {isPending ? 'Saving...' : 'Save'}
+                   </button>
+                 </div>
+               </div>
+             </div>
+           )}
+
+           {/* Playing - Tabletop View */}
           {room.gameStatus === 'playing' && topCard && (
             <div 
               ref={gameTableRef}
@@ -2975,18 +3182,26 @@ function App() {
                 </div>
               )}
 
-              {/* Keybinds help */}
-              <div 
-                className="absolute bottom-2 left-1/2 -translate-x-1/2 text-xs opacity-60 whitespace-nowrap"
-                style={{ color: '#fff' }}
-              >
-                <span className="hidden md:inline">
-                  <kbd className="px-1 py-0.5 rounded bg-black/30">←</kbd> <kbd className="px-1 py-0.5 rounded bg-black/30">→</kbd> select card · 
-                  <kbd className="px-1 py-0.5 rounded bg-black/30">↑</kbd> play · 
-                  <kbd className="px-1 py-0.5 rounded bg-black/30">↓</kbd> draw · 
-                  <kbd className="px-1 py-0.5 rounded bg-black/30">/</kbd> chat
-                </span>
-              </div>
+               {/* Keybinds help */}
+               <div 
+                 className="absolute bottom-2 left-1/2 -translate-x-1/2 text-xs opacity-60 whitespace-nowrap"
+                 style={{ color: '#fff' }}
+               >
+                 <span className="hidden md:inline">
+                   <kbd className="px-1 py-0.5 rounded bg-black/30">←</kbd> <kbd className="px-1 py-0.5 rounded bg-black/30">→</kbd> select card · 
+                   <kbd className="px-1 py-0.5 rounded bg-black/30">↑</kbd> play · 
+                   <kbd className="px-1 py-0.5 rounded bg-black/30">↓</kbd> draw · 
+                   <kbd className="px-1 py-0.5 rounded bg-black/30">/</kbd> chat
+                 </span>
+               </div>
+
+               {/* Version */}
+               <div 
+                 className="absolute bottom-8 left-1/2 -translate-x-1/2 text-xs opacity-40 whitespace-nowrap"
+                 style={{ color: '#fff' }}
+               >
+                 v2026.1.19+4-58b87b3
+               </div>
             </div>
           )}
 

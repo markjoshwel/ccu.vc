@@ -1,4 +1,4 @@
-export type StackingMode = 'none' | 'colors' | 'numbers' | 'colors+numbers' | 'plus_same' | 'plus_any';
+export type StackingMode = 'none' | 'colors' | 'numbers' | 'colors+numbers' | 'plus_same' | 'plus_any' | 'skip_reverse';
 
 export type JumpInMode = 'none' | 'exact' | 'power' | 'both';
 
@@ -76,7 +76,7 @@ type JoinRoomArgs =
 type CreateRoomCallback = (response: { roomCode: string }) => void;
 
 export type ClientToServerEvents = {
-  create_room: (actionId: string, settings: Partial<RoomSettings> | null, callback: CreateRoomCallback) => void;
+  create_room: (actionId: string, settings: Partial<RoomSettings> | null, callback: (response: { roomCode: string }) => void) => void;
   join_room: (...args: JoinRoomArgs) => void;
   reconnect_room: (actionId: string, roomCode: string, playerId: string, playerSecret: string, callback: (response: { success: boolean; error?: string }) => void) => void;
   joinRoom: (roomId: string) => void;
@@ -84,6 +84,7 @@ export type ClientToServerEvents = {
   updatePlayer: (data: Partial<PlayerPrivate>) => void;
   playerReady: () => void;
   start_game: (actionId: string, callback: (response: { success: boolean; error?: string }) => void) => void;
+  update_room_settings: (actionId: string, settings: Partial<RoomSettings>, callback: (response: { success: boolean; error?: string }) => void) => void;
   playCard: (actionId: string, card: Card, chosenColor: 'red' | 'yellow' | 'green' | 'blue' | null, callback: (response: { success: boolean; error?: string }) => void) => void;
   drawCard: (actionId: string, callback: (response: { success: boolean; error?: string }) => void) => void;
   callUno: (actionId: string, callback: (response: { success: boolean; error?: string }) => void) => void;
