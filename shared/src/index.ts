@@ -1,7 +1,10 @@
+export type StackingMode = 'none' | 'colors' | 'numbers' | 'colors+numbers' | 'plus_same' | 'plus_any';
+
 export type RoomSettings = {
   maxPlayers: number;      // 2-10, default 6
   aiPlayerCount: number;   // 0-9, default 0
   timePerTurnMs: number;   // default 60000
+  stackingMode: StackingMode; // default 'none'
 };
 
 export type RoomState = {

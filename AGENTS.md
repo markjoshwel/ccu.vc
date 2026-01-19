@@ -79,7 +79,7 @@ Chess Clock UNO - Real-time multiplayer UNO with chess clock mechanics, keyboard
 #### Room Creation UI Enhancements
 - **Tabbed Interface**: Settings and UNO Rules tabs in lobby
 - **Settings Tab**: Max players slider (2-10), AI opponents counter (0-9), time-per-turn slider (15-120s)
-- **UNO Rules Tab**: Stacking mode selector (none, colors, numbers, colors+numbers, plus cards same/any denomination)
+- **UNO Rules Tab**: Stacking mode selector (none, colors, numbers, colors+numbers, plus cards same/any denomination) - server-side logic implemented for plus_same/plus_any modes
 - **Auto-Selection**: First card automatically selected when player's turn starts
 - **Card Animation**: Flying card animations for all card plays (opponents and player)
 - **Drag Clipping Fix**: Hand container overflow changed to prevent card clipping

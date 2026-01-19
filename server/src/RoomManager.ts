@@ -1,4 +1,4 @@
-import type { RoomState, PlayerPublic, PlayerPrivate, Card, GameView, ClockSyncData, TimeOutEvent, UnoWindow, ChatMessage, RoomSettings } from 'shared';
+import type { RoomState, PlayerPublic, PlayerPrivate, Card, GameView, ClockSyncData, TimeOutEvent, UnoWindow, ChatMessage, RoomSettings, StackingMode } from 'shared';
 import { Deck } from './Deck';
 
 type RoomCode = string;
@@ -33,19 +33,22 @@ export class Room {
   onAIMove?: () => void;
   unoWindow?: UnoWindow;
   chatHistory: ChatMessage[];
-  settings: RoomSettings;
-  aiMoveTimeoutId?: ReturnType<typeof setTimeout>;
+   settings: RoomSettings;
+   aiMoveTimeoutId?: ReturnType<typeof setTimeout>;
+   pendingDraws: number;
 
-  constructor(code: RoomCode, settings?: Partial<RoomSettings>) {
-    this.code = code;
-    this.connectedPlayerIds = new Set();
-    this.playerSocketMap = new Map();
-    this.players = new Map();
-    this.settings = {
-      maxPlayers: settings?.maxPlayers ?? DEFAULT_MAX_PLAYERS,
-      aiPlayerCount: settings?.aiPlayerCount ?? 0,
-      timePerTurnMs: settings?.timePerTurnMs ?? DEFAULT_TIME_PER_TURN_MS
-    };
+   constructor(code: RoomCode, settings?: Partial<RoomSettings>) {
+     this.code = code;
+     this.connectedPlayerIds = new Set();
+     this.playerSocketMap = new Map();
+     this.players = new Map();
+     this.settings = {
+       maxPlayers: settings?.maxPlayers ?? DEFAULT_MAX_PLAYERS,
+       aiPlayerCount: settings?.aiPlayerCount ?? 0,
+       timePerTurnMs: settings?.timePerTurnMs ?? DEFAULT_TIME_PER_TURN_MS,
+       stackingMode: settings?.stackingMode ?? 'none'
+     };
+     this.pendingDraws = 0;
     this.state = {
       id: code,
       name: code,
@@ -60,10 +63,18 @@ export class Room {
     this.playerOrder = [];
     this.timeRemainingMs = {};
     this.timePerTurnMs = this.settings.timePerTurnMs;
-    this.chatHistory = [];
-  }
+     this.chatHistory = [];
+   }
 
-  addChatMessage(message: ChatMessage): void {
+   isStackable(card: Card): boolean {
+     if (this.settings.stackingMode === 'plus_same' || this.settings.stackingMode === 'plus_any') {
+       return card.value === 'draw2' || card.value === 'wild_draw4';
+     }
+     // TODO: implement other stacking modes (colors, numbers, etc.)
+     return false;
+   }
+
+   addChatMessage(message: ChatMessage): void {
     this.chatHistory.push(message);
     if (this.chatHistory.length > MAX_CHAT_HISTORY) {
       this.chatHistory.shift();
@@ -176,6 +187,7 @@ export class Room {
 
     // Find a playable card
     const playableCard = player.hand.find(card => {
+      if (this.pendingDraws > 0 && !this.isStackable(card)) return false;
       if (card.color === 'wild') return true;
       if (card.color === effectiveColor) return true;
       if (card.value === topCard.value) return true;
@@ -432,6 +444,10 @@ export class Room {
       throw new Error('Player not found');
     }
 
+    if (this.pendingDraws > 0 && !this.isStackable(card)) {
+      throw new Error('Cannot play card while pending draws must be resolved');
+    }
+
     const cardIndex = player.hand.findIndex(
       (c) => c.color === card.color && c.value === card.value
     );
@@ -492,7 +508,11 @@ export class Room {
 
     this.updateState();
 
-    if (card.value === 'skip') {
+    if (card.value === 'draw2' || card.value === 'wild_draw4') {
+      const draws = card.value === 'draw2' ? 2 : 4;
+      this.pendingDraws += draws;
+      this.advanceTurn();
+    } else if (card.value === 'skip') {
       this.advanceTurn();
       this.advanceTurn();
     } else if (card.value === 'reverse') {
@@ -503,52 +523,6 @@ export class Room {
         this.advanceTurn();
         this.advanceTurn();
       }
-    } else if (card.value === 'draw2') {
-      const nextPlayerIndex = this.nextConnectedPlayerIndex();
-      const nextPlayerId = this.playerOrder[nextPlayerIndex];
-      const nextPlayer = this.players.get(nextPlayerId);
-      
-      if (nextPlayer) {
-        for (let i = 0; i < 2; i++) {
-          try {
-            this.ensureDeckHasCards();
-            const drawnCard = this.deck!.draw();
-            if (drawnCard) {
-              nextPlayer.hand.push(drawnCard);
-            }
-          } catch {
-            // No more cards available to draw
-            break;
-          }
-        }
-        this.updateState();
-      }
-      
-      this.currentPlayerIndex = nextPlayerIndex;
-      this.advanceTurn();
-    } else if (card.value === 'wild_draw4') {
-      const nextPlayerIndex = this.nextConnectedPlayerIndex();
-      const nextPlayerId = this.playerOrder[nextPlayerIndex];
-      const nextPlayer = this.players.get(nextPlayerId);
-      
-      if (nextPlayer) {
-        for (let i = 0; i < 4; i++) {
-          try {
-            this.ensureDeckHasCards();
-            const drawnCard = this.deck!.draw();
-            if (drawnCard) {
-              nextPlayer.hand.push(drawnCard);
-            }
-          } catch {
-            // No more cards available to draw
-            break;
-          }
-        }
-        this.updateState();
-      }
-      
-      this.currentPlayerIndex = nextPlayerIndex;
-      this.advanceTurn();
     } else {
       this.advanceTurn();
     }
@@ -577,9 +551,19 @@ export class Room {
     // Reshuffle discard into deck if needed
     this.ensureDeckHasCards();
 
-    const drawnCard = this.deck!.draw();
-    if (drawnCard) {
-      player.hand.push(drawnCard);
+    if (this.pendingDraws > 0) {
+      for (let i = 0; i < this.pendingDraws; i++) {
+        const drawnCard = this.deck!.draw();
+        if (drawnCard) {
+          player.hand.push(drawnCard);
+        }
+      }
+      this.pendingDraws = 0;
+    } else {
+      const drawnCard = this.deck!.draw();
+      if (drawnCard) {
+        player.hand.push(drawnCard);
+      }
     }
 
     this.updateState();
