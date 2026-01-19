@@ -508,10 +508,9 @@ function RangeSlider({ min, max, value, onChange }: RangeSliderProps) {
       step={1}
       value={value}
       onChange={(e) => onChange(Math.round(Number(e.target.value)))}
-      className="w-full"
+      className="w-full appearance-none h-2 rounded-xl cursor-pointer"
       style={{
         background: `linear-gradient(to right, ${THEME.primary} 0%, ${THEME.primary} ${percentage}%, ${THEME.outlineVariant} ${percentage}%, ${THEME.outlineVariant} 100%)`,
-        borderRadius: '4px',
       }}
     />
   );
