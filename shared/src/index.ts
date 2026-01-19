@@ -1,10 +1,16 @@
 export type StackingMode = 'none' | 'colors' | 'numbers' | 'colors+numbers' | 'plus_same' | 'plus_any';
 
+export type JumpInMode = 'none' | 'exact' | 'power' | 'both';
+
+export type DrawMode = 'single' | 'until_playable';
+
 export type RoomSettings = {
   maxPlayers: number;      // 2-10, default 6
   aiPlayerCount: number;   // 0-9, default 0
   timePerTurnMs: number;   // default 60000
   stackingMode: StackingMode; // default 'none'
+  jumpInMode: JumpInMode;  // default 'none'
+  drawMode: DrawMode;      // default 'single'
 };
 
 export type RoomState = {

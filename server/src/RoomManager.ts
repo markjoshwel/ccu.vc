@@ -42,12 +42,14 @@ export class Room {
      this.connectedPlayerIds = new Set();
      this.playerSocketMap = new Map();
      this.players = new Map();
-     this.settings = {
-       maxPlayers: settings?.maxPlayers ?? DEFAULT_MAX_PLAYERS,
-       aiPlayerCount: settings?.aiPlayerCount ?? 0,
-       timePerTurnMs: settings?.timePerTurnMs ?? DEFAULT_TIME_PER_TURN_MS,
-       stackingMode: settings?.stackingMode ?? 'none'
-     };
+    this.settings = {
+      maxPlayers: settings?.maxPlayers ?? DEFAULT_MAX_PLAYERS,
+      aiPlayerCount: settings?.aiPlayerCount ?? 0,
+      timePerTurnMs: settings?.timePerTurnMs ?? DEFAULT_TIME_PER_TURN_MS,
+      stackingMode: settings?.stackingMode ?? 'none',
+      jumpInMode: settings?.jumpInMode ?? 'none',
+      drawMode: settings?.drawMode ?? 'single'
+    };
      this.pendingDraws = 0;
     this.state = {
       id: code,
