@@ -2359,11 +2359,11 @@ function App() {
       
       // Immediately show flying message (optimistic UI - no server round-trip delay)
       if (room?.gameStatus === 'playing') {
-        const messageId = flyingMessageIdRef.current++;
-        const randomTop = 10 + Math.random() * 60;
-        // Calculate duration based on game table width: ~350px/s for faster speed
-        const gameTableWidth = gameTableRef.current?.clientWidth || window.innerWidth;
-        const duration = (gameTableWidth + 300) / 350;
+    const messageId = flyingMessageIdRef.current++;
+    const randomTop = 10 + Math.random() * 60; // Random position 10-70% from top
+    // Calculate duration based on game table width: ~200px/s for slower speed
+    const gameTableWidth = gameTableRef.current?.clientWidth || window.innerWidth;
+    const duration = (gameTableWidth + 300) / 200;
         
         setFlyingMessages(prev => [...prev, {
           id: messageId,
