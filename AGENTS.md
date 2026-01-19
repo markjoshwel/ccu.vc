@@ -1,6 +1,6 @@
 # Agent Session Notes
 
-## Version: v2026.1.19.2
+## Version: v2026.1.19.3
 
 ### Overview
 Chess Clock UNO - Real-time multiplayer UNO with chess clock mechanics, keyboard controls, and niconico-style flying chat.
@@ -43,6 +43,10 @@ Chess Clock UNO - Real-time multiplayer UNO with chess clock mechanics, keyboard
 - Up to 12 cards shown individually
 - Overflow indicator (+N) for hands larger than 12
 - More intuitive count visualization than just a number
+- Avatar display: Users see their uploaded avatar; bots and users without avatars get a colored initial badge
+- Avatar initial color: Consistent per player based on name character code (5 color palette) - uses second character for better distribution (e.g., "Bot Alpha" uses 'A', "Bot Beta" uses 'B')
+- Layout improvements: Avatar, name, and time evenly spaced with proper alignment
+- Active player highlighting fixed by using player ID instead of array index
 
 #### Range Slider Fix
 - Added `step={1}` and `Math.round()` for proper integer rounding
@@ -65,9 +69,11 @@ Chess Clock UNO - Real-time multiplayer UNO with chess clock mechanics, keyboard
 #### Autoscroll & Carousel Fixes
 - **Hand Autoscroll**: Selected card automatically centered in view using `scrollIntoView({ inline: 'center' })`
 - **Opponent Carousel Autoscroll**: Active player's hand automatically centered in view
-- **Timer Carousel Autoscroll**: Active player's clock automatically centered in view with 100ms delay for DOM rendering
+- **Timer Carousel Autoscroll**: Active player's clock automatically centered in view with requestAnimationFrame + setTimeout for reliable DOM rendering
 - **Carousel Clipping Fix**: Removed `justify-center` from overflow containers to prevent left-side clipping when scrolling
 - **Carousel Padding**: Added 8rem horizontal padding to ensure proper scroll range without clipping
+- **Opponent Active State Fix**: Fixed opponent highlighting by using player ID comparison instead of array index (prevented one-off bug)
+- **Opponent Avatars**: Added avatar display for opponents; bots and users without avatars get a colored initial badge with consistent color based on name
 
 #### Deployment
 - Added `flake.nix` for Nix-based builds and Docker images

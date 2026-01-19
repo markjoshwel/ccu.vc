@@ -293,7 +293,7 @@ type ChatMessage = {
 - `ChessClockBar` - Horizontal carousel of all player clocks with autoscroll to active player
 - `CardDisplay` - UNO Minimalista styled card
 - `CardBack` - Card back for opponent hands
-- `OpponentHand` - Fanned card backs (up to 12 visible) with autoscroll to active player
+- `OpponentHand` - Fanned card backs (up to 12 visible) with autoscroll to active player, avatar display (uploaded image or colored initial)
 - `HandArea` - Player's hand with drag-to-play, keyboard selection, and autoscroll to selected card
 - `ColorPickerModal` - Wild card color selection overlay with keyboard shortcuts (1-4)
 - `ChatDrawer` - Collapsible room chat at bottom

@@ -742,12 +742,32 @@ interface OpponentHandProps {
   cardCount: number;
   position: 'top' | 'left' | 'right';
   playerName: string;
+  avatarId?: string;
   isActive: boolean;
   timeRemaining: number;
+  serverUrl: string;
 }
 
-function OpponentHand({ cardCount, position, playerName, isActive, timeRemaining }: OpponentHandProps) {
+function OpponentHand({ cardCount, position, playerName, avatarId, isActive, timeRemaining, serverUrl }: OpponentHandProps) {
   const isUrgent = timeRemaining < 10000 && isActive;
+  
+  // Generate consistent random color for player initial
+  // Use full name hash for better distribution
+  const playerInitial = playerName.charAt(0).toUpperCase();
+  let nameHash = 0;
+  for (let i = 0; i < playerName.length; i++) {
+    nameHash = ((nameHash << 5) - nameHash) + playerName.charCodeAt(i);
+    nameHash = nameHash & nameHash;
+  }
+  const initialColorIndex = Math.abs(nameHash) % 5;
+  const initialColors = [
+    { bg: '#E53935', text: '#FFFFFF' },
+    { bg: '#1E88E5', text: '#FFFFFF' },
+    { bg: '#43A047', text: '#FFFFFF' },
+    { bg: '#FDD835', text: '#1C1B1F' },
+    { bg: '#9C27B0', text: '#FFFFFF' },
+  ];
+  const initialColor = initialColors[initialColorIndex];
   
   // Fan cards like the player's hand for intuitive count visualization
   // Show individual cards up to a limit, then stack the rest
@@ -758,15 +778,44 @@ function OpponentHand({ cardCount, position, playerName, isActive, timeRemaining
     <div className="flex flex-col items-center gap-1 pb-2">
       {/* Player info */}
       <div 
-        className={`px-3 py-1 rounded-lg text-xs font-medium transition-all ${isActive ? 'scale-105' : ''}`}
+        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center justify-between gap-2 ${isActive ? 'scale-105' : ''}`}
         style={{ 
           backgroundColor: isActive ? THEME.primaryContainer : THEME.surfaceContainerHigh,
           color: isActive ? THEME.onPrimaryContainer : THEME.onSurfaceVariant,
+          minWidth: '140px',
         }}
       >
-        <span>{playerName}</span>
+        {/* Avatar + Name */}
+        <div className="flex items-center gap-1.5">
+          {/* Avatar */}
+          {avatarId ? (
+            <div
+              className="w-5 h-5 rounded-md overflow-hidden flex-shrink-0 border"
+              style={{ borderColor: 'rgba(255,255,255,0.2)' }}
+            >
+              <img
+                src={`${serverUrl}/avatars/${avatarId}`}
+                alt={`${playerName}'s avatar`}
+                className="w-full h-full object-cover"
+                loading="lazy"
+              />
+            </div>
+          ) : (
+            <div
+              className="w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0"
+              style={{ backgroundColor: initialColor.bg }}
+            >
+              <span className="font-bold text-xs" style={{ color: initialColor.text }}>
+                {playerInitial}
+              </span>
+            </div>
+          )}
+          <span className="truncate max-w-[100px]">{playerName}</span>
+        </div>
+        
+        {/* Time */}
         <span 
-          className={`ml-2 font-mono ${isUrgent ? 'text-red-400 animate-pulse' : ''}`}
+          className={`font-mono ${isUrgent ? 'text-red-400 animate-pulse' : ''}`}
         >
           {formatTimeCompact(timeRemaining)}
         </span>
@@ -822,14 +871,13 @@ function OpponentHand({ cardCount, position, playerName, isActive, timeRemaining
 // Carousel of opponents
 interface OpponentCarouselProps {
   players: Array<PlayerPublic | PlayerPrivate>;
-  currentPlayerIndex: number | undefined;
+  currentPlayerId: string | undefined;
   interpolatedTime: Record<string, number>;
+  serverUrl: string;
 }
 
-function OpponentCarousel({ players, currentPlayerIndex, interpolatedTime }: OpponentCarouselProps) {
+function OpponentCarousel({ players, currentPlayerId, interpolatedTime, serverUrl }: OpponentCarouselProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-
-  const currentPlayerId = currentPlayerIndex !== undefined ? players[currentPlayerIndex]?.id : undefined;
 
   const scrollToCenter = useCallback(() => {
     if (!containerRef.current || !currentPlayerId) return;
@@ -843,7 +891,7 @@ function OpponentCarousel({ players, currentPlayerIndex, interpolatedTime }: Opp
 
   useEffect(() => {
     scrollToCenter();
-  }, [currentPlayerIndex, scrollToCenter]);
+  }, [currentPlayerId, scrollToCenter]);
 
   // Always center when container resizes
   useEffect(() => {
@@ -867,7 +915,6 @@ function OpponentCarousel({ players, currentPlayerIndex, interpolatedTime }: Opp
       }}
     >
       {players.map((player) => {
-        const playerIdx = players.findIndex((p) => p.id === player.id);
         const handCount = isPlayerPrivate(player) ? player.hand.length : player.handCount;
         return (
           <div key={player.id} data-player-id={player.id}>
@@ -875,8 +922,10 @@ function OpponentCarousel({ players, currentPlayerIndex, interpolatedTime }: Opp
               cardCount={handCount}
               position="top"
               playerName={player.name}
-              isActive={currentPlayerIndex === playerIdx}
+              avatarId={player.avatarId}
+              isActive={player.id === currentPlayerId}
               timeRemaining={interpolatedTime[player.id] || 0}
+              serverUrl={serverUrl}
             />
           </div>
         );
@@ -2643,10 +2692,11 @@ function App() {
               />
 
               {/* Opponents at top */}
-              <OpponentCarousel 
+              <OpponentCarousel
                 players={allPlayers.filter((p) => p.id !== myPlayerId)}
-                currentPlayerIndex={room.currentPlayerIndex}
+                currentPlayerId={activePlayer?.id}
                 interpolatedTime={interpolatedTime}
+                serverUrl={serverUrl}
               />
 
               {/* Center play area */}
